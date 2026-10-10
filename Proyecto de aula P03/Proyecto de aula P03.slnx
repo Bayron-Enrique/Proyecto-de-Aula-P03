@@ -1,3 +1,7 @@
 <Solution>
+  <Project Path="DATOS/DATOS.csproj" Id="b7683aba-4eed-4ab2-b2bf-eedfdddd348d" />
+  <Project Path="ENTIDADES/ENTIDADES.csproj" Id="7e928bb6-2fef-4351-b025-ed1237f6b7f5" />
+  <Project Path="LOGICA/LOGICA.csproj" Id="a7f432c6-5b9d-467f-a1bc-7b9cf51b90b8" />
   <Project Path="Oriyecto de aula P03/Proyecto de aula P03.csproj" Id="2c294363-c0d7-4d52-94b4-66342e3e7340" />
+  <Project Path="PRESENTACION/PRESENTACION.csproj" Id="4a17d44f-9d31-4ca2-a397-90138798237e" />
 </Solution>
