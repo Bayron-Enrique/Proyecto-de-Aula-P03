@@ -10,6 +10,5 @@ namespace LOGICA
     public class Class1
     {
         //cafnefrnegunregnrgreufndksfirmfimidmfiewmfiwmfiefiwfiwmfcdms;fmilreagmnfdkg
-        //dffsaddsadasssdasdsa
     }
 }
