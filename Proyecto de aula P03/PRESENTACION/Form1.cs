@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -19,6 +20,17 @@ namespace PRESENTACION
         }
 
         bool menuExpand = false;
+
+        [DllImport("user32.dll")]
+        private static extern bool ReleaseCapture();
+
+        [DllImport("user32.dll")]
+        private static extern bool SendMessage(IntPtr hWnd, int wMsg, int wParam, int lParam);
+
+        private const int WM_NCLBUTTONDOWN = 0xA1;
+        private const int HT_CAPTION = 0x2;
+
+        
         private void MenuTransition_Tick(object sender, EventArgs e)
         {
             if(menuExpand == false)
@@ -122,19 +134,45 @@ namespace PRESENTACION
 
         private void btnSalir_Click(object sender, EventArgs e)
         {
+            
             this.Close();
         }
 
         private void btnMinimizar_Click(object sender, EventArgs e)
         {
+            
             this.WindowState = FormWindowState.Minimized;
         }
 
         private void btnMaximizar_Click(object sender, EventArgs e)
         {
-            this.WindowState = FormWindowState.Maximized;
+            if (WindowState == FormWindowState.Normal)
+            {
+                
+                this.MaximizedBounds = Screen.FromHandle(this.Handle).WorkingArea;
+                this.WindowState = FormWindowState.Maximized;
+
+            }
+            else
+            {
+                this.WindowState = FormWindowState.Normal;
+
+            }
         }
 
-        
+        private void pnBarraSuperior_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                ReleaseCapture();
+                
+                SendMessage(Handle, WM_NCLBUTTONDOWN, HT_CAPTION, 0);
+            }
+        }
+
+        private void pnBarraSuperior_MouseUp(object sender, MouseEventArgs e)
+        {
+            pnBarraSuperior.Cursor = Cursors.Default;
+        }
     }
 }

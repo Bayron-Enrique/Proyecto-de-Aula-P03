@@ -30,7 +30,7 @@
         {
             this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
-            this.panel1 = new System.Windows.Forms.Panel();
+            this.pnBarraSuperior = new System.Windows.Forms.Panel();
             this.btnSalir = new System.Windows.Forms.Button();
             this.btnHam = new System.Windows.Forms.PictureBox();
             this.btnMaximizar = new System.Windows.Forms.Button();
@@ -58,7 +58,7 @@
             this.btnConfiguracion = new System.Windows.Forms.Button();
             this.MenuTransition = new System.Windows.Forms.Timer(this.components);
             this.sidebarTransition = new System.Windows.Forms.Timer(this.components);
-            this.panel1.SuspendLayout();
+            this.pnBarraSuperior.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.btnHam)).BeginInit();
             this.sidebar.SuspendLayout();
             this.PnPanel.SuspendLayout();
@@ -73,22 +73,25 @@
             this.pnConfiguracion.SuspendLayout();
             this.SuspendLayout();
             // 
-            // panel1
+            // pnBarraSuperior
             // 
-            this.panel1.BackColor = System.Drawing.Color.White;
-            this.panel1.Controls.Add(this.btnSalir);
-            this.panel1.Controls.Add(this.btnHam);
-            this.panel1.Controls.Add(this.btnMaximizar);
-            this.panel1.Controls.Add(this.label2);
-            this.panel1.Controls.Add(this.btnMinimizar);
-            this.panel1.Dock = System.Windows.Forms.DockStyle.Top;
-            this.panel1.Location = new System.Drawing.Point(0, 0);
-            this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(1068, 54);
-            this.panel1.TabIndex = 0;
+            this.pnBarraSuperior.BackColor = System.Drawing.Color.White;
+            this.pnBarraSuperior.Controls.Add(this.btnSalir);
+            this.pnBarraSuperior.Controls.Add(this.btnHam);
+            this.pnBarraSuperior.Controls.Add(this.btnMaximizar);
+            this.pnBarraSuperior.Controls.Add(this.label2);
+            this.pnBarraSuperior.Controls.Add(this.btnMinimizar);
+            this.pnBarraSuperior.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnBarraSuperior.Location = new System.Drawing.Point(0, 0);
+            this.pnBarraSuperior.Name = "pnBarraSuperior";
+            this.pnBarraSuperior.Size = new System.Drawing.Size(1068, 54);
+            this.pnBarraSuperior.TabIndex = 0;
+            this.pnBarraSuperior.MouseDown += new System.Windows.Forms.MouseEventHandler(this.pnBarraSuperior_MouseDown);
+            this.pnBarraSuperior.MouseUp += new System.Windows.Forms.MouseEventHandler(this.pnBarraSuperior_MouseUp);
             // 
             // btnSalir
             // 
+            this.btnSalir.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnSalir.BackColor = System.Drawing.Color.Transparent;
             this.btnSalir.FlatAppearance.BorderSize = 0;
             this.btnSalir.FlatAppearance.MouseOverBackColor = System.Drawing.Color.Red;
@@ -113,6 +116,7 @@
             // 
             // btnMaximizar
             // 
+            this.btnMaximizar.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnMaximizar.BackColor = System.Drawing.Color.Transparent;
             this.btnMaximizar.FlatAppearance.BorderSize = 0;
             this.btnMaximizar.FlatAppearance.MouseOverBackColor = System.Drawing.Color.Silver;
@@ -132,12 +136,13 @@
             this.label2.Location = new System.Drawing.Point(53, 9);
             this.label2.Name = "label2";
             this.label2.Padding = new System.Windows.Forms.Padding(0, 10, 0, 0);
-            this.label2.Size = new System.Drawing.Size(97, 30);
+            this.label2.Size = new System.Drawing.Size(83, 27);
             this.label2.TabIndex = 1;
             this.label2.Text = "GOT-AUTO";
             // 
             // btnMinimizar
             // 
+            this.btnMinimizar.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnMinimizar.BackColor = System.Drawing.Color.Transparent;
             this.btnMinimizar.FlatAppearance.BorderSize = 0;
             this.btnMinimizar.FlatAppearance.MouseOverBackColor = System.Drawing.Color.Silver;
@@ -159,11 +164,12 @@
             this.sidebar.Controls.Add(this.pnVehiculos);
             this.sidebar.Controls.Add(this.pnClientes);
             this.sidebar.Controls.Add(this.pnConfiguracion);
+            this.sidebar.Dock = System.Windows.Forms.DockStyle.Left;
             this.sidebar.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
             this.sidebar.ForeColor = System.Drawing.Color.White;
-            this.sidebar.Location = new System.Drawing.Point(0, 52);
+            this.sidebar.Location = new System.Drawing.Point(0, 54);
             this.sidebar.Name = "sidebar";
-            this.sidebar.Size = new System.Drawing.Size(251, 613);
+            this.sidebar.Size = new System.Drawing.Size(251, 611);
             this.sidebar.TabIndex = 1;
             // 
             // PnPanel
@@ -177,7 +183,9 @@
             // button2
             // 
             this.button2.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(23)))), ((int)(((byte)(24)))), ((int)(((byte)(29)))));
+            this.button2.Cursor = System.Windows.Forms.Cursors.Hand;
             this.button2.FlatAppearance.BorderSize = 0;
+            this.button2.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(40)))));
             this.button2.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.button2.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.button2.ForeColor = System.Drawing.Color.White;
@@ -198,6 +206,7 @@
             this.menuContainer.Controls.Add(this.pnAgenda);
             this.menuContainer.Controls.Add(this.panel9);
             this.menuContainer.Controls.Add(this.panel10);
+            this.menuContainer.Cursor = System.Windows.Forms.Cursors.Hand;
             this.menuContainer.Location = new System.Drawing.Point(3, 62);
             this.menuContainer.Name = "menuContainer";
             this.menuContainer.Size = new System.Drawing.Size(329, 53);
@@ -242,6 +251,7 @@
             // 
             this.btnAgenda.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(23)))), ((int)(((byte)(24)))), ((int)(((byte)(29)))));
             this.btnAgenda.FlatAppearance.BorderSize = 0;
+            this.btnAgenda.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(40)))));
             this.btnAgenda.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnAgenda.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnAgenda.ForeColor = System.Drawing.Color.White;
@@ -313,6 +323,7 @@
             // pnServicio
             // 
             this.pnServicio.Controls.Add(this.btnServicio);
+            this.pnServicio.Cursor = System.Windows.Forms.Cursors.Hand;
             this.pnServicio.Location = new System.Drawing.Point(3, 121);
             this.pnServicio.Name = "pnServicio";
             this.pnServicio.Size = new System.Drawing.Size(382, 53);
@@ -322,6 +333,7 @@
             // 
             this.btnServicio.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(23)))), ((int)(((byte)(24)))), ((int)(((byte)(29)))));
             this.btnServicio.FlatAppearance.BorderSize = 0;
+            this.btnServicio.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(40)))));
             this.btnServicio.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnServicio.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnServicio.ForeColor = System.Drawing.Color.White;
@@ -339,6 +351,7 @@
             // pnVehiculos
             // 
             this.pnVehiculos.Controls.Add(this.btnVehiculos);
+            this.pnVehiculos.Cursor = System.Windows.Forms.Cursors.Hand;
             this.pnVehiculos.Location = new System.Drawing.Point(3, 180);
             this.pnVehiculos.Name = "pnVehiculos";
             this.pnVehiculos.Size = new System.Drawing.Size(343, 53);
@@ -348,6 +361,7 @@
             // 
             this.btnVehiculos.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(23)))), ((int)(((byte)(24)))), ((int)(((byte)(29)))));
             this.btnVehiculos.FlatAppearance.BorderSize = 0;
+            this.btnVehiculos.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(40)))));
             this.btnVehiculos.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnVehiculos.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnVehiculos.ForeColor = System.Drawing.Color.White;
@@ -365,6 +379,7 @@
             // pnClientes
             // 
             this.pnClientes.Controls.Add(this.btnClientes);
+            this.pnClientes.Cursor = System.Windows.Forms.Cursors.Hand;
             this.pnClientes.Location = new System.Drawing.Point(3, 239);
             this.pnClientes.Name = "pnClientes";
             this.pnClientes.Size = new System.Drawing.Size(382, 53);
@@ -374,6 +389,7 @@
             // 
             this.btnClientes.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(23)))), ((int)(((byte)(24)))), ((int)(((byte)(29)))));
             this.btnClientes.FlatAppearance.BorderSize = 0;
+            this.btnClientes.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(40)))));
             this.btnClientes.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnClientes.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnClientes.ForeColor = System.Drawing.Color.White;
@@ -391,6 +407,7 @@
             // pnConfiguracion
             // 
             this.pnConfiguracion.Controls.Add(this.btnConfiguracion);
+            this.pnConfiguracion.Cursor = System.Windows.Forms.Cursors.Hand;
             this.pnConfiguracion.Location = new System.Drawing.Point(3, 298);
             this.pnConfiguracion.Name = "pnConfiguracion";
             this.pnConfiguracion.Size = new System.Drawing.Size(382, 53);
@@ -400,6 +417,7 @@
             // 
             this.btnConfiguracion.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(23)))), ((int)(((byte)(24)))), ((int)(((byte)(29)))));
             this.btnConfiguracion.FlatAppearance.BorderSize = 0;
+            this.btnConfiguracion.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(40)))));
             this.btnConfiguracion.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnConfiguracion.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnConfiguracion.ForeColor = System.Drawing.Color.White;
@@ -429,15 +447,15 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
             this.ClientSize = new System.Drawing.Size(1068, 665);
             this.Controls.Add(this.sidebar);
-            this.Controls.Add(this.panel1);
+            this.Controls.Add(this.pnBarraSuperior);
             this.ForeColor = System.Drawing.Color.DimGray;
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             this.IsMdiContainer = true;
             this.Name = "Form1";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Form1";
-            this.panel1.ResumeLayout(false);
-            this.panel1.PerformLayout();
+            this.pnBarraSuperior.ResumeLayout(false);
+            this.pnBarraSuperior.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.btnHam)).EndInit();
             this.sidebar.ResumeLayout(false);
             this.PnPanel.ResumeLayout(false);
@@ -456,7 +474,7 @@
 
         #endregion
 
-        private System.Windows.Forms.Panel panel1;
+        private System.Windows.Forms.Panel pnBarraSuperior;
         private System.Windows.Forms.FlowLayoutPanel sidebar;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.PictureBox btnHam;
