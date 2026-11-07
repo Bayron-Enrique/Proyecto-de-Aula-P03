@@ -58,6 +58,13 @@
             this.btnConfiguracion = new System.Windows.Forms.Button();
             this.MenuTransition = new System.Windows.Forms.Timer(this.components);
             this.sidebarTransition = new System.Windows.Forms.Timer(this.components);
+            this.object_ac738dae_ffba_4e5b_9b7a_00c5c4a0582e = new System.Windows.Forms.FlowLayoutPanel();
+            this.object_867fe828_8306_477d_b57c_6ec9660e105d = new System.Windows.Forms.FlowLayoutPanel();
+            this.object_2e766691_a9d0_4348_968e_b6b39192fbd2 = new System.Windows.Forms.FlowLayoutPanel();
+            this.object_f64d94ea_ffbd_4f77_a83e_a8826a927a20 = new System.Windows.Forms.Panel();
+            this.object_a2159313_dc89_4714_abf9_31b8ab1d536b = new System.Windows.Forms.Button();
+            this.object_4eac77cb_66ca_49a5_89eb_538ea4acbf98 = new System.Windows.Forms.FlowLayoutPanel();
+            this.object_15f5f33f_435a_46ac_98ec_bc4b778d783f = new System.Windows.Forms.FlowLayoutPanel();
             this.pnBarraSuperior.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.btnHam)).BeginInit();
             this.sidebar.SuspendLayout();
@@ -194,11 +201,12 @@
             this.button2.Location = new System.Drawing.Point(-6, -3);
             this.button2.Name = "button2";
             this.button2.Padding = new System.Windows.Forms.Padding(10, 0, 0, 0);
-            this.button2.Size = new System.Drawing.Size(382, 60);
+            this.button2.Size = new System.Drawing.Size(394, 60);
             this.button2.TabIndex = 2;
             this.button2.Text = "             Panel";
             this.button2.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.button2.UseVisualStyleBackColor = false;
+            this.button2.Click += new System.EventHandler(this.button2_Click);
             // 
             // menuContainer
             // 
@@ -209,7 +217,7 @@
             this.menuContainer.Cursor = System.Windows.Forms.Cursors.Hand;
             this.menuContainer.Location = new System.Drawing.Point(3, 62);
             this.menuContainer.Name = "menuContainer";
-            this.menuContainer.Size = new System.Drawing.Size(329, 53);
+            this.menuContainer.Size = new System.Drawing.Size(329, 63);
             this.menuContainer.TabIndex = 5;
             // 
             // pnAgenda
@@ -261,7 +269,7 @@
             this.btnAgenda.Name = "btnAgenda";
             this.btnAgenda.Padding = new System.Windows.Forms.Padding(35, 0, 0, 0);
             this.btnAgenda.RightToLeft = System.Windows.Forms.RightToLeft.No;
-            this.btnAgenda.Size = new System.Drawing.Size(381, 80);
+            this.btnAgenda.Size = new System.Drawing.Size(409, 76);
             this.btnAgenda.TabIndex = 2;
             this.btnAgenda.Text = "            Agenda";
             this.btnAgenda.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
@@ -324,7 +332,7 @@
             // 
             this.pnServicio.Controls.Add(this.btnServicio);
             this.pnServicio.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.pnServicio.Location = new System.Drawing.Point(3, 121);
+            this.pnServicio.Location = new System.Drawing.Point(3, 131);
             this.pnServicio.Name = "pnServicio";
             this.pnServicio.Size = new System.Drawing.Size(382, 53);
             this.pnServicio.TabIndex = 4;
@@ -342,17 +350,18 @@
             this.btnServicio.Location = new System.Drawing.Point(-17, -5);
             this.btnServicio.Name = "btnServicio";
             this.btnServicio.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
-            this.btnServicio.Size = new System.Drawing.Size(346, 69);
+            this.btnServicio.Size = new System.Drawing.Size(417, 69);
             this.btnServicio.TabIndex = 2;
             this.btnServicio.Text = "           Ordenes de servicio";
             this.btnServicio.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.btnServicio.UseVisualStyleBackColor = false;
+            this.btnServicio.Click += new System.EventHandler(this.btnServicio_Click);
             // 
             // pnVehiculos
             // 
             this.pnVehiculos.Controls.Add(this.btnVehiculos);
             this.pnVehiculos.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.pnVehiculos.Location = new System.Drawing.Point(3, 180);
+            this.pnVehiculos.Location = new System.Drawing.Point(3, 190);
             this.pnVehiculos.Name = "pnVehiculos";
             this.pnVehiculos.Size = new System.Drawing.Size(343, 53);
             this.pnVehiculos.TabIndex = 4;
@@ -370,17 +379,18 @@
             this.btnVehiculos.Location = new System.Drawing.Point(-17, -5);
             this.btnVehiculos.Name = "btnVehiculos";
             this.btnVehiculos.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
-            this.btnVehiculos.Size = new System.Drawing.Size(340, 69);
+            this.btnVehiculos.Size = new System.Drawing.Size(382, 69);
             this.btnVehiculos.TabIndex = 2;
             this.btnVehiculos.Text = "            Vehiculos";
             this.btnVehiculos.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.btnVehiculos.UseVisualStyleBackColor = false;
+            this.btnVehiculos.Click += new System.EventHandler(this.btnVehiculos_Click);
             // 
             // pnClientes
             // 
             this.pnClientes.Controls.Add(this.btnClientes);
             this.pnClientes.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.pnClientes.Location = new System.Drawing.Point(3, 239);
+            this.pnClientes.Location = new System.Drawing.Point(3, 249);
             this.pnClientes.Name = "pnClientes";
             this.pnClientes.Size = new System.Drawing.Size(382, 53);
             this.pnClientes.TabIndex = 4;
@@ -398,17 +408,18 @@
             this.btnClientes.Location = new System.Drawing.Point(-3, -6);
             this.btnClientes.Name = "btnClientes";
             this.btnClientes.Padding = new System.Windows.Forms.Padding(10, 0, 0, 0);
-            this.btnClientes.Size = new System.Drawing.Size(374, 74);
+            this.btnClientes.Size = new System.Drawing.Size(385, 74);
             this.btnClientes.TabIndex = 2;
             this.btnClientes.Text = "           Clientes";
             this.btnClientes.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.btnClientes.UseVisualStyleBackColor = false;
+            this.btnClientes.Click += new System.EventHandler(this.btnClientes_Click);
             // 
             // pnConfiguracion
             // 
             this.pnConfiguracion.Controls.Add(this.btnConfiguracion);
             this.pnConfiguracion.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.pnConfiguracion.Location = new System.Drawing.Point(3, 298);
+            this.pnConfiguracion.Location = new System.Drawing.Point(3, 308);
             this.pnConfiguracion.Name = "pnConfiguracion";
             this.pnConfiguracion.Size = new System.Drawing.Size(382, 53);
             this.pnConfiguracion.TabIndex = 4;
@@ -426,7 +437,7 @@
             this.btnConfiguracion.Location = new System.Drawing.Point(-17, -11);
             this.btnConfiguracion.Name = "btnConfiguracion";
             this.btnConfiguracion.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
-            this.btnConfiguracion.Size = new System.Drawing.Size(342, 80);
+            this.btnConfiguracion.Size = new System.Drawing.Size(428, 80);
             this.btnConfiguracion.TabIndex = 2;
             this.btnConfiguracion.Text = "           Configuracion";
             this.btnConfiguracion.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
@@ -442,13 +453,91 @@
             this.sidebarTransition.Interval = 15;
             this.sidebarTransition.Tick += new System.EventHandler(this.sidebarTransition_Tick);
             // 
+            // object_ac738dae_ffba_4e5b_9b7a_00c5c4a0582e
+            // 
+            this.object_ac738dae_ffba_4e5b_9b7a_00c5c4a0582e.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(23)))), ((int)(((byte)(24)))), ((int)(((byte)(29)))));
+            this.object_ac738dae_ffba_4e5b_9b7a_00c5c4a0582e.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.object_ac738dae_ffba_4e5b_9b7a_00c5c4a0582e.Location = new System.Drawing.Point(340, 180);
+            this.object_ac738dae_ffba_4e5b_9b7a_00c5c4a0582e.Name = "object_ac738dae_ffba_4e5b_9b7a_00c5c4a0582e";
+            this.object_ac738dae_ffba_4e5b_9b7a_00c5c4a0582e.Size = new System.Drawing.Size(329, 53);
+            this.object_ac738dae_ffba_4e5b_9b7a_00c5c4a0582e.TabIndex = 5;
+            this.object_ac738dae_ffba_4e5b_9b7a_00c5c4a0582e.Visible = false;
+            // 
+            // object_867fe828_8306_477d_b57c_6ec9660e105d
+            // 
+            this.object_867fe828_8306_477d_b57c_6ec9660e105d.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(23)))), ((int)(((byte)(24)))), ((int)(((byte)(29)))));
+            this.object_867fe828_8306_477d_b57c_6ec9660e105d.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.object_867fe828_8306_477d_b57c_6ec9660e105d.Location = new System.Drawing.Point(340, 180);
+            this.object_867fe828_8306_477d_b57c_6ec9660e105d.Name = "object_867fe828_8306_477d_b57c_6ec9660e105d";
+            this.object_867fe828_8306_477d_b57c_6ec9660e105d.Size = new System.Drawing.Size(329, 53);
+            this.object_867fe828_8306_477d_b57c_6ec9660e105d.TabIndex = 5;
+            this.object_867fe828_8306_477d_b57c_6ec9660e105d.Visible = false;
+            // 
+            // object_2e766691_a9d0_4348_968e_b6b39192fbd2
+            // 
+            this.object_2e766691_a9d0_4348_968e_b6b39192fbd2.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(23)))), ((int)(((byte)(24)))), ((int)(((byte)(29)))));
+            this.object_2e766691_a9d0_4348_968e_b6b39192fbd2.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.object_2e766691_a9d0_4348_968e_b6b39192fbd2.Location = new System.Drawing.Point(340, 180);
+            this.object_2e766691_a9d0_4348_968e_b6b39192fbd2.Name = "object_2e766691_a9d0_4348_968e_b6b39192fbd2";
+            this.object_2e766691_a9d0_4348_968e_b6b39192fbd2.Size = new System.Drawing.Size(329, 53);
+            this.object_2e766691_a9d0_4348_968e_b6b39192fbd2.TabIndex = 5;
+            this.object_2e766691_a9d0_4348_968e_b6b39192fbd2.Visible = false;
+            // 
+            // object_f64d94ea_ffbd_4f77_a83e_a8826a927a20
+            // 
+            this.object_f64d94ea_ffbd_4f77_a83e_a8826a927a20.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.object_f64d94ea_ffbd_4f77_a83e_a8826a927a20.Location = new System.Drawing.Point(346, 345);
+            this.object_f64d94ea_ffbd_4f77_a83e_a8826a927a20.Name = "object_f64d94ea_ffbd_4f77_a83e_a8826a927a20";
+            this.object_f64d94ea_ffbd_4f77_a83e_a8826a927a20.Size = new System.Drawing.Size(343, 53);
+            this.object_f64d94ea_ffbd_4f77_a83e_a8826a927a20.TabIndex = 4;
+            this.object_f64d94ea_ffbd_4f77_a83e_a8826a927a20.Visible = false;
+            // 
+            // object_a2159313_dc89_4714_abf9_31b8ab1d536b
+            // 
+            this.object_a2159313_dc89_4714_abf9_31b8ab1d536b.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(23)))), ((int)(((byte)(24)))), ((int)(((byte)(29)))));
+            this.object_a2159313_dc89_4714_abf9_31b8ab1d536b.FlatAppearance.BorderSize = 0;
+            this.object_a2159313_dc89_4714_abf9_31b8ab1d536b.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(40)))));
+            this.object_a2159313_dc89_4714_abf9_31b8ab1d536b.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.object_a2159313_dc89_4714_abf9_31b8ab1d536b.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.object_a2159313_dc89_4714_abf9_31b8ab1d536b.ForeColor = System.Drawing.Color.White;
+            this.object_a2159313_dc89_4714_abf9_31b8ab1d536b.Image = ((System.Drawing.Image)(resources.GetObject("object_a2159313_dc89_4714_abf9_31b8ab1d536b.Image")));
+            this.object_a2159313_dc89_4714_abf9_31b8ab1d536b.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.object_a2159313_dc89_4714_abf9_31b8ab1d536b.Location = new System.Drawing.Point(-17, -5);
+            this.object_a2159313_dc89_4714_abf9_31b8ab1d536b.Name = "object_a2159313_dc89_4714_abf9_31b8ab1d536b";
+            this.object_a2159313_dc89_4714_abf9_31b8ab1d536b.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
+            this.object_a2159313_dc89_4714_abf9_31b8ab1d536b.Size = new System.Drawing.Size(382, 69);
+            this.object_a2159313_dc89_4714_abf9_31b8ab1d536b.TabIndex = 2;
+            this.object_a2159313_dc89_4714_abf9_31b8ab1d536b.Text = "            Vehiculos";
+            this.object_a2159313_dc89_4714_abf9_31b8ab1d536b.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.object_a2159313_dc89_4714_abf9_31b8ab1d536b.UseVisualStyleBackColor = false;
+            // 
+            // object_4eac77cb_66ca_49a5_89eb_538ea4acbf98
+            // 
+            this.object_4eac77cb_66ca_49a5_89eb_538ea4acbf98.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(23)))), ((int)(((byte)(24)))), ((int)(((byte)(29)))));
+            this.object_4eac77cb_66ca_49a5_89eb_538ea4acbf98.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.object_4eac77cb_66ca_49a5_89eb_538ea4acbf98.Location = new System.Drawing.Point(340, 180);
+            this.object_4eac77cb_66ca_49a5_89eb_538ea4acbf98.Name = "object_4eac77cb_66ca_49a5_89eb_538ea4acbf98";
+            this.object_4eac77cb_66ca_49a5_89eb_538ea4acbf98.Size = new System.Drawing.Size(329, 53);
+            this.object_4eac77cb_66ca_49a5_89eb_538ea4acbf98.TabIndex = 5;
+            this.object_4eac77cb_66ca_49a5_89eb_538ea4acbf98.Visible = false;
+            // 
+            // object_15f5f33f_435a_46ac_98ec_bc4b778d783f
+            // 
+            this.object_15f5f33f_435a_46ac_98ec_bc4b778d783f.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(23)))), ((int)(((byte)(24)))), ((int)(((byte)(29)))));
+            this.object_15f5f33f_435a_46ac_98ec_bc4b778d783f.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.object_15f5f33f_435a_46ac_98ec_bc4b778d783f.Location = new System.Drawing.Point(340, 180);
+            this.object_15f5f33f_435a_46ac_98ec_bc4b778d783f.Name = "object_15f5f33f_435a_46ac_98ec_bc4b778d783f";
+            this.object_15f5f33f_435a_46ac_98ec_bc4b778d783f.Size = new System.Drawing.Size(329, 53);
+            this.object_15f5f33f_435a_46ac_98ec_bc4b778d783f.TabIndex = 5;
+            this.object_15f5f33f_435a_46ac_98ec_bc4b778d783f.Visible = false;
+            // 
             // Form1
             // 
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
             this.ClientSize = new System.Drawing.Size(1068, 665);
             this.Controls.Add(this.sidebar);
             this.Controls.Add(this.pnBarraSuperior);
-            this.ForeColor = System.Drawing.Color.DimGray;
+            this.ForeColor = System.Drawing.Color.Black;
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             this.IsMdiContainer = true;
             this.Name = "Form1";
@@ -502,5 +591,12 @@
         private System.Windows.Forms.Button btnVehiculos;
         private System.Windows.Forms.Panel PnPanel;
         private System.Windows.Forms.Button button2;
+        private System.Windows.Forms.FlowLayoutPanel object_ac738dae_ffba_4e5b_9b7a_00c5c4a0582e;
+        private System.Windows.Forms.FlowLayoutPanel object_867fe828_8306_477d_b57c_6ec9660e105d;
+        private System.Windows.Forms.FlowLayoutPanel object_2e766691_a9d0_4348_968e_b6b39192fbd2;
+        private System.Windows.Forms.Panel object_f64d94ea_ffbd_4f77_a83e_a8826a927a20;
+        private System.Windows.Forms.Button object_a2159313_dc89_4714_abf9_31b8ab1d536b;
+        private System.Windows.Forms.FlowLayoutPanel object_4eac77cb_66ca_49a5_89eb_538ea4acbf98;
+        private System.Windows.Forms.FlowLayoutPanel object_15f5f33f_435a_46ac_98ec_bc4b778d783f;
     }
 }
