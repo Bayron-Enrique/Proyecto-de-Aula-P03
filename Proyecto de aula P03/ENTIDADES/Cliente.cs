@@ -6,7 +6,16 @@ using System.Threading.Tasks;
 
 namespace ENTIDADES
 {
-    internal class Cliente
+    public class Cliente : Persona
     {
+        public Cliente()
+        {
+
+        }
+
+        public override string ToString()
+        {
+            return $"|Cedula: {Cedula} |Nombre: {Nombre} |Telefono: {Telefono} |Direccion: {Direccion} |Correo: {Email}";
+        }
     }
 }
