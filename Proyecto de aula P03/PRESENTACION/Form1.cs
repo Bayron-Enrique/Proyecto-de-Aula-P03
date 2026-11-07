@@ -13,6 +13,7 @@ namespace PRESENTACION
 {
     public partial class Form1 : Form
     {
+        FrmPanel frmPanel;
         public Form1()
         {
             InitializeComponent();
@@ -30,7 +31,9 @@ namespace PRESENTACION
         private const int WM_NCLBUTTONDOWN = 0xA1;
         private const int HT_CAPTION = 0x2;
 
-        
+        Color colorNormal = Color.FromArgb(23, 24, 29);
+        Color colorActivo = Color.FromArgb(85, 85, 85);
+
         private void MenuTransition_Tick(object sender, EventArgs e)
         {
             if(menuExpand == false)
@@ -58,6 +61,7 @@ namespace PRESENTACION
         private void Menu_Click(object sender, EventArgs e)
         {
             MenuTransition.Start();
+            PintarBotonActivo(btnAgenda);
         }
 
         bool sidebarExpand = true;
@@ -173,6 +177,58 @@ namespace PRESENTACION
         private void pnBarraSuperior_MouseUp(object sender, MouseEventArgs e)
         {
             pnBarraSuperior.Cursor = Cursors.Default;
+        }
+
+        
+        private void PintarBotonActivo(Button activo)
+        {
+            button2.BackColor = colorNormal;
+            btnAgenda.BackColor = colorNormal;
+            btnServicio.BackColor = colorNormal;
+            btnVehiculos.BackColor = colorNormal;
+            btnClientes.BackColor = colorNormal;
+            btnConfiguracion.BackColor = colorNormal;
+
+            activo.BackColor = colorActivo;
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            PintarBotonActivo(button2);
+
+            if(frmPanel == null)
+            {
+                frmPanel = new FrmPanel();
+                frmPanel.FormClosed += FrmPanel_FormClosed;
+                frmPanel.MdiParent = this;
+                frmPanel.Dock = DockStyle.Fill;
+                frmPanel.Show();
+            }
+            else
+            {
+                frmPanel.Activate();
+            }
+            
+        }
+
+        private void FrmPanel_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            frmPanel = null;
+        }
+
+        private void btnServicio_Click(object sender, EventArgs e)
+        {
+            PintarBotonActivo(btnServicio);
+        }
+
+        private void btnVehiculos_Click(object sender, EventArgs e)
+        {
+            PintarBotonActivo(btnVehiculos);
+        }
+
+        private void btnClientes_Click(object sender, EventArgs e)
+        {
+            PintarBotonActivo(btnClientes);
         }
     }
 }
