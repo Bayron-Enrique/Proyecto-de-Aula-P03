@@ -22,7 +22,6 @@ namespace ENTIDADES
         public int CargoId { get; set; }
         public string NombreCargo { get; set; }
         public int CargoID { get; set; }
-
         public Cargo()
         {
 

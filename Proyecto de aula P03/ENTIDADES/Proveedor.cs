@@ -37,17 +37,7 @@ namespace ENTIDADES
 
         public override string ToString()
         {
-    public class Proveedor
-    {
-        public Proveedor(string nit, string razonSocial, string telefono)
-        {
-            Nit = nit;
-            RazonSocial = razonSocial;
-            Telefono = telefono;
+            return $"| NIT: {Nit} | Empresa: {RazonSocial} | Tel: {Telefono} | Correo: {Email} | Dirección: {Direccion} |";
         }
-
-        public string Nit { get; set; }
-        public string RazonSocial { get; set; }
-        public string Telefono { get; set; }
     }
 }
