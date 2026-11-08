@@ -12,5 +12,18 @@ namespace ENTIDADES
             : base(cedula, nombres, apellidos, sexo, telefono, direccion, correoElectronico)
         {
         }
+
+        public Cliente()
+        {
+
+        }
+
+        public override string ToString()
+    public class Cliente : Persona
+    {
+        public Cliente(string cedula, string nombres, string apellidos, string sexo, string telefono, string direccion, string correoElectronico)
+            : base(cedula, nombres, apellidos, sexo, telefono, direccion, correoElectronico)
+        {
+        }
     }
-}
+}}

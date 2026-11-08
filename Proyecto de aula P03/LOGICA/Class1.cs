@@ -9,6 +9,6 @@ namespace LOGICA
 {
     public class Class1
     {
-        
+        //dasdasdawdasdwadasdwdw
     }
 }
