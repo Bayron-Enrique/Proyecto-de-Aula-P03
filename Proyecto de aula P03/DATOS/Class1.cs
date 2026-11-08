@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace DATOS
 {
-    public class Class1
+    public class Class
     {
     }
 }
