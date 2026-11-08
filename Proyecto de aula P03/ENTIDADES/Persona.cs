@@ -8,17 +8,21 @@ namespace ENTIDADES
 {
     public class Persona
     {
-        public Persona(string cedula, string nombre, string telefono, string direccion, string correoElectronico)
+        public Persona(string cedula, string nombres, string apellidos, string sexo, string telefono, string direccion, string correoElectronico)
         {
             Cedula = cedula;
-            Nombre = nombre;
+            Nombres = nombres;
+            Apellidos = apellidos;
+            Sexo = sexo;
             Telefono = telefono;
             Direccion = direccion;
             CorreoElectronico = correoElectronico;
         }
 
         public string Cedula { get; set; }
-        public string Nombre { get; set; }
+        public string Nombres { get; set; }
+        public string Apellidos { get; set; }
+        public string Sexo { get; set; }
         public string Telefono { get; set; }
         public string Direccion { get; set; }
         public string CorreoElectronico { get; set; }

@@ -8,7 +8,7 @@ namespace ENTIDADES
 {
     public class Vehiculo
     {
-        public Vehiculo(string placa, int modelo, string marca, string tipoVehiculo, Cliente cliente)
+        public Vehiculo(string placa, int modelo, string marca, string tipoVehiculo, string color, string linea, Cliente cliente)
         {
             if (cliente == null)
             {
@@ -19,6 +19,8 @@ namespace ENTIDADES
             Modelo = modelo;
             Marca = marca;
             TipoVehiculo = tipoVehiculo;
+            Color = color;
+            Linea = linea;
             Cliente = cliente;
         }
 
@@ -26,6 +28,8 @@ namespace ENTIDADES
         public int Modelo { get; set; }
         public string Marca { get; set; }
         public string TipoVehiculo { get; set; }
+        public string Color { get; set; }
+        public string Linea { get; set; }
         public Cliente Cliente { get; set; }
     }
 }

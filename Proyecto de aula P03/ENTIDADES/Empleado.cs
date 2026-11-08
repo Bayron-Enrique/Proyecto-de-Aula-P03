@@ -8,8 +8,8 @@ namespace ENTIDADES
 {
     public class Empleado : Persona
     {
-        public Empleado(string cedula, string nombre, string telefono, string direccion, string correoElectronico, Cargo cargo)
-            : base(cedula, nombre, telefono, direccion, correoElectronico)
+        public Empleado(string cedula, string nombres, string apellidos, string sexo, string telefono, string direccion, string correoElectronico, Cargo cargo)
+            : base(cedula, nombres, apellidos, sexo, telefono, direccion, correoElectronico)
         {
             if (cargo == null)
             {

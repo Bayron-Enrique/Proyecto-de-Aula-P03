@@ -8,7 +8,7 @@ namespace ENTIDADES
 {
     public class Soat
     {
-        public Soat(int soatId, string numeroSoat, DateTime fechaInicio, Vehiculo vehiculo)
+        public Soat(int soatId, string numeroSoat, DateTime fechaInicio, DateTime fechaFin, Vehiculo vehiculo)
         {
             if (vehiculo == null)
             {
@@ -18,12 +18,14 @@ namespace ENTIDADES
             SoatId = soatId;
             NumeroSoat = numeroSoat;
             FechaInicio = fechaInicio;
+            FechaFin = fechaFin;
             Vehiculo = vehiculo;
         }
 
         public int SoatId { get; set; }
         public string NumeroSoat { get; set; }
         public DateTime FechaInicio { get; set; }
+        public DateTime FechaFin { get; set; }
         public Vehiculo Vehiculo { get; set; }
     }
 }
