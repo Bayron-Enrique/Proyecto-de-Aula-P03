@@ -14,10 +14,12 @@ namespace ENTIDADES
         public Empleado Empleado { get; set; }
         public Vehiculo Vehiculo { get; set; }
         public string NombreServicio { get; set; }
+        public Cliente Cliente { get; set; }
+        public string Estado { get; set; }
 
         public Agenda()
         {
-            
+
         }
 
         public override string ToString()
