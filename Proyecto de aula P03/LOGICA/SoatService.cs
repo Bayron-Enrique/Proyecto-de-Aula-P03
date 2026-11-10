@@ -25,20 +25,65 @@ namespace LOGICA
         {
             try
             {
-                if (string.IsNullOrEmpty(numeroSoat))
+                // Numero del SOAT
+                if (string.IsNullOrWhiteSpace(numeroSoat))
                 {
-                    return "El numero del SOAT es obligatorio ...";
+                    return "El numero del SOAT es obligatorio y no puede tener espacios ...";
+                }
+                foreach (char c in numeroSoat)
+                {
+                    if (c < '0' || c > '9')
+                    {
+                        return "El numero del SOAT solo puede tener numeros, sin espacios ni signos ...";
+                    }
+                }
+                if (numeroSoat.Length < 5 || numeroSoat.Length > 20)
+                {
+                    return "El numero del SOAT debe tener entre 5 y 20 digitos ...";
+                }
+
+                // Fechas
+                if (fechaInicio.Year < 2000 || fechaInicio > DateTime.Now.AddYears(5))
+                {
+                    return "La fecha de inicio no es valida ...";
+                }
+                if (fechaFin.Year < 2000 || fechaFin > DateTime.Now.AddYears(5))
+                {
+                    return "La fecha fin no es valida ...";
                 }
                 if (fechaFin <= fechaInicio)
                 {
                     return "La fecha fin debe ser posterior a la fecha de inicio ...";
+                }
+                if (fechaFin > fechaInicio.AddYears(1))
+                {
+                    return "El SOAT no puede durar mas de un año ...";
+                }
+
+                // Vehiculo
+                if (string.IsNullOrWhiteSpace(placa))
+                {
+                    return "Debe seleccionar un vehiculo valido ...";
                 }
 
                 Vehiculo vehiculo = vehiculoRepositorio.BuscarPlaca(placa);
 
                 if (vehiculo == null)
                 {
-                    return "Debe seleccionar un vehiculo valido ...";
+                    return "El vehiculo seleccionado no existe ...";
+                }
+
+                // Duplicados y cruces
+                foreach (var existente in repositorio.Consultar())
+                {
+                    if (existente.NumeroSoat == numeroSoat)
+                    {
+                        return "Ya existe un SOAT con ese numero ...";
+                    }
+                    if (existente.Vehiculo.Placa == placa && fechaInicio <= existente.FechaFin && fechaFin >= existente.FechaInicio)
+                    {
+                        return "Ese vehiculo ya tiene un SOAT que se cruza con esas fechas ...";
+                    }
                 }
 
                 int soatId = GenerarSoatId();

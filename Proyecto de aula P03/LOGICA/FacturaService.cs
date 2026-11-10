@@ -31,27 +31,82 @@ namespace LOGICA
         {
             try
             {
-                if (string.IsNullOrEmpty(estadoPago))
+                // Fecha
+                if (fecha.Year < 2000)
                 {
-                    return "El estado de pago es obligatorio ...";
+                    return "La fecha de la factura no es valida ...";
                 }
+                if (fecha > DateTime.Now)
+                {
+                    return "La fecha de la factura no puede ser futura ...";
+                }
+
+                // Descuento
                 if (descuento < 0)
                 {
                     return "El descuento no puede ser negativo ...";
+                }
+                if (descuento > 99999999.99)
+                {
+                    return "El descuento es demasiado alto ...";
+                }
+                if (Math.Round(descuento, 2) != descuento)
+                {
+                    return "El descuento solo puede tener 2 decimales ...";
+                }
+
+                // Observaciones (opcional)
+                if (!string.IsNullOrEmpty(observaciones))
+                {
+                    if (string.IsNullOrWhiteSpace(observaciones))
+                    {
+                        return "Las observaciones no pueden tener solo espacios ...";
+                    }
+                    if (observaciones != observaciones.Trim() || observaciones.Contains("  "))
+                    {
+                        return "Las observaciones no pueden tener espacios al inicio, al final ni seguidos ...";
+                    }
+                    if (observaciones.Length < 3 || observaciones.Length > 200)
+                    {
+                        return "Las observaciones deben tener entre 3 y 200 caracteres ...";
+                    }
+                    foreach (char c in observaciones)
+                    {
+                        if (char.IsControl(c))
+                        {
+                            return "Las observaciones tienen caracteres no permitidos ...";
+                        }
+                    }
+                }
+
+                // Estado de pago
+                if (estadoPago != "Pendiente" && estadoPago != "Pagada" && estadoPago != "Anulada")
+                {
+                    return "El estado de pago debe ser uno de estos: Pendiente, Pagada, Anulada ...";
+                }
+
+                // Cliente y empleado
+                if (string.IsNullOrWhiteSpace(cedulaCliente))
+                {
+                    return "Debe seleccionar un cliente valido ...";
+                }
+                if (string.IsNullOrWhiteSpace(cedulaEmpleado))
+                {
+                    return "Debe seleccionar un empleado valido ...";
                 }
 
                 Cliente cliente = clienteRepositorio.BuscarCedula(cedulaCliente);
 
                 if (cliente == null)
                 {
-                    return "Debe seleccionar un cliente valido ...";
+                    return "El cliente seleccionado no existe ...";
                 }
 
                 Empleado empleado = empleadoRepositorio.BuscarCedula(cedulaEmpleado);
 
                 if (empleado == null)
                 {
-                    return "Debe seleccionar un empleado valido ...";
+                    return "El empleado seleccionado no existe ...";
                 }
 
                 int facturaId = GenerarFacturaId();
@@ -86,21 +141,39 @@ namespace LOGICA
                     return "No se encontro la factura ...";
                 }
 
-                Articulo articulo = articuloRepositorio.BuscarId(articuloId);
+                if (factura.EstadoPago == "Pagada" || factura.EstadoPago == "Anulada")
+                {
+                    return $"No se pueden agregar articulos a una factura {factura.EstadoPago.ToLower()} ...";
+                }
 
-                if (articulo == null)
+                if (articuloId <= 0)
                 {
                     return "Debe seleccionar un articulo valido ...";
                 }
 
-                if (cantidad <= 0)
+                Articulo articulo = articuloRepositorio.BuscarId(articuloId);
+
+                if (articulo == null)
                 {
-                    return "La cantidad debe ser mayor que cero ...";
+                    return "El articulo seleccionado no existe ...";
+                }
+
+                if (cantidad < 1 || cantidad > 1000000)
+                {
+                    return "La cantidad debe estar entre 1 y 1000000 ...";
                 }
 
                 if (cantidad > articulo.Cantidad)
                 {
                     return $"No hay existencias suficientes, solo quedan {articulo.Cantidad} ...";
+                }
+
+                foreach (var d in factura.Detalles)
+                {
+                    if (d.Articulo.ArticuloId == articuloId)
+                    {
+                        return "Ese articulo ya esta en la factura ...";
+                    }
                 }
 
                 DetalleFactura detalle = new DetalleFactura();

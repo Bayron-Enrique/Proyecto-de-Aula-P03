@@ -27,18 +27,67 @@ namespace LOGICA
         {
             try
             {
+                // Fecha
+                if (fecha.Year < 2000 || fecha > DateTime.Now.AddYears(5))
+                {
+                    return "La fecha de la notificacion no es valida ...";
+                }
+
+                // Comentario (opcional)
+                if (!string.IsNullOrEmpty(comentario))
+                {
+                    if (string.IsNullOrWhiteSpace(comentario))
+                    {
+                        return "El comentario no puede tener solo espacios ...";
+                    }
+                    if (comentario != comentario.Trim() || comentario.Contains("  "))
+                    {
+                        return "El comentario no puede tener espacios al inicio, al final ni seguidos ...";
+                    }
+                    if (comentario.Length < 3 || comentario.Length > 200)
+                    {
+                        return "El comentario debe tener entre 3 y 200 caracteres ...";
+                    }
+                    foreach (char c in comentario)
+                    {
+                        if (char.IsControl(c))
+                        {
+                            return "El comentario tiene caracteres no permitidos ...";
+                        }
+                    }
+                }
+
+                // Vehiculo y articulo
+                if (string.IsNullOrWhiteSpace(placa))
+                {
+                    return "Debe seleccionar un vehiculo valido ...";
+                }
+                if (articuloId <= 0)
+                {
+                    return "Debe seleccionar un articulo valido ...";
+                }
+
                 Vehiculo vehiculo = vehiculoRepositorio.BuscarPlaca(placa);
 
                 if (vehiculo == null)
                 {
-                    return "Debe seleccionar un vehiculo valido ...";
+                    return "El vehiculo seleccionado no existe ...";
                 }
 
                 Articulo articulo = articuloRepositorio.BuscarId(articuloId);
 
                 if (articulo == null)
                 {
-                    return "Debe seleccionar un articulo valido ...";
+                    return "El articulo seleccionado no existe ...";
+                }
+
+                // Duplicados
+                foreach (var existente in repositorio.Consultar())
+                {
+                    if (existente.Vehiculo.Placa == placa && existente.Articulo.ArticuloId == articuloId && existente.Fecha.Date == fecha.Date)
+                    {
+                        return "Ya existe una notificacion de ese articulo para ese vehiculo en esa fecha ...";
+                    }
                 }
 
                 int notificacionId = GenerarNotificacionId();

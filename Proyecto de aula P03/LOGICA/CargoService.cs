@@ -23,9 +23,36 @@ namespace LOGICA
         {
             try
             {
-                if (string.IsNullOrEmpty(nombreCargo))
+                if (string.IsNullOrWhiteSpace(nombreCargo))
                 {
-                    return "El nombre del cargo es obligatorio ...";
+                    return "El nombre del cargo es obligatorio y no puede estar vacio ni tener solo espacios ...";
+                }
+                if (nombreCargo != nombreCargo.Trim())
+                {
+                    return "El nombre del cargo no puede empezar ni terminar con espacios ...";
+                }
+                if (nombreCargo.Contains("  "))
+                {
+                    return "El nombre del cargo no puede tener espacios seguidos ...";
+                }
+                if (nombreCargo.Length < 3 || nombreCargo.Length > 100)
+                {
+                    return "El nombre del cargo debe tener entre 3 y 100 caracteres ...";
+                }
+                foreach (char c in nombreCargo)
+                {
+                    if (!char.IsLetter(c) && c != ' ')
+                    {
+                        return $"El nombre del cargo tiene el caracter '{c}' que no esta permitido, solo letras ...";
+                    }
+                }
+
+                foreach (var existente in repositorio.Consultar())
+                {
+                    if (string.Equals(existente.NombreCargo, nombreCargo, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return "Ya existe un cargo con ese nombre ...";
+                    }
                 }
 
                 int cargoId = GenerarCargoId();
