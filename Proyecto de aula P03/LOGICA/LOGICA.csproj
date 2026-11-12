@@ -84,8 +84,17 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Class1.cs" />
+    <Compile Include="AgendaService.cs" />
+    <Compile Include="ArticuloService.cs" />
+    <Compile Include="CargoService.cs" />
+    <Compile Include="ClienteService.cs" />
+    <Compile Include="EmpleadoService.cs" />
+    <Compile Include="FacturaService.cs" />
+    <Compile Include="NotificacionMantenimientoService.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ProveedorService.cs" />
+    <Compile Include="SoatService.cs" />
+    <Compile Include="VehiculoService.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\DATOS\DATOS.csproj">
