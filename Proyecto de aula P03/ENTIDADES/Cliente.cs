@@ -20,7 +20,7 @@ namespace ENTIDADES
 
         public override string ToString()
         {
-            return $"|Cedula: {Cedula} |Nombre: {Nombre} |Telefono: {Telefono} |Direccion: {Direccion} |Correo: {Email}";
+            return $"|Cedula: {Cedula} |Nombre: {Nombre} |Telefono: {Telefono} |Direccion: {Direccion} |Correo: {CorreoElectronico}";
         }
     }
 }
