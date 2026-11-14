@@ -1,4 +1,4 @@
-﻿using ENTIDADES;
+using ENTIDADES;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace DATOS
 {
-    public class SoatRepository
+    public class SoatRepository : IRepository<Soat>
     {
         List<Soat> soats;
 
@@ -41,6 +41,10 @@ namespace DATOS
         public void Eliminar(Soat soat)
         {
             soats.Remove(soat);
+        }
+        public void Modificar(Soat entidad)
+        {
+            throw new NotImplementedException();
         }
     }
 }

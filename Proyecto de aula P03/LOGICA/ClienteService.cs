@@ -10,11 +10,11 @@ namespace LOGICA
 {
     public class ClienteService
     {
-        ClienteRepository repositorio;
+        private ClienteRepository repositorio;
 
-        public ClienteService(ClienteRepository repositorio)
+        public ClienteService()
         {
-            this.repositorio = repositorio;
+            repositorio = new ClienteRepository();
         }
 
         public string Guardar(string cedula, string nombres, string apellidos, string sexo, string telefono, string direccion, string correoElectronico)
