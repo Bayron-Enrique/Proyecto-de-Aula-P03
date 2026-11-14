@@ -1,4 +1,4 @@
-﻿using ENTIDADES;
+using ENTIDADES;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace DATOS
 {
-    public class EmpleadoRepository
+    public class EmpleadoRepository : IRepository<Empleado>
     {
         List<Empleado> empleados;
 
@@ -41,6 +41,10 @@ namespace DATOS
         public void Eliminar(Empleado empleado)
         {
             empleados.Remove(empleado);
+        }
+        public void Modificar(Empleado entidad)
+        {
+            throw new NotImplementedException();
         }
     }
 }
