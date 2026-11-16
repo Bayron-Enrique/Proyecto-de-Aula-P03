@@ -1,4 +1,4 @@
-﻿using ENTIDADES;
+using ENTIDADES;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace DATOS
 {
-    public class NotificacionMantenimientoRepository
+    public class NotificacionMantenimientoRepository : IRepository<NotificacionMantenimiento>
     {
         List<NotificacionMantenimiento> notificaciones;
 
@@ -41,6 +41,10 @@ namespace DATOS
         public void Eliminar(NotificacionMantenimiento notificacion)
         {
             notificaciones.Remove(notificacion);
+        }
+        public void Modificar(NotificacionMantenimiento entidad)
+        {
+            throw new NotImplementedException();
         }
     }
 }

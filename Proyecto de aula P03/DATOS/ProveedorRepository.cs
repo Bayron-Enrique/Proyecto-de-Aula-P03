@@ -1,4 +1,4 @@
-﻿using ENTIDADES;
+using ENTIDADES;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace DATOS
 {
-    public class ProveedorRepository
+    public class ProveedorRepository : IRepository<Proveedor>
     {
         List<Proveedor> proveedores;
 
@@ -41,6 +41,10 @@ namespace DATOS
         public void Eliminar(Proveedor proveedor)
         {
             proveedores.Remove(proveedor);
+        }
+        public void Modificar(Proveedor entidad)
+        {
+            throw new NotImplementedException();
         }
     }
 }

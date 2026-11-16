@@ -13,10 +13,9 @@ namespace ENTIDADES
         public string Comentario { get; set; }
         public Empleado Empleado { get; set; }
         public Vehiculo Vehiculo { get; set; }
-        public string NombreServicio { get; set; }
-        public Cliente Cliente { get; set; }
+        public Articulo ArticuloServicio { get; set; }
         public string Estado { get; set; }
-
+        
         public Agenda()
         {
 
@@ -25,7 +24,7 @@ namespace ENTIDADES
         public override string ToString()
         {
             return $"|AgendaID: {AgendaID} |Fecha: {Fecha} |Comentario: {Comentario} |Empleado Nombre: {Empleado.Nombre} " +
-                $"|Vehiculo Placa: {Vehiculo.Placa} |Nombre Servicio: {NombreServicio}";
+                $"|Vehiculo Placa: {Vehiculo.Placa} |Articulo Servicio: {ArticuloServicio.Nombre} | Estado: {Estado}";
         }
     }
 }

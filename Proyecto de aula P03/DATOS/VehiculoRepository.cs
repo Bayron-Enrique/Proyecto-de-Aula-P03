@@ -1,4 +1,4 @@
-﻿using ENTIDADES;
+using ENTIDADES;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace DATOS
 {
-    public class VehiculoRepository
+    public class VehiculoRepository : IRepository<Vehiculo>
     {
         List<Vehiculo> vehiculos;
 
@@ -41,6 +41,10 @@ namespace DATOS
         public void Eliminar(Vehiculo vehiculo)
         {
             vehiculos.Remove(vehiculo);
+        }
+        public void Modificar(Vehiculo entidad)
+        {
+            throw new NotImplementedException();
         }
     }
 }

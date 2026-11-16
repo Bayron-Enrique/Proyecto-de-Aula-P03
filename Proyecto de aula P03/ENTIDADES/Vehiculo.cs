@@ -38,17 +38,6 @@ namespace ENTIDADES
 
         }
 
-        public Vehiculo(string placa, int modelo, string marca, string color, string linea, string tipoVehiculo, string clienteVehiculo)
-        {
-            Placa = placa;
-            Modelo = modelo;
-            Marca = marca;
-            Color = color;
-            Linea = linea;
-            TipoVehiculo = tipoVehiculo;
-            ClienteVehiculo = clienteVehiculo;
-        }
-
         public override string ToString()
         {
             return $"| Placa: {Placa} | Tipo: {TipoVehiculo} | Marca: {Marca} {Linea} ({Modelo}) | Color: {Color} | Cédula Dueño: {ClienteVehiculo} |";

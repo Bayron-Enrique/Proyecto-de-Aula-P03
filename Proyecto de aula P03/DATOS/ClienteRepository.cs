@@ -1,4 +1,4 @@
-﻿using ENTIDADES;
+using ENTIDADES;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace DATOS
 {
-    public class ClienteRepository
+    public class ClienteRepository : IRepository<Cliente>
     {
         List<Cliente> clientes;
 
@@ -41,6 +41,10 @@ namespace DATOS
         public void Eliminar(Cliente cliente)
         {
             clientes.Remove(cliente);
+        }
+        public void Modificar(Cliente entidad)
+        {
+            throw new NotImplementedException();
         }
     }
 }

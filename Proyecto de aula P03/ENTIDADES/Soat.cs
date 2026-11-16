@@ -8,6 +8,10 @@ namespace ENTIDADES
 {
     public class Soat
     {
+        public Soat()
+        {
+            
+        }
         public Soat(int soatId, string numeroSoat, DateTime fechaInicio, DateTime fechaFin, Vehiculo vehiculo)
         {
             if (vehiculo == null)
