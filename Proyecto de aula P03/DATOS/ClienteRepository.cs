@@ -11,8 +11,8 @@ namespace DATOS
         {
             using (OracleConnection con = ObtenerConexion())
             {
-                string sql = "@INSERT INTO PERSONA (CEDULA, NOMBRES, APELLIDOS, SEXO, TELEFONO, DIRECCION, CORREOELECTRONICO)" +
-                             "VALUES (:cedula, :nombres, :apellidos, :sexo, :telefono, :direccion, :correo)";
+                string sql = @"INSERT INTO PERSONA (CEDULA, NOMBRES, APELLIDOS, SEXO, TELEFONO, DIRECCION, CORREOELECTRONICO)
+                               VALUES (:cedula, :nombres, :apellidos, :sexo, :telefono, :direccion, :correo)";
                 con.Open();
                 using (OracleTransaction tx = con.BeginTransaction())
                 {
@@ -71,11 +71,25 @@ namespace DATOS
                                  TELEFONO = :telefono, DIRECCION = :direccion, CORREOELECTRONICO = :correo
                                  WHERE P.CEDULA = :cedula AND EXISTS (SELECT 1 FROM CLIENTE C WHERE C.CEDULA = P.CEDULA)";
             using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand(sql, con))
             {
-                AgregarParametrosPersona(cmd, cliente);
                 con.Open();
-                cmd.ExecuteNonQuery();
+                using (OracleTransaction tx = con.BeginTransaction())
+                using (OracleCommand cmd = new OracleCommand(sql, con))
+                {
+                    try
+                    {
+                        cmd.Transaction = tx;
+                        cmd.BindByName = true;
+                        AgregarParametrosPersona(cmd, cliente);
+                        cmd.ExecuteNonQuery();
+                        tx.Commit();
+                    }
+                    catch
+                    {
+                        tx.Rollback();
+                        throw;
+                    }
+                }
             }
         }
 

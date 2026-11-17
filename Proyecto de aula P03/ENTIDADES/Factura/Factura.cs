@@ -19,6 +19,9 @@ namespace ENTIDADES
         public string TipoDocumento { get; set; }
         public Cliente Cliente { get; set; }
         public Empleado Empleado { get; set; }
+        public bool Domicilio { get; set; }
+        public string DireccionDomicilio { get; set; }
+        public int? AgendaID { get; set; }
         public List<DetalleFactura> Detalles { get; set; }
 
         public Factura()

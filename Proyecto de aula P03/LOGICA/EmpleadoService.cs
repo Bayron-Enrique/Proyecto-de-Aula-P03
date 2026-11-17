@@ -216,6 +216,90 @@ namespace LOGICA
             return repositorio.BuscarCedula(cedula);
         }
 
+        public string Modificar(string cedula, string nombres, string apellidos, string sexo,
+            string telefono, string direccion, string correoElectronico, int cargoId)
+        {
+            try
+            {
+                Empleado empleado = BuscarCedula(cedula);
+                if (empleado == null)
+                {
+                    return "No se encontro el empleado para modificar ...";
+                }
+
+                string error = ValidarDatosPersona(nombres, apellidos, sexo, telefono, direccion, correoElectronico);
+                if (error != null)
+                {
+                    return error;
+                }
+
+                if (cargoId <= 0)
+                {
+                    return "Debe seleccionar un cargo valido ...";
+                }
+                Cargo cargo = cargoRepositorio.BuscarId(cargoId);
+                if (cargo == null)
+                {
+                    return "El cargo seleccionado no existe ...";
+                }
+
+                empleado.Nombre = nombres;
+                empleado.Apellido = apellidos;
+                empleado.Sexo = sexo;
+                empleado.Telefono = telefono;
+                empleado.Direccion = direccion;
+                empleado.CorreoElectronico = correoElectronico;
+                empleado.Cargo = cargo;
+
+                repositorio.Modificar(empleado);
+                return "El empleado se modifico correctamente ...";
+            }
+            catch (Exception ex)
+            {
+                return $"Ocurrio un error al modificar el empleado: {ex.Message}";
+            }
+        }
+
+        private static string ValidarDatosPersona(string nombres, string apellidos, string sexo,
+            string telefono, string direccion, string correoElectronico)
+        {
+            if (string.IsNullOrWhiteSpace(nombres) || nombres != nombres.Trim() || nombres.Contains("  ") || nombres.Length < 2 || nombres.Length > 100)
+                return "Los nombres deben tener entre 2 y 100 caracteres y no tener espacios sobrantes ...";
+            foreach (char c in nombres)
+                if (!char.IsLetter(c) && c != ' ') return "Los nombres solo pueden contener letras y espacios ...";
+
+            if (string.IsNullOrWhiteSpace(apellidos) || apellidos != apellidos.Trim() || apellidos.Contains("  ") || apellidos.Length < 2 || apellidos.Length > 100)
+                return "Los apellidos deben tener entre 2 y 100 caracteres y no tener espacios sobrantes ...";
+            foreach (char c in apellidos)
+                if (!char.IsLetter(c) && c != ' ') return "Los apellidos solo pueden contener letras y espacios ...";
+
+            if (sexo != "M" && sexo != "F") return "El sexo debe ser M o F (en mayuscula) ...";
+
+            if (!string.IsNullOrEmpty(telefono))
+            {
+                foreach (char c in telefono)
+                    if (c < '0' || c > '9') return "El telefono solo puede contener numeros ...";
+                if (telefono.Length != 7 && telefono.Length != 10)
+                    return "El telefono debe tener 7 digitos (fijo) o 10 digitos (celular) ...";
+                if (telefono.Length == 10 && !telefono.StartsWith("3") && !telefono.StartsWith("60"))
+                    return "El telefono de 10 digitos debe empezar por 3 o por 60 ...";
+            }
+
+            if (!string.IsNullOrEmpty(direccion) &&
+                (string.IsNullOrWhiteSpace(direccion) || direccion != direccion.Trim() || direccion.Contains("  ") || direccion.Length < 5 || direccion.Length > 150))
+                return "La direccion debe tener entre 5 y 150 caracteres y no tener espacios sobrantes ...";
+
+            if (!string.IsNullOrEmpty(correoElectronico))
+            {
+                int arroba = correoElectronico.IndexOf('@');
+                if (correoElectronico.Length > 100 || correoElectronico.Contains(" ") || arroba <= 0 ||
+                    arroba != correoElectronico.LastIndexOf('@') || !correoElectronico.Substring(arroba + 1).Contains("."))
+                    return "El correo electronico no tiene un formato valido ...";
+            }
+
+            return null;
+        }
+
         public List<Empleado> Consultar()
         {
             return repositorio.Consultar();

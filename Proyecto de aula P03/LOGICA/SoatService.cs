@@ -12,13 +12,11 @@ namespace LOGICA
     {
         SoatRepository repositorio;
         VehiculoRepository vehiculoRepositorio;
-        int siguienteSoatId;
 
         public SoatService(SoatRepository repositorio, VehiculoRepository vehiculoRepositorio)
         {
             this.repositorio = repositorio;
             this.vehiculoRepositorio = vehiculoRepositorio;
-            siguienteSoatId = 1;
         }
 
         public string Guardar(string numeroSoat, DateTime fechaInicio, DateTime fechaFin, string placa)
@@ -86,7 +84,7 @@ namespace LOGICA
                     }
                 }
 
-                int soatId = GenerarSoatId();
+                int soatId = repositorio.ObtenerSiguienteSoatId();
 
                 Soat soat = new Soat(soatId, numeroSoat, fechaInicio, fechaFin, vehiculo);
                 repositorio.Guardar(soat);
@@ -99,22 +97,63 @@ namespace LOGICA
             }
         }
 
-        private int GenerarSoatId()
-        {
-            int numero = siguienteSoatId;
-
-            while (BuscarId(numero) != null)
-            {
-                numero++;
-            }
-
-            siguienteSoatId = numero + 1;
-            return numero;
-        }
-
         public Soat BuscarId(int soatId)
         {
             return repositorio.BuscarId(soatId);
+        }
+
+        public string Modificar(int soatId, string numeroSoat, DateTime fechaInicio,
+            DateTime fechaFin, string placa)
+        {
+            try
+            {
+                Soat soat = BuscarId(soatId);
+                if (soat == null)
+                {
+                    return "No se encontro el SOAT para modificar ...";
+                }
+                if (string.IsNullOrWhiteSpace(numeroSoat) || numeroSoat.Length < 5 || numeroSoat.Length > 20)
+                {
+                    return "El numero del SOAT debe tener entre 5 y 20 digitos ...";
+                }
+                foreach (char c in numeroSoat)
+                    if (c < '0' || c > '9') return "El numero del SOAT solo puede tener numeros ...";
+
+                if (fechaInicio.Year < 2000 || fechaInicio > DateTime.Now.AddYears(5))
+                    return "La fecha de inicio no es valida ...";
+                if (fechaFin.Year < 2000 || fechaFin > DateTime.Now.AddYears(5))
+                    return "La fecha fin no es valida ...";
+                if (fechaFin <= fechaInicio)
+                    return "La fecha fin debe ser posterior a la fecha de inicio ...";
+                if (fechaFin > fechaInicio.AddYears(1))
+                    return "El SOAT no puede durar mas de un año ...";
+
+                if (string.IsNullOrWhiteSpace(placa))
+                    return "Debe seleccionar un vehiculo valido ...";
+                Vehiculo vehiculo = vehiculoRepositorio.BuscarPlaca(placa);
+                if (vehiculo == null)
+                    return "El vehiculo seleccionado no existe ...";
+
+                foreach (Soat existente in repositorio.Consultar())
+                {
+                    if (existente.SoatId == soatId) continue;
+                    if (existente.NumeroSoat == numeroSoat)
+                        return "Ya existe otro SOAT con ese numero ...";
+                    if (existente.Vehiculo.Placa == placa && fechaInicio <= existente.FechaFin && fechaFin >= existente.FechaInicio)
+                        return "Ese vehiculo ya tiene un SOAT que se cruza con esas fechas ...";
+                }
+
+                soat.NumeroSoat = numeroSoat;
+                soat.FechaInicio = fechaInicio;
+                soat.FechaFin = fechaFin;
+                soat.Vehiculo = vehiculo;
+                repositorio.Modificar(soat);
+                return "El SOAT se modifico correctamente ...";
+            }
+            catch (Exception ex)
+            {
+                return $"Ocurrio un error al modificar el SOAT: {ex.Message}";
+            }
         }
 
         public List<Soat> Consultar()

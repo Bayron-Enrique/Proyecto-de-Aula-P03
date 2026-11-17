@@ -31,8 +31,8 @@ namespace DATOS
         {
             using (OracleConnection con = ObtenerConexion())
             {
-                string sql = @"INSERT INTO Factura 
-                         (FACTURAID, FECHA, DESCUENTO, SUBTOTAL, IVA, TOTAL, OBSERVACIONES, ESTADOPAGO, CLIENTE_CEDULA, EMPLEADO_CEDULA, TIPO_DOCUMENTO, DOMICILIO, DIRECCION_DOMICILIO, AGENDA_AGENDAID) 
+                string sql = @"INSERT INTO Factura
+                         (FACTURAID, FECHA, DESCUENTO, SUBTOTAL, IVA, TOTAL, OBSERVACIONES, ESTADOPAGO, CLIENTE_CEDULA, EMPLEADO_CEDULA, TIPO_DOCUMENTO, DOMICILIO, DIRECCION_DOMICILIO, AGENDA_AGENDAID)
                          VALUES (:facturaId, :fecha, :descuento, :subtotal, :iva, :total, :observaciones, :estadoPago, :clienteCedula, :empleadoCedula, :tipoDocumento, :domicilio, :direccionDomicilio, :agendaId)";
                 using (OracleCommand cmd = new OracleCommand(sql, con))
                 {
@@ -63,7 +63,7 @@ namespace DATOS
             // En la BD DOMICILIO es CHAR(1): 'S' o 'N'
             cmd.Parameters.Add(new OracleParameter("domicilio", factura.Domicilio ? "S" : "N"));
             cmd.Parameters.Add(new OracleParameter("direccionDomicilio", factura.Domicilio && !string.IsNullOrEmpty(factura.DireccionDomicilio) ? (object)factura.DireccionDomicilio : DBNull.Value));
-            cmd.Parameters.Add(new OracleParameter("agendaId", factura.Agenda != null ? (object)factura.Agenda.AgendaID : DBNull.Value));
+            cmd.Parameters.Add(new OracleParameter("agendaId", (object)factura.AgendaID ?? DBNull.Value));
         }
 
         public List<Factura> Consultar()
@@ -121,10 +121,9 @@ namespace DATOS
                 factura.Empleado = new Empleado { Cedula = reader["EMPLEADO_CEDULA"].ToString().Trim() };
             }
 
-            if (reader["AGENDA_AGENDAID"] != DBNull.Value)
-            {
-                factura.Agenda = new Agenda { AgendaID = Convert.ToInt32(reader["AGENDA_AGENDAID"]) };
-            }
+            factura.AgendaID = reader["AGENDA_AGENDAID"] != DBNull.Value
+                ? (int?)Convert.ToInt32(reader["AGENDA_AGENDAID"])
+                : null;
 
             return factura;
         }
@@ -185,10 +184,10 @@ namespace DATOS
                                  ESTADOPAGO = :estadoPago, 
                                  CLIENTE_CEDULA = :clienteCedula, 
                                  EMPLEADO_CEDULA = :empleadoCedula, 
-                                 TIPO_DOCUMENTO = :tipoDocumento, 
-                                 DOMICILIO = :domicilio, 
-                                 DIRECCION_DOMICILIO = :direccionDomicilio, 
-                                 AGENDA_AGENDAID = :agendaId 
+                                 TIPO_DOCUMENTO = :tipoDocumento,
+                                 DOMICILIO = :domicilio,
+                                 DIRECCION_DOMICILIO = :direccionDomicilio,
+                                 AGENDA_AGENDAID = :agendaId
                                WHERE FACTURAID = :facturaId";
 
                 using (OracleCommand cmd = new OracleCommand(sql, con))
@@ -251,8 +250,7 @@ namespace DATOS
                                 TipoVehiculo = reader["TIPO_VEHICULO"].ToString(),
                                 Color = reader["COLOR"] == DBNull.Value ? null : reader["COLOR"].ToString(),
                                 Linea = reader["LINEA"] == DBNull.Value ? null : reader["LINEA"].ToString(),
-                                Cliente = new Cliente { Cedula = reader["CLIENTE_CEDULA"].ToString().Trim() },
-                                ClienteVehiculo = reader["CLIENTE_CEDULA"].ToString().Trim()
+                                Cliente = new Cliente { Cedula = reader["CLIENTE_CEDULA"].ToString().Trim() }
                             };
 
                             detalles.Add(new DetalleVehiculo

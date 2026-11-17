@@ -354,6 +354,7 @@ namespace LOGICA
                     return "No se encontro la factura ...";
                 }
 
+                repositorio.Eliminar(facturaId);
 
                 return "La factura se elimino correctamente ...";
             }
