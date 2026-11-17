@@ -14,6 +14,7 @@ namespace ENTIDADES
         public decimal ValorUnitario { get; set; }
         public int FacturaID { get; set; }
         public decimal PorcentajeIVA { get; set; }
+        public decimal Descuento { get; set; }
         public string Descripcion { get; set; }
         public Articulo Articulo { get; set; }
 
@@ -37,14 +38,19 @@ namespace ENTIDADES
             get { return ValorUnitario * Cantidad; }
         }
 
+        public decimal SubtotalNeto
+        {
+            get { return Subtotal - Descuento; }
+        }
+
         public decimal ValorIVA
         {
-            get { return Subtotal * (PorcentajeIVA / 100); }
+            get { return SubtotalNeto * (PorcentajeIVA / 100); }
         }
 
         public decimal Total
         {
-            get { return Subtotal + ValorIVA; }
+            get { return SubtotalNeto + ValorIVA; }
         }
 
         public override string ToString()

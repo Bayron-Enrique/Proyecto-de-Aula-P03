@@ -7,6 +7,7 @@ namespace LOGICA
 {
     public class ArticuloService
     {
+        public int TotalArticulos() { return repositorio.Contar(); }
         private readonly ArticuloRepository repositorio;
         private readonly ProveedorRepository proveedorRepositorio;
 

@@ -9,6 +9,9 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using DATOS;
+using ENTIDADES;
+using LOGICA;
 
 namespace PRESENTACION
 {
@@ -20,13 +23,29 @@ namespace PRESENTACION
         private Button btnArticulosMenu;
         private Button btnFacturacionMenu;
         private Button btnEmpleadosMenu;
+        private Button btnProveedoresMenu;
+        private Button btnMantenimientoMenu;
+        private Button btnCerrarSesionMenu;
+        private Label labelUsuario;
+        private bool cambiandoVista;
+        private bool cerrandoForm;
+        private readonly Empleado empleadoAutenticado;
+        public event EventHandler SolicitarCierreSesion;
+        public Empleado UsuarioActual { get { return empleadoAutenticado; } }
 
         public Form1()
+            : this(null)
+        {
+        }
+
+        public Form1(Empleado empleado)
         {
             InitializeComponent();
-
-            // AGREGADO: crear botones de Inventario y Facturacion
+            empleadoAutenticado = empleado;
             CrearBotonesAdicionales();
+            MostrarEmpleadoAutenticado();
+            Load += (s, e) => MostrarPanelDashboard();
+            FormClosing += (s, e) => cerrandoForm = true;
         }
 
         bool menuExpand = false;
@@ -99,6 +118,9 @@ namespace PRESENTACION
                     btnArticulosMenu.Parent.Width = sidebar.Width;
                     btnFacturacionMenu.Parent.Width = sidebar.Width;
                     btnEmpleadosMenu.Parent.Width = sidebar.Width;
+                    btnProveedoresMenu.Parent.Width = sidebar.Width;
+                    btnMantenimientoMenu.Parent.Width = sidebar.Width;
+                    btnCerrarSesionMenu.Parent.Width = sidebar.Width;
                 }
 
                 if (sidebar.Width < 150)
@@ -114,6 +136,9 @@ namespace PRESENTACION
                     btnArticulosMenu.Text = "";
                     btnFacturacionMenu.Text = "";
                     btnEmpleadosMenu.Text = "";
+                    btnProveedoresMenu.Text = "";
+                    btnMantenimientoMenu.Text = "";
+                    btnCerrarSesionMenu.Text = "";
                 }
 
                 if (sidebar.Width <= 57)
@@ -141,6 +166,9 @@ namespace PRESENTACION
                     btnArticulosMenu.Parent.Width = sidebar.Width;
                     btnFacturacionMenu.Parent.Width = sidebar.Width;
                     btnEmpleadosMenu.Parent.Width = sidebar.Width;
+                    btnProveedoresMenu.Parent.Width = sidebar.Width;
+                    btnMantenimientoMenu.Parent.Width = sidebar.Width;
+                    btnCerrarSesionMenu.Parent.Width = sidebar.Width;
                 }
 
                 if (sidebar.Width >= 251)
@@ -168,6 +196,9 @@ namespace PRESENTACION
             btnArticulosMenu.Text = "           Inventario";
             btnFacturacionMenu.Text = "           Facturacion";
             btnEmpleadosMenu.Text = "           Empleados y cargos";
+            btnProveedoresMenu.Text = "           Proveedores";
+            btnMantenimientoMenu.Text = "           Mantenimiento";
+            btnCerrarSesionMenu.Text = "           Cerrar sesión";
         }
 
         private void btnHam_Click(object sender, EventArgs e)
@@ -232,6 +263,9 @@ namespace PRESENTACION
             btnArticulosMenu.BackColor = colorNormal;
             btnFacturacionMenu.BackColor = colorNormal;
             btnEmpleadosMenu.BackColor = colorNormal;
+            btnProveedoresMenu.BackColor = colorNormal;
+            btnMantenimientoMenu.BackColor = colorNormal;
+            btnCerrarSesionMenu.BackColor = colorNormal;
 
             activo.BackColor = colorActivo;
         }
@@ -239,30 +273,19 @@ namespace PRESENTACION
         private void button2_Click(object sender, EventArgs e)
         {
             PintarBotonActivo(button2);
-
-            if (frmPanel == null)
-            {
-                frmPanel = new FrmPanel();
-                frmPanel.FormClosed += FrmPanel_FormClosed;
-                frmPanel.MdiParent = this;
-                frmPanel.Dock = DockStyle.Fill;
-                frmPanel.Show();
-            }
-            else
-            {
-                frmPanel.Activate();
-            }
-
+            MostrarPanelDashboard();
         }
 
         private void FrmPanel_FormClosed(object sender, FormClosedEventArgs e)
         {
             frmPanel = null;
+            if (!cambiandoVista && !cerrandoForm && !IsDisposed) MostrarPanelDashboard();
         }
 
         private void btnServicio_Click(object sender, EventArgs e)
         {
             PintarBotonActivo(btnServicio);
+            AbrirFormularioHijo(new FrmFacturacion());
         }
 
         private void btnVehiculos_Click(object sender, EventArgs e)
@@ -301,6 +324,11 @@ namespace PRESENTACION
                 "btnEmpleadosMenu",
                 "           Empleados y cargos",
                 btnEmpleadosMenu_Click);
+
+            btnProveedoresMenu = CrearBotonLateral("btnProveedoresMenu", "           Proveedores", btnProveedoresMenu_Click);
+            btnMantenimientoMenu = CrearBotonLateral("btnMantenimientoMenu", "           Mantenimiento", btnMantenimientoMenu_Click);
+            btnCerrarSesionMenu = CrearBotonLateral("btnCerrarSesionMenu", "           Cerrar sesión", btnCerrarSesionMenu_Click);
+            btnConfiguracion.Click += (s, e) => btnCerrarSesionMenu_Click(s, e);
         }
 
         private Button CrearBotonLateral(
@@ -353,16 +381,98 @@ namespace PRESENTACION
 
         private void AbrirFormularioHijo(Form formulario)
         {
-            // Cerrar el formulario hijo anterior
-            foreach (Form hijo in this.MdiChildren)
+            cambiandoVista = true;
+            try
             {
-                hijo.Close();
+                foreach (Form hijo in MdiChildren.ToArray()) hijo.Close();
+                frmPanel = null;
+                formulario.FormBorderStyle = FormBorderStyle.None;
+                formulario.MdiParent = this;
+                formulario.Dock = DockStyle.Fill;
+                formulario.FormClosed += Hijo_FormClosed;
+                formulario.Show();
             }
+            finally { cambiandoVista = false; }
+        }
 
-            formulario.FormBorderStyle = FormBorderStyle.None;
-            formulario.MdiParent = this;
-            formulario.Dock = DockStyle.Fill;
-            formulario.Show();
+        private void Hijo_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            if (!cambiandoVista && !cerrandoForm && !IsDisposed) MostrarPanelDashboard();
+        }
+
+        private void MostrarPanelDashboard()
+        {
+            if (frmPanel != null && !frmPanel.IsDisposed)
+            {
+                frmPanel.Activate();
+                ActualizarDashboard();
+                return;
+            }
+            cambiandoVista = true;
+            try
+            {
+                foreach (Form hijo in MdiChildren.ToArray()) hijo.Close();
+                frmPanel = new FrmPanel();
+                frmPanel.FormClosed += FrmPanel_FormClosed;
+                frmPanel.MdiParent = this;
+                frmPanel.Dock = DockStyle.Fill;
+                frmPanel.Show();
+            }
+            finally { cambiandoVista = false; }
+            ActualizarDashboard();
+        }
+
+        public void ActualizarDashboard()
+        {
+            try
+            {
+                var clienteRepository = new ClienteRepository();
+                var empleadoRepository = new EmpleadoRepository();
+                var vehiculoRepository = new VehiculoRepository();
+                var articuloRepository = new ArticuloRepository();
+                var proveedorRepository = new ProveedorRepository();
+                int clientes = new ClienteService(clienteRepository).TotalClientes();
+                int vehiculos = new VehiculoService(vehiculoRepository, clienteRepository).TotalVehiculos();
+                int articulos = new ArticuloService(articuloRepository, proveedorRepository).TotalArticulos();
+                int citasPendientes = new AgendaService(new AgendaRepository(), clienteRepository, vehiculoRepository, empleadoRepository, articuloRepository).TotalCitasPendientes();
+                decimal ventas = new FacturaService(new FacturaRepository(), clienteRepository, empleadoRepository, articuloRepository).TotalVentas();
+                if (frmPanel != null && !frmPanel.IsDisposed) frmPanel.EstablecerMetricas(clientes, vehiculos, articulos, citasPendientes, ventas);
+            }
+            catch (Exception ex)
+            {
+                if (frmPanel != null && !frmPanel.IsDisposed) frmPanel.MostrarError(ex.Message);
+                else MessageBox.Show(this, "No se pudieron cargar las métricas del dashboard. " + ex.Message, "Dashboard", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        private void MostrarEmpleadoAutenticado()
+        {
+            string nombre = empleadoAutenticado == null ? "Sesión" : (empleadoAutenticado.Nombre + " " + empleadoAutenticado.Apellido).Trim();
+            string cargo = empleadoAutenticado == null || empleadoAutenticado.Cargo == null ? "" : " · " + empleadoAutenticado.Cargo.NombreCargo;
+            labelUsuario = new Label { Text = nombre + cargo, AutoSize = true, Anchor = AnchorStyles.Top | AnchorStyles.Right, ForeColor = Color.White, Font = new Font("Segoe UI", 9F, FontStyle.Bold), Location = new Point(Math.Max(180, btnSalir.Left - 300), 15) };
+            pnBarraSuperior.Controls.Add(labelUsuario);
+            labelUsuario.BringToFront();
+        }
+
+        private void btnProveedoresMenu_Click(object sender, EventArgs e)
+        {
+            PintarBotonActivo(btnProveedoresMenu);
+            AbrirFormularioHijo(new FrmProveedores());
+        }
+
+        private void btnMantenimientoMenu_Click(object sender, EventArgs e)
+        {
+            PintarBotonActivo(btnMantenimientoMenu);
+            AbrirFormularioHijo(new FrmMantenimiento());
+        }
+
+        private void btnCerrarSesionMenu_Click(object sender, EventArgs e)
+        {
+            DialogResult confirmar = MessageBox.Show(this, "¿Deseas cerrar la sesión actual?", "Cerrar sesión", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (confirmar != DialogResult.Yes) return;
+            EventHandler handler = SolicitarCierreSesion;
+            if (handler != null) handler(this, EventArgs.Empty);
+            else Close();
         }
 
         // ==========================================

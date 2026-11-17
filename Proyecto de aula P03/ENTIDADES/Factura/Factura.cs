@@ -19,6 +19,7 @@ namespace ENTIDADES
         public string TipoDocumento { get; set; }
         public Cliente Cliente { get; set; }
         public Empleado Empleado { get; set; }
+        public Vehiculo Vehiculo { get; set; }
         public bool Domicilio { get; set; }
         public string DireccionDomicilio { get; set; }
         public int? AgendaID { get; set; }
@@ -33,10 +34,12 @@ namespace ENTIDADES
         {
             SubTotal = 0;
             Iva = 0;
+            Descuento = 0;
 
             foreach (var detalle in Detalles)
             {
                 SubTotal += detalle.ValorUnitario * detalle.Cantidad;
+                Descuento += detalle.Descuento;
                 Iva += detalle.ValorIVA;
             }
 

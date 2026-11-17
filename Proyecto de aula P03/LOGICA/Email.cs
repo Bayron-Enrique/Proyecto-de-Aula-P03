@@ -51,7 +51,7 @@ namespace LOGICA
                     correo.Subject = "Confirmacion de registro";
                     correo.Body = string.Format(
                         "Hola {0}, tu registro en el sistema del taller se realizo correctamente.",
-                        cliente.Nombre);
+                        cliente.NombreCompleto);
                     correo.IsBodyHtml = false;
 
                     smtp.EnableSsl = habilitarSsl;

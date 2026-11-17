@@ -17,7 +17,7 @@ namespace PRESENTACION
         private readonly ErrorProvider errores;
         private List<Empleado> empleados = new List<Empleado>();
         private List<Cargo> cargos = new List<Cargo>();
-        private TextBox txtCedula, txtNombres, txtApellidos, txtTelefono, txtCorreo, txtDireccion, txtBuscar, txtCargo;
+        private TextBox txtCedula, txtPrimerNombre, txtSegundoNombre, txtPrimerApellido, txtSegundoApellido, txtTelefono, txtCorreo, txtDireccion, txtBuscar, txtCargo;
         private ComboBox cmbSexo, cmbCargo;
         private DataGridView gridEmpleados, gridCargos;
         private Button btnGuardarEmpleado, btnNuevoEmpleado;
@@ -68,17 +68,19 @@ namespace PRESENTACION
 
             var campos = new TableLayoutPanel
             {
-                Dock = DockStyle.Top, Height = 160, Padding = new Padding(14, 2, 14, 2),
-                BackColor = Color.White, ColumnCount = 4, RowCount = 4
+                Dock = DockStyle.Top, Height = 200, Padding = new Padding(14, 2, 14, 2),
+                BackColor = Color.White, ColumnCount = 4, RowCount = 5
             };
             campos.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92));
             campos.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
             campos.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92));
             campos.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            for (int i = 0; i < 4; i++) campos.RowStyles.Add(new RowStyle(SizeType.Percent, 25));
+            for (int i = 0; i < 5; i++) campos.RowStyles.Add(new RowStyle(SizeType.Percent, 20));
             txtCedula = CrearTexto(10);
-            txtNombres = CrearTexto(100);
-            txtApellidos = CrearTexto(100);
+            txtPrimerNombre = CrearTexto(100);
+            txtSegundoNombre = CrearTexto(100);
+            txtPrimerApellido = CrearTexto(100);
+            txtSegundoApellido = CrearTexto(100);
             cmbSexo = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill };
             cmbSexo.Items.AddRange(new object[] { "M", "F" });
             cmbCargo = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill };
@@ -86,13 +88,15 @@ namespace PRESENTACION
             txtCorreo = CrearTexto(100);
             txtDireccion = CrearTexto(150);
             AgregarCampo(campos, 0, "Cédula", txtCedula, 0);
-            AgregarCampo(campos, 0, "Nombres", txtNombres, 2);
-            AgregarCampo(campos, 1, "Apellidos", txtApellidos, 0);
-            AgregarCampo(campos, 1, "Sexo", cmbSexo, 2);
-            AgregarCampo(campos, 2, "Teléfono", txtTelefono, 0);
-            AgregarCampo(campos, 2, "Correo", txtCorreo, 2);
-            AgregarCampo(campos, 3, "Cargo", cmbCargo, 0);
-            AgregarCampo(campos, 3, "Dirección", txtDireccion, 2);
+            AgregarCampo(campos, 0, "Primer nombre", txtPrimerNombre, 2);
+            AgregarCampo(campos, 1, "Segundo nombre (opcional)", txtSegundoNombre, 0);
+            AgregarCampo(campos, 1, "Primer apellido", txtPrimerApellido, 2);
+            AgregarCampo(campos, 2, "Segundo apellido (opcional)", txtSegundoApellido, 0);
+            AgregarCampo(campos, 2, "Sexo", cmbSexo, 2);
+            AgregarCampo(campos, 3, "Teléfono", txtTelefono, 0);
+            AgregarCampo(campos, 3, "Correo", txtCorreo, 2);
+            AgregarCampo(campos, 4, "Cargo", cmbCargo, 0);
+            AgregarCampo(campos, 4, "Dirección", txtDireccion, 2);
             split.Panel1.Controls.Add(campos);
 
             var acciones = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 44, Padding = new Padding(10, 3, 0, 3), BackColor = Color.White };
@@ -107,8 +111,10 @@ namespace PRESENTACION
 
             gridEmpleados = CrearGrid();
             gridEmpleados.Columns.Add(Columna("Cédula", "Cedula"));
-            gridEmpleados.Columns.Add(Columna("Nombres", "Nombre"));
-            gridEmpleados.Columns.Add(Columna("Apellidos", "Apellido"));
+            gridEmpleados.Columns.Add(Columna("Primer nombre", "PrimerNombre"));
+            gridEmpleados.Columns.Add(Columna("Segundo nombre", "SegundoNombre"));
+            gridEmpleados.Columns.Add(Columna("Primer apellido", "PrimerApellido"));
+            gridEmpleados.Columns.Add(Columna("Segundo apellido", "SegundoApellido"));
             gridEmpleados.Columns.Add(Columna("Sexo", "Sexo"));
             gridEmpleados.Columns.Add(Columna("Teléfono", "Telefono"));
             gridEmpleados.Columns.Add(Columna("Correo", "CorreoElectronico"));
@@ -187,12 +193,11 @@ namespace PRESENTACION
             IEnumerable<Empleado> lista = empleados;
             if (filtro.Length > 0)
                 lista = empleados.Where(x => x.Cedula.IndexOf(filtro, StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    (x.Nombre + " " + x.Apellido).IndexOf(filtro, StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    x.Nombre.IndexOf(filtro, StringComparison.OrdinalIgnoreCase) >= 0 || x.Apellido.IndexOf(filtro, StringComparison.OrdinalIgnoreCase) >= 0);
+                    x.NombreCompleto.IndexOf(filtro, StringComparison.OrdinalIgnoreCase) >= 0);
             gridEmpleados.Rows.Clear();
             foreach (Empleado empleado in lista)
             {
-                int fila = gridEmpleados.Rows.Add(empleado.Cedula, empleado.Nombre, empleado.Apellido, empleado.Sexo,
+                int fila = gridEmpleados.Rows.Add(empleado.Cedula, empleado.PrimerNombre, empleado.SegundoNombre, empleado.PrimerApellido, empleado.SegundoApellido, empleado.Sexo,
                     empleado.Telefono, empleado.CorreoElectronico, empleado.Cargo == null ? "" : empleado.Cargo.NombreCargo);
                 gridEmpleados.Rows[fila].Tag = empleado;
             }
@@ -203,9 +208,9 @@ namespace PRESENTACION
             if (!ValidarEmpleado()) return;
             int cargoId = Convert.ToInt32(cmbCargo.SelectedValue);
             string resultado = editando
-                ? empleadoService.Modificar(txtCedula.Text.Trim(), txtNombres.Text.Trim(), txtApellidos.Text.Trim(), cmbSexo.Text,
+                ? empleadoService.Modificar(txtCedula.Text.Trim(), txtPrimerNombre.Text.Trim(), TextoOpcional(txtSegundoNombre), txtPrimerApellido.Text.Trim(), TextoOpcional(txtSegundoApellido), cmbSexo.Text,
                     TextoOpcional(txtTelefono), TextoOpcional(txtDireccion), TextoOpcional(txtCorreo), cargoId)
-                : empleadoService.Guardar(txtCedula.Text.Trim(), txtNombres.Text.Trim(), txtApellidos.Text.Trim(), cmbSexo.Text,
+                : empleadoService.Guardar(txtCedula.Text.Trim(), txtPrimerNombre.Text.Trim(), TextoOpcional(txtSegundoNombre), txtPrimerApellido.Text.Trim(), TextoOpcional(txtSegundoApellido), cmbSexo.Text,
                     TextoOpcional(txtTelefono), TextoOpcional(txtDireccion), TextoOpcional(txtCorreo), cargoId);
             bool correcto = resultado.StartsWith("se registro el empleado", StringComparison.OrdinalIgnoreCase) ||
                             resultado.StartsWith("El empleado se modifico", StringComparison.OrdinalIgnoreCase);
@@ -217,11 +222,11 @@ namespace PRESENTACION
         private bool ValidarEmpleado()
         {
             bool valido = true;
-            valido &= validacion.ValidarCampoVacioEspecifico(txtCedula, errores);
-            valido &= validacion.ValidarCampoVacioEspecifico(txtNombres, errores);
-            valido &= validacion.ValidarCampoVacioEspecifico(txtApellidos, errores);
-            valido &= validacion.ValidarCampoVacioEspecificoCombo(cmbSexo, errores);
-            valido &= validacion.ValidarCampoVacioEspecificoCombo(cmbCargo, errores);
+            valido &= !validacion.ValidarCampoVacioEspecifico(txtCedula, errores);
+            valido &= !validacion.ValidarCampoVacioEspecifico(txtPrimerNombre, errores);
+            valido &= !validacion.ValidarCampoVacioEspecifico(txtPrimerApellido, errores);
+            valido &= !validacion.ValidarCampoVacioEspecificoCombo(cmbSexo, errores);
+            valido &= !validacion.ValidarCampoVacioEspecificoCombo(cmbCargo, errores);
             if (!valido) MessageBox.Show(this, "Completa los campos obligatorios y selecciona un cargo.", "Validación", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return valido;
         }
@@ -265,8 +270,10 @@ namespace PRESENTACION
             editando = true;
             txtCedula.Text = empleado.Cedula;
             txtCedula.Enabled = false;
-            txtNombres.Text = empleado.Nombre;
-            txtApellidos.Text = empleado.Apellido;
+            txtPrimerNombre.Text = empleado.PrimerNombre;
+            txtSegundoNombre.Text = empleado.SegundoNombre;
+            txtPrimerApellido.Text = empleado.PrimerApellido;
+            txtSegundoApellido.Text = empleado.SegundoApellido;
             cmbSexo.SelectedItem = empleado.Sexo;
             txtTelefono.Text = empleado.Telefono;
             txtCorreo.Text = empleado.CorreoElectronico;
@@ -279,11 +286,11 @@ namespace PRESENTACION
         {
             editando = false;
             txtCedula.Enabled = true;
-            txtCedula.Clear(); txtNombres.Clear(); txtApellidos.Clear(); txtTelefono.Clear(); txtCorreo.Clear(); txtDireccion.Clear();
+            txtCedula.Clear(); txtPrimerNombre.Clear(); txtSegundoNombre.Clear(); txtPrimerApellido.Clear(); txtSegundoApellido.Clear(); txtTelefono.Clear(); txtCorreo.Clear(); txtDireccion.Clear();
             cmbSexo.SelectedIndex = -1;
             cmbCargo.SelectedIndex = cargos.Count > 0 ? 0 : -1;
             btnGuardarEmpleado.Text = "Guardar";
-            foreach (Control control in new Control[] { txtCedula, txtNombres, txtApellidos, cmbSexo, cmbCargo }) errores.SetError(control, string.Empty);
+            foreach (Control control in new Control[] { txtCedula, txtPrimerNombre, txtSegundoNombre, txtPrimerApellido, txtSegundoApellido, cmbSexo, cmbCargo }) errores.SetError(control, string.Empty);
             gridEmpleados.ClearSelection();
             txtCedula.Focus();
         }

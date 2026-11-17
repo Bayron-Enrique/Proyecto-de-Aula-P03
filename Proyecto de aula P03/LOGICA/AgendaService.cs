@@ -10,6 +10,7 @@ namespace LOGICA
 {
     public class AgendaService
     {
+        public int TotalCitasPendientes() { return repositorio.ContarPendientes(); }
         AgendaRepository repositorio;
         ClienteRepository clienteRepositorio;
         VehiculoRepository vehiculoRepositorio;

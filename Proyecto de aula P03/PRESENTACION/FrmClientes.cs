@@ -15,7 +15,7 @@ namespace PRESENTACION
         private readonly Validacion validacion = new Validacion();
         private readonly ErrorProvider errores;
         private List<Cliente> clientes = new List<Cliente>();
-        private TextBox txtCedula, txtNombres, txtApellidos, txtTelefono, txtCorreo, txtDireccion, txtBuscar;
+        private TextBox txtCedula, txtPrimerNombre, txtSegundoNombre, txtPrimerApellido, txtSegundoApellido, txtTelefono, txtCorreo, txtDireccion, txtBuscar;
         private ComboBox cmbSexo;
         private DataGridView grid;
         private Button btnGuardar, btnNuevo, btnEliminar;
@@ -44,18 +44,20 @@ namespace PRESENTACION
 
             var formulario = new TableLayoutPanel
             {
-                Dock = DockStyle.Top, Height = 166, Padding = new Padding(18, 4, 18, 0),
-                ColumnCount = 4, RowCount = 4, BackColor = Color.White
+                Dock = DockStyle.Top, Height = 205, Padding = new Padding(18, 4, 18, 0),
+                ColumnCount = 4, RowCount = 5, BackColor = Color.White
             };
             formulario.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100));
             formulario.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
             formulario.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100));
             formulario.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            for (int i = 0; i < 4; i++) formulario.RowStyles.Add(new RowStyle(SizeType.Percent, 25));
+            for (int i = 0; i < 5; i++) formulario.RowStyles.Add(new RowStyle(SizeType.Percent, 20));
 
             txtCedula = CrearTexto(10);
-            txtNombres = CrearTexto(100);
-            txtApellidos = CrearTexto(100);
+            txtPrimerNombre = CrearTexto(100);
+            txtSegundoNombre = CrearTexto(100);
+            txtPrimerApellido = CrearTexto(100);
+            txtSegundoApellido = CrearTexto(100);
             cmbSexo = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill };
             cmbSexo.Items.AddRange(new object[] { "M", "F" });
             txtTelefono = CrearTexto(15);
@@ -63,12 +65,14 @@ namespace PRESENTACION
             txtDireccion = CrearTexto(150);
 
             AgregarCampo(formulario, 0, "Cédula", txtCedula, 0);
-            AgregarCampo(formulario, 0, "Nombres", txtNombres, 2);
-            AgregarCampo(formulario, 1, "Apellidos", txtApellidos, 0);
-            AgregarCampo(formulario, 1, "Sexo", cmbSexo, 2);
-            AgregarCampo(formulario, 2, "Teléfono", txtTelefono, 0);
-            AgregarCampo(formulario, 2, "Correo", txtCorreo, 2);
-            AgregarCampo(formulario, 3, "Dirección", txtDireccion, 0);
+            AgregarCampo(formulario, 0, "Primer nombre", txtPrimerNombre, 2);
+            AgregarCampo(formulario, 1, "Segundo nombre (opcional)", txtSegundoNombre, 0);
+            AgregarCampo(formulario, 1, "Primer apellido", txtPrimerApellido, 2);
+            AgregarCampo(formulario, 2, "Segundo apellido (opcional)", txtSegundoApellido, 0);
+            AgregarCampo(formulario, 2, "Sexo", cmbSexo, 2);
+            AgregarCampo(formulario, 3, "Telefono", txtTelefono, 0);
+            AgregarCampo(formulario, 3, "Correo", txtCorreo, 2);
+            AgregarCampo(formulario, 4, "Direccion", txtDireccion, 0);
             formulario.SetColumnSpan(txtDireccion, 3);
             Controls.Add(formulario);
 
@@ -104,8 +108,10 @@ namespace PRESENTACION
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
             };
             grid.Columns.Add(Columna("Cédula", "Cedula"));
-            grid.Columns.Add(Columna("Nombres", "Nombre"));
-            grid.Columns.Add(Columna("Apellidos", "Apellido"));
+            grid.Columns.Add(Columna("Primer nombre", "PrimerNombre"));
+            grid.Columns.Add(Columna("Segundo nombre", "SegundoNombre"));
+            grid.Columns.Add(Columna("Primer apellido", "PrimerApellido"));
+            grid.Columns.Add(Columna("Segundo apellido", "SegundoApellido"));
             grid.Columns.Add(Columna("Sexo", "Sexo"));
             grid.Columns.Add(Columna("Teléfono", "Telefono"));
             grid.Columns.Add(Columna("Correo", "CorreoElectronico"));
@@ -147,10 +153,11 @@ namespace PRESENTACION
         private bool ValidarFormulario()
         {
             bool valido = true;
-            valido &= validacion.ValidarCampoVacioEspecifico(txtCedula, errores);
-            valido &= validacion.ValidarCampoVacioEspecifico(txtNombres, errores);
-            valido &= validacion.ValidarCampoVacioEspecifico(txtApellidos, errores);
-            valido &= validacion.ValidarCampoVacioEspecificoCombo(cmbSexo, errores);
+            // Los métodos de Validacion devuelven true cuando encuentran un campo inválido.
+            valido &= !validacion.ValidarCampoVacioEspecifico(txtCedula, errores);
+            valido &= !validacion.ValidarCampoVacioEspecifico(txtPrimerNombre, errores);
+            valido &= !validacion.ValidarCampoVacioEspecifico(txtPrimerApellido, errores);
+            valido &= !validacion.ValidarCampoVacioEspecificoCombo(cmbSexo, errores);
             if (!valido) MessageBox.Show(this, "Completa los campos obligatorios.", "Validación", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return valido;
         }
@@ -159,9 +166,9 @@ namespace PRESENTACION
         {
             if (!ValidarFormulario()) return;
             string resultado = editando
-                ? servicio.Modificar(txtCedula.Text.Trim(), txtNombres.Text.Trim(), txtApellidos.Text.Trim(), cmbSexo.Text,
+                ? servicio.Modificar(txtCedula.Text.Trim(), txtPrimerNombre.Text.Trim(), TextoOpcional(txtSegundoNombre), txtPrimerApellido.Text.Trim(), TextoOpcional(txtSegundoApellido), cmbSexo.Text,
                     TextoOpcional(txtTelefono), TextoOpcional(txtDireccion), TextoOpcional(txtCorreo))
-                : servicio.Guardar(txtCedula.Text.Trim(), txtNombres.Text.Trim(), txtApellidos.Text.Trim(), cmbSexo.Text,
+                : servicio.Guardar(txtCedula.Text.Trim(), txtPrimerNombre.Text.Trim(), TextoOpcional(txtSegundoNombre), txtPrimerApellido.Text.Trim(), TextoOpcional(txtSegundoApellido), cmbSexo.Text,
                     TextoOpcional(txtTelefono), TextoOpcional(txtDireccion), TextoOpcional(txtCorreo));
 
             bool guardado = resultado.StartsWith("se registro el cliente", StringComparison.OrdinalIgnoreCase) ||
@@ -205,9 +212,11 @@ namespace PRESENTACION
             IEnumerable<Cliente> resultado = clientes;
             if (filtro.Length > 0)
                 resultado = clientes.Where(c => c.Cedula.IndexOf(filtro, StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    c.Nombre.IndexOf(filtro, StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    c.Apellido.IndexOf(filtro, StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    (c.Nombre + " " + c.Apellido).IndexOf(filtro, StringComparison.OrdinalIgnoreCase) >= 0);
+                    c.NombreCompleto.IndexOf(filtro, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    (c.PrimerNombre ?? "").IndexOf(filtro, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    (c.SegundoNombre ?? "").IndexOf(filtro, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    (c.PrimerApellido ?? "").IndexOf(filtro, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    (c.SegundoApellido ?? "").IndexOf(filtro, StringComparison.OrdinalIgnoreCase) >= 0);
             grid.DataSource = resultado.ToList();
         }
 
@@ -218,8 +227,10 @@ namespace PRESENTACION
             editando = true;
             txtCedula.Text = cliente.Cedula;
             txtCedula.Enabled = false;
-            txtNombres.Text = cliente.Nombre;
-            txtApellidos.Text = cliente.Apellido;
+            txtPrimerNombre.Text = cliente.PrimerNombre;
+            txtSegundoNombre.Text = cliente.SegundoNombre;
+            txtPrimerApellido.Text = cliente.PrimerApellido;
+            txtSegundoApellido.Text = cliente.SegundoApellido;
             cmbSexo.SelectedItem = cliente.Sexo;
             txtTelefono.Text = cliente.Telefono;
             txtCorreo.Text = cliente.CorreoElectronico;
@@ -231,10 +242,10 @@ namespace PRESENTACION
         {
             editando = false;
             txtCedula.Enabled = true;
-            txtCedula.Clear(); txtNombres.Clear(); txtApellidos.Clear(); txtTelefono.Clear(); txtCorreo.Clear(); txtDireccion.Clear();
+            txtCedula.Clear(); txtPrimerNombre.Clear(); txtSegundoNombre.Clear(); txtPrimerApellido.Clear(); txtSegundoApellido.Clear(); txtTelefono.Clear(); txtCorreo.Clear(); txtDireccion.Clear();
             cmbSexo.SelectedIndex = -1;
             btnGuardar.Text = "Guardar";
-            foreach (Control control in new Control[] { txtCedula, txtNombres, txtApellidos, cmbSexo }) errores.SetError(control, string.Empty);
+            foreach (Control control in new Control[] { txtCedula, txtPrimerNombre, txtSegundoNombre, txtPrimerApellido, txtSegundoApellido, cmbSexo }) errores.SetError(control, string.Empty);
             grid.ClearSelection();
             txtCedula.Focus();
         }

@@ -7,6 +7,16 @@ namespace DATOS
 {
     public class ArticuloRepository : ManejadorConexion, IRepository<Articulo>
     {
+        public int Contar()
+        {
+            using (OracleConnection con = ObtenerConexion())
+            using (OracleCommand cmd = new OracleCommand("SELECT COUNT(*) FROM TALLER.ARTICULO", con))
+            {
+                con.Open();
+                return Convert.ToInt32(cmd.ExecuteScalar());
+            }
+        }
+
         private const string SelectSql = @"SELECT A.ARTICULOID, A.NOMBRE, A.PRECIO, A.PORCENTAJEIVA,
                                                  A.CANTIDAD, A.DESCRIPCION, A.DURACION, A.PROVEEDOR_NIT,
                                                  T.NOMBRE AS TIPO_ARTICULO, P.RAZONSOCIAL AS PROVEEDOR_NOMBRE

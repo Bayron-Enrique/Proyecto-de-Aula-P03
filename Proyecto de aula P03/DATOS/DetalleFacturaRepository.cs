@@ -24,15 +24,16 @@ namespace DATOS
                                D.FACTURA_FACTURAID,
                                D.ARTICULO_ARTICULOID,
                                D.PORCENTAJEIVA,
+                               D.DESCUENTO,
                                D.DESCRIPCION,
                                A.NOMBRE AS NOMBRE_ARTICULO,
                                D.SUBTOTAL,
                                D.TOTAL,
                                T.NOMBRE AS TIPODEARTICULO
-                               FROM DETALLE_FACTURA D
-                               JOIN ARTICULO A
+                               FROM TALLER.DETALLE_FACTURA D
+                               JOIN TALLER.ARTICULO A
                                ON D.ARTICULO_ARTICULOID = A.ARTICULOID
-                               JOIN TIPO_ARTICULO T
+                               JOIN TALLER.TIPO_ARTICULO T
                                ON A.TIPO_ARTICULO_ID = T.TIPO_ARTICULO_ID
                                ORDER BY D.DETALLEFACTURAID";
 
@@ -57,16 +58,16 @@ namespace DATOS
         {
             using (OracleConnection con = ObtenerConexion())
             {
-                string sql = @"INSERT INTO DETALLE_FACTURA
+                string sql = @"INSERT INTO TALLER.DETALLE_FACTURA
                             (DETALLEFACTURAID, CANTIDAD, VALORUNITARIO,
                              VALORIVA, FACTURA_FACTURAID,
                              ARTICULO_ARTICULOID, PORCENTAJEIVA,
-                             DESCRIPCION, SUBTOTAL, TOTAL)
+                             DESCRIPCION, SUBTOTAL, TOTAL, DESCUENTO)
                             VALUES
-                            (Seq_DetalleFacturaID.NEXTVAL, :cantidad,
+                            (TALLER.SEQ_DETALLEFACTURAID.NEXTVAL, :cantidad,
                              :valorUnitario, :valorIva, :facturaId,
                              :articuloId, :porcentajeIva,
-                             :descripcion, :subtotal, :total)";
+                             :descripcion, :subtotal, :total, :descuento)";
 
                 using (OracleCommand cmd = new OracleCommand(sql, con))
                 {
@@ -119,18 +120,33 @@ namespace DATOS
 
             cmd.Parameters.Add(
                 new OracleParameter("total", detalle.Total));
+            cmd.Parameters.Add(
+                new OracleParameter("descuento", detalle.Descuento));
         }
 
         public void Modificar(DetalleFactura entidad)
         {
-            throw new NotImplementedException();
+            const string sql = @"UPDATE TALLER.DETALLE_FACTURA SET CANTIDAD = :cantidad,
+                                 VALORUNITARIO = :valorUnitario, VALORIVA = :valorIva,
+                                 ARTICULO_ARTICULOID = :articuloId, PORCENTAJEIVA = :porcentajeIva,
+                                 DESCRIPCION = :descripcion, SUBTOTAL = :subtotal, TOTAL = :total,
+                                 DESCUENTO = :descuento
+                                 WHERE DETALLEFACTURAID = :detalleId";
+            using (OracleConnection con = ObtenerConexion())
+            using (OracleCommand cmd = new OracleCommand(sql, con))
+            {
+                AgregarParams(cmd, entidad);
+                cmd.Parameters.Add("detalleId", entidad.DetalleFacturaID);
+                con.Open();
+                cmd.ExecuteNonQuery();
+            }
         }
 
         public void Eliminar(int id)
         {
             using (OracleConnection con = ObtenerConexion())
             {
-                string sql = @"DELETE FROM DETALLE_FACTURA
+                string sql = @"DELETE FROM TALLER.DETALLE_FACTURA
                                WHERE DETALLEFACTURAID = :detalleId";
 
                 using (OracleCommand cmd = new OracleCommand(sql, con))
@@ -159,15 +175,16 @@ namespace DATOS
                                D.FACTURA_FACTURAID,
                                D.ARTICULO_ARTICULOID,
                                D.PORCENTAJEIVA,
+                               D.DESCUENTO,
                                D.DESCRIPCION,
                                A.NOMBRE AS NOMBRE_ARTICULO,
                                D.SUBTOTAL,
                                D.TOTAL,
                                T.NOMBRE AS TIPODEARTICULO
-                               FROM DETALLE_FACTURA D
-                               JOIN ARTICULO A
+                               FROM TALLER.DETALLE_FACTURA D
+                               JOIN TALLER.ARTICULO A
                                ON D.ARTICULO_ARTICULOID = A.ARTICULOID
-                               JOIN TIPO_ARTICULO T
+                               JOIN TALLER.TIPO_ARTICULO T
                                ON A.TIPO_ARTICULO_ID = T.TIPO_ARTICULO_ID
                                WHERE D.FACTURA_FACTURAID = :facturaId
                                ORDER BY D.DETALLEFACTURAID";
@@ -250,6 +267,7 @@ namespace DATOS
             detalle.Descripcion = reader["DESCRIPCION"] != DBNull.Value
                 ? reader["DESCRIPCION"].ToString()
                 : string.Empty;
+            detalle.Descuento = reader["DESCUENTO"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["DESCUENTO"]);
 
             return detalle;
         }

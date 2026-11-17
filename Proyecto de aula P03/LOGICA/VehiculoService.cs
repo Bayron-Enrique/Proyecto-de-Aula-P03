@@ -10,6 +10,7 @@ namespace LOGICA
 {
     public class VehiculoService
     {
+        public int TotalVehiculos() { return repositorio.Contar(); }
         VehiculoRepository repositorio;
         ClienteRepository clienteRepositorio;
 

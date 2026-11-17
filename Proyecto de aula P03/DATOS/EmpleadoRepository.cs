@@ -8,6 +8,42 @@ namespace DATOS
 {
     public class EmpleadoRepository : ManejadorConexion, IRepository<Empleado>
     {
+        public int Contar()
+        {
+            using (OracleConnection con = ObtenerConexion())
+            using (OracleCommand cmd = new OracleCommand("SELECT COUNT(*) FROM TALLER.EMPLEADO", con))
+            {
+                con.Open();
+                return Convert.ToInt32(cmd.ExecuteScalar());
+            }
+        }
+
+        public string ObtenerClaveHash(string cedula)
+        {
+            using (OracleConnection con = ObtenerConexion())
+            using (OracleCommand cmd = new OracleCommand("SELECT CLAVE_HASH FROM TALLER.EMPLEADO WHERE CEDULA = :cedula", con))
+            {
+                cmd.BindByName = true;
+                cmd.Parameters.Add("cedula", cedula);
+                con.Open();
+                object resultado = cmd.ExecuteScalar();
+                return resultado == null || resultado == DBNull.Value ? null : resultado.ToString();
+            }
+        }
+
+        public void GuardarClaveHash(string cedula, string hash)
+        {
+            using (OracleConnection con = ObtenerConexion())
+            using (OracleCommand cmd = new OracleCommand("UPDATE TALLER.EMPLEADO SET CLAVE_HASH = :hash WHERE CEDULA = :cedula AND CLAVE_HASH IS NULL", con))
+            {
+                cmd.BindByName = true;
+                cmd.Parameters.Add("hash", hash);
+                cmd.Parameters.Add("cedula", cedula);
+                con.Open();
+                if (cmd.ExecuteNonQuery() != 1) throw new InvalidOperationException("No se pudo asignar la contraseña inicial del empleado.");
+            }
+        }
+
         public void Guardar(Empleado empleado)
         {
             using (OracleConnection con = ObtenerConexion())
@@ -18,8 +54,8 @@ namespace DATOS
                     try
                     {
                         using (OracleCommand cmd = new OracleCommand(
-                            @"INSERT INTO TALLER.PERSONA (CEDULA, NOMBRES, APELLIDOS, SEXO, TELEFONO, DIRECCION, CORREOELECTRONICO)
-                              VALUES (:cedula, :nombres, :apellidos, :sexo, :telefono, :direccion, :correo)", con))
+                            @"INSERT INTO TALLER.PERSONA (CEDULA, PRIMER_NOMBRE, SEGUNDO_NOMBRE, PRIMER_APELLIDO, SEGUNDO_APELLIDO, SEXO, TELEFONO, DIRECCION, CORREOELECTRONICO)
+                              VALUES (:cedula, :primerNombre, :segundoNombre, :primerApellido, :segundoApellido, :sexo, :telefono, :direccion, :correo)", con))
                         {
                             cmd.Transaction = tx;
                             cmd.BindByName = true;
@@ -43,12 +79,12 @@ namespace DATOS
         public List<Empleado> Consultar()
         {
             List<Empleado> empleados = new List<Empleado>();
-            const string sql = @"SELECT P.CEDULA, P.NOMBRES, P.APELLIDOS, P.SEXO, P.TELEFONO,
+            const string sql = @"SELECT P.CEDULA, P.PRIMER_NOMBRE, P.SEGUNDO_NOMBRE, P.PRIMER_APELLIDO, P.SEGUNDO_APELLIDO, P.SEXO, P.TELEFONO,
                                         P.DIRECCION, P.CORREOELECTRONICO, C.CARGOID, C.NOMBRECARGO
                                  FROM TALLER.EMPLEADO E
                                  JOIN TALLER.PERSONA P ON P.CEDULA = E.CEDULA
                                  JOIN TALLER.CARGO C ON C.CARGOID = E.CARGO_CARGOID
-                                 ORDER BY P.APELLIDOS, P.NOMBRES";
+                                 ORDER BY P.PRIMER_APELLIDO, P.SEGUNDO_APELLIDO, P.PRIMER_NOMBRE, P.SEGUNDO_NOMBRE";
             using (OracleConnection con = ObtenerConexion())
             using (OracleCommand cmd = new OracleCommand(sql, con))
             {
@@ -64,7 +100,7 @@ namespace DATOS
 
         public Empleado BuscarCedula(string cedula)
         {
-            const string sql = @"SELECT P.CEDULA, P.NOMBRES, P.APELLIDOS, P.SEXO, P.TELEFONO,
+            const string sql = @"SELECT P.CEDULA, P.PRIMER_NOMBRE, P.SEGUNDO_NOMBRE, P.PRIMER_APELLIDO, P.SEGUNDO_APELLIDO, P.SEXO, P.TELEFONO,
                                         P.DIRECCION, P.CORREOELECTRONICO, C.CARGOID, C.NOMBRECARGO
                                  FROM TALLER.EMPLEADO E
                                  JOIN TALLER.PERSONA P ON P.CEDULA = E.CEDULA
@@ -95,7 +131,8 @@ namespace DATOS
                     try
                     {
                         using (OracleCommand cmd = new OracleCommand(
-                            @"UPDATE TALLER.PERSONA SET NOMBRES = :nombres, APELLIDOS = :apellidos, SEXO = :sexo,
+                            @"UPDATE TALLER.PERSONA SET PRIMER_NOMBRE = :primerNombre, SEGUNDO_NOMBRE = :segundoNombre,
+                              PRIMER_APELLIDO = :primerApellido, SEGUNDO_APELLIDO = :segundoApellido, SEXO = :sexo,
                               TELEFONO = :telefono, DIRECCION = :direccion, CORREOELECTRONICO = :correo
                               WHERE CEDULA = :cedula AND EXISTS (SELECT 1 FROM TALLER.EMPLEADO E WHERE E.CEDULA = :cedula)", con))
                         {
@@ -151,8 +188,11 @@ namespace DATOS
         {
             return new Empleado
             {
-                Cedula = reader["CEDULA"].ToString().Trim(), Nombre = reader["NOMBRES"].ToString(),
-                Apellido = reader["APELLIDOS"].ToString(), Sexo = reader["SEXO"].ToString().Trim(),
+                Cedula = reader["CEDULA"].ToString().Trim(),
+                PrimerNombre = reader["PRIMER_NOMBRE"].ToString(),
+                SegundoNombre = reader["SEGUNDO_NOMBRE"] == DBNull.Value ? null : reader["SEGUNDO_NOMBRE"].ToString(),
+                PrimerApellido = reader["PRIMER_APELLIDO"].ToString(),
+                SegundoApellido = reader["SEGUNDO_APELLIDO"] == DBNull.Value ? null : reader["SEGUNDO_APELLIDO"].ToString(),
                 Telefono = reader["TELEFONO"] == DBNull.Value ? null : reader["TELEFONO"].ToString(),
                 Direccion = reader["DIRECCION"] == DBNull.Value ? null : reader["DIRECCION"].ToString(),
                 CorreoElectronico = reader["CORREOELECTRONICO"] == DBNull.Value ? null : reader["CORREOELECTRONICO"].ToString(),
@@ -163,8 +203,10 @@ namespace DATOS
         private void AgregarParametrosPersona(OracleCommand cmd, Empleado empleado)
         {
             cmd.Parameters.Add(new OracleParameter("cedula", empleado.Cedula));
-            cmd.Parameters.Add(new OracleParameter("nombres", empleado.Nombre));
-            cmd.Parameters.Add(new OracleParameter("apellidos", empleado.Apellido));
+            cmd.Parameters.Add(new OracleParameter("primerNombre", empleado.PrimerNombre));
+            cmd.Parameters.Add(new OracleParameter("segundoNombre", (object)empleado.SegundoNombre ?? DBNull.Value));
+            cmd.Parameters.Add(new OracleParameter("primerApellido", empleado.PrimerApellido));
+            cmd.Parameters.Add(new OracleParameter("segundoApellido", (object)empleado.SegundoApellido ?? DBNull.Value));
             cmd.Parameters.Add(new OracleParameter("sexo", empleado.Sexo));
             cmd.Parameters.Add(new OracleParameter("telefono", (object)empleado.Telefono ?? DBNull.Value));
             cmd.Parameters.Add(new OracleParameter("direccion", (object)empleado.Direccion ?? DBNull.Value));

@@ -10,6 +10,16 @@ namespace DATOS
 {
     public class AgendaRepository : ManejadorConexion, IRepository<Agenda>
     {
+        public int ContarPendientes()
+        {
+            using (OracleConnection con = ObtenerConexion())
+            using (OracleCommand cmd = new OracleCommand("SELECT COUNT(*) FROM TALLER.AGENDA WHERE UPPER(ESTADO) = 'PENDIENTE'", con))
+            {
+                con.Open();
+                return Convert.ToInt32(cmd.ExecuteScalar());
+            }
+        }
+
         public bool EmpleadoDisponible(string cedulaEmpleado, DateTime fecha)
         {
             const string sql = "SELECT TALLER.FN_VALIDAR_DISPONIBILIDAD_EMPLEADO(:empleadoCedula, :fecha) FROM DUAL";
@@ -27,8 +37,10 @@ namespace DATOS
 
         private const string SelectAgenda = @"SELECT A.AGENDAID, A.FECHA, A.COMENTARIO, A.VEHICULO_PLACA,
                                       A.EMPLEADO_CEDULA, A.ESTADO, A.ARTICULO_ARTICULOID,
-                                      VP.NOMBRES AS CLIENTE_NOMBRES, VP.APELLIDOS AS CLIENTE_APELLIDOS,
-                                      EP.NOMBRES AS EMPLEADO_NOMBRES, EP.APELLIDOS AS EMPLEADO_APELLIDOS,
+                                      VP.PRIMER_NOMBRE AS CLIENTE_PRIMER_NOMBRE, VP.SEGUNDO_NOMBRE AS CLIENTE_SEGUNDO_NOMBRE,
+                                      VP.PRIMER_APELLIDO AS CLIENTE_PRIMER_APELLIDO, VP.SEGUNDO_APELLIDO AS CLIENTE_SEGUNDO_APELLIDO,
+                                      EP.PRIMER_NOMBRE AS EMPLEADO_PRIMER_NOMBRE, EP.SEGUNDO_NOMBRE AS EMPLEADO_SEGUNDO_NOMBRE,
+                                      EP.PRIMER_APELLIDO AS EMPLEADO_PRIMER_APELLIDO, EP.SEGUNDO_APELLIDO AS EMPLEADO_SEGUNDO_APELLIDO,
                                       C.CARGOID, C.NOMBRECARGO, AR.NOMBRE AS NOMBRE_ARTICULO, AR.DURACION AS DURACION_SERVICIO
                                       FROM TALLER.AGENDA A
                                       JOIN TALLER.VEHICULO V ON V.PLACA = A.VEHICULO_PLACA
@@ -111,15 +123,19 @@ namespace DATOS
                     Placa = reader["VEHICULO_PLACA"].ToString().Trim(),
                     Cliente = new Cliente
                     {
-                        Nombre = reader["CLIENTE_NOMBRES"].ToString(),
-                        Apellido = reader["CLIENTE_APELLIDOS"].ToString()
+                        PrimerNombre = reader["CLIENTE_PRIMER_NOMBRE"].ToString(),
+                        SegundoNombre = reader["CLIENTE_SEGUNDO_NOMBRE"] == DBNull.Value ? null : reader["CLIENTE_SEGUNDO_NOMBRE"].ToString(),
+                        PrimerApellido = reader["CLIENTE_PRIMER_APELLIDO"].ToString(),
+                        SegundoApellido = reader["CLIENTE_SEGUNDO_APELLIDO"] == DBNull.Value ? null : reader["CLIENTE_SEGUNDO_APELLIDO"].ToString()
                     }
                 },
                 Empleado = new Empleado
                 {
                     Cedula = reader["EMPLEADO_CEDULA"].ToString().Trim(),
-                    Nombre = reader["EMPLEADO_NOMBRES"].ToString(),
-                    Apellido = reader["EMPLEADO_APELLIDOS"].ToString(),
+                    PrimerNombre = reader["EMPLEADO_PRIMER_NOMBRE"].ToString(),
+                    SegundoNombre = reader["EMPLEADO_SEGUNDO_NOMBRE"] == DBNull.Value ? null : reader["EMPLEADO_SEGUNDO_NOMBRE"].ToString(),
+                    PrimerApellido = reader["EMPLEADO_PRIMER_APELLIDO"].ToString(),
+                    SegundoApellido = reader["EMPLEADO_SEGUNDO_APELLIDO"] == DBNull.Value ? null : reader["EMPLEADO_SEGUNDO_APELLIDO"].ToString(),
                     Cargo = new Cargo
                     {
                         CargoId = Convert.ToInt32(reader["CARGOID"]),

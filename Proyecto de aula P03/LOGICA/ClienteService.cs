@@ -10,6 +10,7 @@ namespace LOGICA
 {
     public class ClienteService
     {
+        public int TotalClientes() { return repositorio.Contar(); }
         private ClienteRepository repositorio;
         private Email email;
 
@@ -35,6 +36,14 @@ namespace LOGICA
 
         public string Guardar(string cedula, string nombres, string apellidos, string sexo, string telefono, string direccion, string correoElectronico)
         {
+            SepararCompleto(nombres, out string primerNombre, out string segundoNombre);
+            SepararCompleto(apellidos, out string primerApellido, out string segundoApellido);
+            return Guardar(cedula, primerNombre, segundoNombre, primerApellido, segundoApellido, sexo, telefono, direccion, correoElectronico);
+        }
+
+        public string Guardar(string cedula, string primerNombre, string segundoNombre, string primerApellido,
+            string segundoApellido, string sexo, string telefono, string direccion, string correoElectronico)
+        {
             try
             {
                 // Cedula
@@ -59,23 +68,23 @@ namespace LOGICA
                 }
 
                 // Nombres
-                if (string.IsNullOrWhiteSpace(nombres))
+                if (string.IsNullOrWhiteSpace(primerNombre))
                 {
                     return "Los nombres son obligatorios y no pueden estar vacios ni tener solo espacios ...";
                 }
-                if (nombres != nombres.Trim())
+                if (primerNombre != primerNombre.Trim())
                 {
                     return "Los nombres no pueden empezar ni terminar con espacios ...";
                 }
-                if (nombres.Contains("  "))
+                if (primerNombre.Contains("  "))
                 {
                     return "Los nombres no pueden tener espacios seguidos ...";
                 }
-                if (nombres.Length < 2 || nombres.Length > 100)
+                if (primerNombre.Length < 2 || primerNombre.Length > 100)
                 {
                     return "Los nombres deben tener entre 2 y 100 caracteres ...";
                 }
-                foreach (char c in nombres)
+                foreach (char c in primerNombre)
                 {
                     if (!char.IsLetter(c) && c != ' ')
                     {
@@ -84,29 +93,34 @@ namespace LOGICA
                 }
 
                 // Apellidos
-                if (string.IsNullOrWhiteSpace(apellidos))
+                if (string.IsNullOrWhiteSpace(primerApellido))
                 {
                     return "Los apellidos son obligatorios y no pueden estar vacios ni tener solo espacios ...";
                 }
-                if (apellidos != apellidos.Trim())
+                if (primerApellido != primerApellido.Trim())
                 {
                     return "Los apellidos no pueden empezar ni terminar con espacios ...";
                 }
-                if (apellidos.Contains("  "))
+                if (primerApellido.Contains("  "))
                 {
                     return "Los apellidos no pueden tener espacios seguidos ...";
                 }
-                if (apellidos.Length < 2 || apellidos.Length > 100)
+                if (primerApellido.Length < 2 || primerApellido.Length > 100)
                 {
                     return "Los apellidos deben tener entre 2 y 100 caracteres ...";
                 }
-                foreach (char c in apellidos)
+                foreach (char c in primerApellido)
                 {
                     if (!char.IsLetter(c) && c != ' ')
                     {
                         return $"Los apellidos tienen el caracter '{c}' que no esta permitido, solo letras ...";
                     }
                 }
+
+                string errorSegundoNombre = ValidarNombreOpcional(segundoNombre, "segundo nombre");
+                if (errorSegundoNombre != null) return errorSegundoNombre;
+                string errorSegundoApellido = ValidarNombreOpcional(segundoApellido, "segundo apellido");
+                if (errorSegundoApellido != null) return errorSegundoApellido;
 
                 // Sexo
                 if (sexo != "M" && sexo != "F")
@@ -202,7 +216,8 @@ namespace LOGICA
                     return "Ya existe un cliente con esa cedula ...";
                 }
 
-                Cliente cliente = new Cliente(cedula, nombres, apellidos, sexo, telefono, direccion, correoElectronico);
+                Cliente cliente = new Cliente(cedula, primerNombre, segundoNombre, primerApellido, segundoApellido,
+                    sexo, telefono, direccion, correoElectronico);
                 repositorio.Guardar(cliente);
 
                 if (!string.IsNullOrWhiteSpace(cliente.CorreoElectronico))
@@ -230,6 +245,14 @@ namespace LOGICA
         public string Modificar(string cedula, string nombres, string apellidos, string sexo,
             string telefono, string direccion, string correoElectronico)
         {
+            SepararCompleto(nombres, out string primerNombre, out string segundoNombre);
+            SepararCompleto(apellidos, out string primerApellido, out string segundoApellido);
+            return Modificar(cedula, primerNombre, segundoNombre, primerApellido, segundoApellido, sexo, telefono, direccion, correoElectronico);
+        }
+
+        public string Modificar(string cedula, string primerNombre, string segundoNombre, string primerApellido,
+            string segundoApellido, string sexo, string telefono, string direccion, string correoElectronico)
+        {
             try
             {
                 Cliente cliente = BuscarCedula(cedula);
@@ -238,14 +261,16 @@ namespace LOGICA
                     return "No se encontro el cliente para modificar ...";
                 }
 
-                string error = ValidarDatosPersona(nombres, apellidos, sexo, telefono, direccion, correoElectronico);
+                string error = ValidarDatosPersona(primerNombre, segundoNombre, primerApellido, segundoApellido, sexo, telefono, direccion, correoElectronico);
                 if (error != null)
                 {
                     return error;
                 }
 
-                cliente.Nombre = nombres;
-                cliente.Apellido = apellidos;
+                cliente.PrimerNombre = primerNombre;
+                cliente.SegundoNombre = segundoNombre;
+                cliente.PrimerApellido = primerApellido;
+                cliente.SegundoApellido = segundoApellido;
                 cliente.Sexo = sexo;
                 cliente.Telefono = telefono;
                 cliente.Direccion = direccion;
@@ -260,18 +285,15 @@ namespace LOGICA
             }
         }
 
-        private static string ValidarDatosPersona(string nombres, string apellidos, string sexo,
+        private static string ValidarDatosPersona(string primerNombre, string segundoNombre, string primerApellido, string segundoApellido, string sexo,
             string telefono, string direccion, string correoElectronico)
         {
-            if (string.IsNullOrWhiteSpace(nombres) || nombres != nombres.Trim() || nombres.Contains("  ") || nombres.Length < 2 || nombres.Length > 100)
-                return "Los nombres deben tener entre 2 y 100 caracteres y no tener espacios sobrantes ...";
-            foreach (char c in nombres)
-                if (!char.IsLetter(c) && c != ' ') return "Los nombres solo pueden contener letras y espacios ...";
-
-            if (string.IsNullOrWhiteSpace(apellidos) || apellidos != apellidos.Trim() || apellidos.Contains("  ") || apellidos.Length < 2 || apellidos.Length > 100)
-                return "Los apellidos deben tener entre 2 y 100 caracteres y no tener espacios sobrantes ...";
-            foreach (char c in apellidos)
-                if (!char.IsLetter(c) && c != ' ') return "Los apellidos solo pueden contener letras y espacios ...";
+            if (string.IsNullOrWhiteSpace(primerNombre) || primerNombre != primerNombre.Trim() || primerNombre.Contains("  ") || primerNombre.Length < 2 || primerNombre.Length > 100)
+                return "El primer nombre debe tener entre 2 y 100 caracteres y no tener espacios sobrantes ...";
+            string error = ValidarNombreOpcional(segundoNombre, "segundo nombre"); if (error != null) return error;
+            if (string.IsNullOrWhiteSpace(primerApellido) || primerApellido != primerApellido.Trim() || primerApellido.Contains("  ") || primerApellido.Length < 2 || primerApellido.Length > 100)
+                return "El primer apellido debe tener entre 2 y 100 caracteres y no tener espacios sobrantes ...";
+            error = ValidarNombreOpcional(segundoApellido, "segundo apellido"); if (error != null) return error;
 
             if (sexo != "M" && sexo != "F") return "El sexo debe ser M o F (en mayuscula) ...";
 
@@ -298,6 +320,23 @@ namespace LOGICA
             }
 
             return null;
+        }
+
+        private static string ValidarNombreOpcional(string valor, string etiqueta)
+        {
+            if (string.IsNullOrWhiteSpace(valor)) return null;
+            if (valor != valor.Trim() || valor.Length > 100 || valor.Any(c => !char.IsLetter(c) && c != ' '))
+                return "El " + etiqueta + " solo puede contener letras y espacios (máximo 100 caracteres) ...";
+            return null;
+        }
+
+        private static void SepararCompleto(string valor, out string primero, out string segundo)
+        {
+            string texto = (valor ?? string.Empty).Trim();
+            int espacio = texto.IndexOf(' ');
+            primero = espacio < 0 ? texto : texto.Substring(0, espacio);
+            segundo = espacio < 0 ? null : texto.Substring(espacio + 1).Trim();
+            if (segundo != null && segundo.Length == 0) segundo = null;
         }
 
         public List<Cliente> Consultar()

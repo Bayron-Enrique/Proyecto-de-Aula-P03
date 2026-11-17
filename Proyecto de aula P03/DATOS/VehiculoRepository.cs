@@ -7,9 +7,19 @@ namespace DATOS
 {
     public class VehiculoRepository : ManejadorConexion, IRepository<Vehiculo>
     {
+        public int Contar()
+        {
+            using (OracleConnection con = ObtenerConexion())
+            using (OracleCommand cmd = new OracleCommand("SELECT COUNT(*) FROM TALLER.VEHICULO", con))
+            {
+                con.Open();
+                return Convert.ToInt32(cmd.ExecuteScalar());
+            }
+        }
+
         private const string SelectVehiculos = @"SELECT V.PLACA, V.MODELO, V.MARCA, V.TIPO_VEHICULO,
                                                         V.COLOR, V.LINEA, V.CLIENTE_CEDULA,
-                                                        P.NOMBRES, P.APELLIDOS, P.SEXO, P.TELEFONO,
+                                                        P.PRIMER_NOMBRE, P.SEGUNDO_NOMBRE, P.PRIMER_APELLIDO, P.SEGUNDO_APELLIDO, P.SEXO, P.TELEFONO,
                                                         P.DIRECCION, P.CORREOELECTRONICO
                                                  FROM TALLER.VEHICULO V
                                                  JOIN TALLER.CLIENTE C ON C.CEDULA = V.CLIENTE_CEDULA
@@ -95,8 +105,10 @@ namespace DATOS
                 Cliente = new Cliente
                 {
                     Cedula = reader["CLIENTE_CEDULA"].ToString().Trim(),
-                    Nombre = reader["NOMBRES"].ToString(),
-                    Apellido = reader["APELLIDOS"].ToString(),
+                    PrimerNombre = reader["PRIMER_NOMBRE"].ToString(),
+                    SegundoNombre = reader["SEGUNDO_NOMBRE"] == DBNull.Value ? null : reader["SEGUNDO_NOMBRE"].ToString(),
+                    PrimerApellido = reader["PRIMER_APELLIDO"].ToString(),
+                    SegundoApellido = reader["SEGUNDO_APELLIDO"] == DBNull.Value ? null : reader["SEGUNDO_APELLIDO"].ToString(),
                     Sexo = reader["SEXO"].ToString().Trim(),
                     Telefono = reader["TELEFONO"] == DBNull.Value ? null : reader["TELEFONO"].ToString(),
                     Direccion = reader["DIRECCION"] == DBNull.Value ? null : reader["DIRECCION"].ToString(),
