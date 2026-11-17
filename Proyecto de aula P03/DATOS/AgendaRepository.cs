@@ -10,27 +10,44 @@ namespace DATOS
 {
     public class AgendaRepository : ManejadorConexion, IRepository<Agenda>
     {
+        public bool EmpleadoDisponible(string cedulaEmpleado, DateTime fecha)
+        {
+            const string sql = "SELECT TALLER.FN_VALIDAR_DISPONIBILIDAD_EMPLEADO(:empleadoCedula, :fecha) FROM DUAL";
+            using (OracleConnection con = ObtenerConexion())
+            using (OracleCommand cmd = new OracleCommand(sql, con))
+            {
+                cmd.BindByName = true;
+                cmd.Parameters.Add("empleadoCedula", cedulaEmpleado);
+                cmd.Parameters.Add("fecha", fecha);
+                con.Open();
+                object resultado = cmd.ExecuteScalar();
+                return resultado != null && resultado != DBNull.Value && Convert.ToInt32(resultado) == 1;
+            }
+        }
+
         private const string SelectAgenda = @"SELECT A.AGENDAID, A.FECHA, A.COMENTARIO, A.VEHICULO_PLACA,
                                       A.EMPLEADO_CEDULA, A.ESTADO, A.ARTICULO_ARTICULOID,
                                       P.NOMBRES, P.APELLIDOS,
                                       AR.NOMBRE AS NOMBRE_ARTICULO
-                                      FROM Agenda A
-                                      JOIN EMPLEADO E ON E.CEDULA = A.EMPLEADO_CEDULA
-                                      JOIN PERSONA P ON P.CEDULA = E.CEDULA
-                                      LEFT JOIN ARTICULO AR ON AR.ARTICULOID = A.ARTICULO_ARTICULOID";
+                                      FROM TALLER.AGENDA A
+                                      JOIN TALLER.EMPLEADO E ON E.CEDULA = A.EMPLEADO_CEDULA
+                                      JOIN TALLER.PERSONA P ON P.CEDULA = E.CEDULA
+                                      LEFT JOIN TALLER.ARTICULO AR ON AR.ARTICULOID = A.ARTICULO_ARTICULOID";
 
         public void Guardar(Agenda agenda)
         {
             using (OracleConnection con = ObtenerConexion())
             {
-                string sql = @"INSERT INTO Agenda 
-                                 (AGENDAID, FECHA, COMENTARIO, VEHICULO_PLACA, EMPLEADO_CEDULA, ESTADO, ARTICULO_ARTICULOID) 
-                                 VALUES (Seq_AgendaID.NEXTVAL, :fecha, :comentario, :vehiculoPlaca, :empleadoCedula, :estado, :articuloId)";
-            
-                using ( OracleCommand cmd = new OracleCommand(sql, con))
+                con.Open();
+                using (OracleCommand secuencia = new OracleCommand("SELECT TALLER.SEQ_AGENDAID.NEXTVAL FROM DUAL", con))
+                    agenda.AgendaID = Convert.ToInt32(secuencia.ExecuteScalar());
+                string sql = @"INSERT INTO TALLER.AGENDA
+                                 (AGENDAID, FECHA, COMENTARIO, VEHICULO_PLACA, EMPLEADO_CEDULA, ESTADO, ARTICULO_ARTICULOID)
+                                 VALUES (:agendaId, :fecha, :comentario, :vehiculoPlaca, :empleadoCedula, :estado, :articuloId)";
+                using (OracleCommand cmd = new OracleCommand(sql, con))
                 {
                     AgregarParams(cmd, agenda);
-                    con.Open();
+                    cmd.Parameters.Add("agendaId", agenda.AgendaID);
                     cmd.ExecuteNonQuery();
                 }
             }
@@ -105,7 +122,7 @@ namespace DATOS
         {
             using (OracleConnection con = ObtenerConexion())
             {
-                string sql = @"UPDATE Agenda SET 
+                string sql = @"UPDATE TALLER.AGENDA SET
                          FECHA = :fecha, 
                          COMENTARIO = :comentario, 
                          VEHICULO_PLACA = :vehiculoPlaca, 
@@ -152,7 +169,7 @@ namespace DATOS
         {
             using (OracleConnection con = ObtenerConexion())
             {
-                string sql = @"DELETE FROM Agenda WHERE AGENDAID = :agendaId";
+                string sql = @"DELETE FROM TALLER.AGENDA WHERE AGENDAID = :agendaId";
 
                 using (OracleCommand cmd = new OracleCommand(sql,con))
                 {

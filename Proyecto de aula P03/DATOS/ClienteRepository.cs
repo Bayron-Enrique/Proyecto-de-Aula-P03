@@ -11,8 +11,8 @@ namespace DATOS
         {
             using (OracleConnection con = ObtenerConexion())
             {
-                string sql = "@INSERT INTO PERSONA (CEDULA, NOMBRES, APELLIDOS, SEXO, TELEFONO, DIRECCION, CORREOELECTRONICO)" +
-                             "VALUES (:cedula, :nombres, :apellidos, :sexo, :telefono, :direccion, :correo)";
+                string sql = @"INSERT INTO TALLER.PERSONA (CEDULA, NOMBRES, APELLIDOS, SEXO, TELEFONO, DIRECCION, CORREOELECTRONICO)
+                               VALUES (:cedula, :nombres, :apellidos, :sexo, :telefono, :direccion, :correo)";
                 con.Open();
                 using (OracleTransaction tx = con.BeginTransaction())
                 {
@@ -21,10 +21,11 @@ namespace DATOS
                         using (OracleCommand cmd = new OracleCommand(sql,con))
                         {
                             cmd.Transaction = tx;
+                            cmd.BindByName = true;
                             AgregarParametrosPersona(cmd, cliente);
                             cmd.ExecuteNonQuery();
                         }
-                        using (OracleCommand cmd = new OracleCommand("INSERT INTO CLIENTE (CEDULA) VALUES (:cedula)", con))
+                        using (OracleCommand cmd = new OracleCommand("INSERT INTO TALLER.CLIENTE (CEDULA) VALUES (:cedula)", con))
                         {
                             cmd.Transaction = tx;
                             cmd.Parameters.Add(new OracleParameter("cedula", cliente.Cedula));
@@ -41,7 +42,7 @@ namespace DATOS
         {
             List<Cliente> clientes = new List<Cliente>();
             const string sql = @"SELECT P.CEDULA, P.NOMBRES, P.APELLIDOS, P.SEXO, P.TELEFONO, P.DIRECCION, P.CORREOELECTRONICO
-                                 FROM CLIENTE C JOIN PERSONA P ON P.CEDULA = C.CEDULA";
+                                 FROM TALLER.CLIENTE C JOIN TALLER.PERSONA P ON P.CEDULA = C.CEDULA";
             using (OracleConnection con = ObtenerConexion())
             using (OracleCommand cmd = new OracleCommand(sql, con))
             {
@@ -55,7 +56,7 @@ namespace DATOS
         public Cliente BuscarCedula(string cedula)
         {
             const string sql = @"SELECT P.CEDULA, P.NOMBRES, P.APELLIDOS, P.SEXO, P.TELEFONO, P.DIRECCION, P.CORREOELECTRONICO
-                                 FROM CLIENTE C JOIN PERSONA P ON P.CEDULA = C.CEDULA WHERE C.CEDULA = :cedula";
+                                 FROM TALLER.CLIENTE C JOIN TALLER.PERSONA P ON P.CEDULA = C.CEDULA WHERE C.CEDULA = :cedula";
             using (OracleConnection con = ObtenerConexion())
             using (OracleCommand cmd = new OracleCommand(sql, con))
             {
@@ -67,15 +68,29 @@ namespace DATOS
 
         public void Modificar(Cliente cliente)
         {
-            const string sql = @"UPDATE PERSONA P SET NOMBRES = :nombres, APELLIDOS = :apellidos, SEXO = :sexo,
+            const string sql = @"UPDATE TALLER.PERSONA SET NOMBRES = :nombres, APELLIDOS = :apellidos, SEXO = :sexo,
                                  TELEFONO = :telefono, DIRECCION = :direccion, CORREOELECTRONICO = :correo
-                                 WHERE P.CEDULA = :cedula AND EXISTS (SELECT 1 FROM CLIENTE C WHERE C.CEDULA = P.CEDULA)";
+                                 WHERE CEDULA = :cedula AND EXISTS (SELECT 1 FROM TALLER.CLIENTE C WHERE C.CEDULA = :cedula)";
             using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand(sql, con))
             {
-                AgregarParametrosPersona(cmd, cliente);
                 con.Open();
-                cmd.ExecuteNonQuery();
+                using (OracleTransaction tx = con.BeginTransaction())
+                using (OracleCommand cmd = new OracleCommand(sql, con))
+                {
+                    try
+                    {
+                        cmd.Transaction = tx;
+                        cmd.BindByName = true;
+                        AgregarParametrosPersona(cmd, cliente);
+                        cmd.ExecuteNonQuery();
+                        tx.Commit();
+                    }
+                    catch
+                    {
+                        tx.Rollback();
+                        throw;
+                    }
+                }
             }
         }
 
@@ -88,13 +103,13 @@ namespace DATOS
                 {
                     try
                     {
-                        using (OracleCommand cmd = new OracleCommand("DELETE FROM CLIENTE WHERE CEDULA = :cedula", con))
+                        using (OracleCommand cmd = new OracleCommand("DELETE FROM TALLER.CLIENTE WHERE CEDULA = :cedula", con))
                         {
                             cmd.Transaction = tx;
                             cmd.Parameters.Add(new OracleParameter("cedula", cliente.Cedula));
                             cmd.ExecuteNonQuery();
                         }
-                        using (OracleCommand cmd = new OracleCommand("DELETE FROM PERSONA WHERE CEDULA = :cedula", con))
+                        using (OracleCommand cmd = new OracleCommand("DELETE FROM TALLER.PERSONA WHERE CEDULA = :cedula", con))
                         {
                             cmd.Transaction = tx;
                             cmd.Parameters.Add(new OracleParameter("cedula", cliente.Cedula));

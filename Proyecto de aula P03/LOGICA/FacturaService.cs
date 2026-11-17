@@ -1,4 +1,5 @@
-﻿using DATOS;
+﻿
+using DATOS;
 using ENTIDADES;
 using System;
 using System.Collections.Generic;
@@ -11,65 +12,98 @@ namespace LOGICA
     public class FacturaService
     {
         FacturaRepository repositorio;
+        DetalleFacturaRepository detalleRepositorio;
         ClienteRepository clienteRepositorio;
         EmpleadoRepository empleadoRepositorio;
         ArticuloRepository articuloRepositorio;
-        int siguienteFacturaId;
-        int siguienteDetalleId;
 
-        public FacturaService(FacturaRepository repositorio, ClienteRepository clienteRepositorio, EmpleadoRepository empleadoRepositorio, ArticuloRepository articuloRepositorio)
+        public FacturaService(
+            FacturaRepository repositorio,
+            ClienteRepository clienteRepositorio,
+            EmpleadoRepository empleadoRepositorio,
+            ArticuloRepository articuloRepositorio)
+            : this(
+                repositorio,
+                clienteRepositorio,
+                empleadoRepositorio,
+                articuloRepositorio,
+                new DetalleFacturaRepository())
+        {
+        }
+
+        public FacturaService(
+            FacturaRepository repositorio,
+            ClienteRepository clienteRepositorio,
+            EmpleadoRepository empleadoRepositorio,
+            ArticuloRepository articuloRepositorio,
+            DetalleFacturaRepository detalleRepositorio)
         {
             this.repositorio = repositorio;
             this.clienteRepositorio = clienteRepositorio;
             this.empleadoRepositorio = empleadoRepositorio;
             this.articuloRepositorio = articuloRepositorio;
-            siguienteFacturaId = 1;
-            siguienteDetalleId = 1;
+            this.detalleRepositorio = detalleRepositorio;
         }
 
-        public string Guardar(DateTime fecha, double descuento, string observaciones, string estadoPago, string cedulaCliente, string cedulaEmpleado)
+        // GUARDAR FACTURA O COTIZACION
+        public string Guardar(
+            DateTime fecha,
+            decimal descuento,
+            string observaciones,
+            string estadoPago,
+            string cedulaCliente,
+            string cedulaEmpleado,
+            string tipoDocumento = "VENTA")
         {
             try
             {
-                // Fecha
+                // Validaciones de fecha
                 if (fecha.Year < 2000)
                 {
                     return "La fecha de la factura no es valida ...";
                 }
+
                 if (fecha > DateTime.Now)
                 {
                     return "La fecha de la factura no puede ser futura ...";
                 }
 
-                // Descuento
+                // Validaciones de descuento
                 if (descuento < 0)
                 {
                     return "El descuento no puede ser negativo ...";
                 }
-                if (descuento > 99999999.99)
+
+                if (descuento > 99999999.99m)
                 {
                     return "El descuento es demasiado alto ...";
                 }
+
                 if (Math.Round(descuento, 2) != descuento)
                 {
                     return "El descuento solo puede tener 2 decimales ...";
                 }
 
-                // Observaciones (opcional)
+                // Validaciones de observaciones
                 if (!string.IsNullOrEmpty(observaciones))
                 {
                     if (string.IsNullOrWhiteSpace(observaciones))
                     {
                         return "Las observaciones no pueden tener solo espacios ...";
                     }
-                    if (observaciones != observaciones.Trim() || observaciones.Contains("  "))
+
+                    if (observaciones != observaciones.Trim() ||
+                        observaciones.Contains("  "))
                     {
                         return "Las observaciones no pueden tener espacios al inicio, al final ni seguidos ...";
                     }
-                    if (observaciones.Length < 3 || observaciones.Length > 200)
+
+                    if (observaciones.Length < 3 ||
+                        observaciones.Length > 200)
                     {
                         return "Las observaciones deben tener entre 3 y 200 caracteres ...";
                     }
+
                     foreach (char c in observaciones)
                     {
                         if (char.IsControl(c))
@@ -79,58 +113,93 @@ namespace LOGICA
                     }
                 }
 
-                // Estado de pago
-                if (estadoPago != "Pendiente" && estadoPago != "Pagada" && estadoPago != "Anulada")
+                // Validacion del estado de pago
+                if (estadoPago != "Pendiente" &&
+                    estadoPago != "Pagada" &&
+                    estadoPago != "Anulada")
                 {
-                    return "El estado de pago debe ser uno de estos: Pendiente, Pagada, Anulada ...";
+                    return "El estado de pago debe ser Pendiente, Pagada o Anulada ...";
                 }
 
-                // Cliente y empleado
+                // Validacion del tipo de documento
+                if (string.IsNullOrWhiteSpace(tipoDocumento))
+                {
+                    return "Debe seleccionar un tipo de documento ...";
+                }
+
+                tipoDocumento = tipoDocumento.Trim().ToUpperInvariant();
+
+                if (tipoDocumento != "VENTA" &&
+                    tipoDocumento != "COTIZACION")
+                {
+                    return "El tipo de documento debe ser VENTA o COTIZACION ...";
+                }
+
+                // Validaciones de cliente y empleado
                 if (string.IsNullOrWhiteSpace(cedulaCliente))
                 {
                     return "Debe seleccionar un cliente valido ...";
                 }
+
                 if (string.IsNullOrWhiteSpace(cedulaEmpleado))
                 {
                     return "Debe seleccionar un empleado valido ...";
                 }
 
-                Cliente cliente = clienteRepositorio.BuscarCedula(cedulaCliente);
+                Cliente cliente =
+                    clienteRepositorio.BuscarCedula(cedulaCliente);
 
                 if (cliente == null)
                 {
                     return "El cliente seleccionado no existe ...";
                 }
 
-                Empleado empleado = empleadoRepositorio.BuscarCedula(cedulaEmpleado);
+                Empleado empleado =
+                    empleadoRepositorio.BuscarCedula(cedulaEmpleado);
 
                 if (empleado == null)
                 {
                     return "El empleado seleccionado no existe ...";
                 }
 
-                int facturaId = GenerarFacturaId();
+                // Obtener el ID directamente desde Oracle
+                int facturaId =
+                    repositorio.ObtenerSiguienteFacturaId();
 
-                Factura factura = new Factura();
-                factura.FacturaID = facturaId;
-                factura.Fecha = fecha;
-                factura.Descuento = descuento;
-                factura.Observaciones = observaciones;
-                factura.EstadoPago = estadoPago;
-                factura.Cliente = cliente;
-                factura.Empleado = empleado;
+                // Crear factura o cotizacion
+                Factura factura = new Factura
+                {
+                    FacturaID = facturaId,
+                    Fecha = fecha,
+                    Descuento = descuento,
+                    Observaciones = observaciones,
+                    EstadoPago = estadoPago,
+                    TipoDocumento = tipoDocumento,
+                    Cliente = cliente,
+                    Empleado = empleado,
 
+                    // Valores iniciales antes de agregar detalles
+                    SubTotal = 0,
+                    Iva = 0,
+                    Total = 0
+                };
+
+                // Persistir en Oracle
                 repositorio.Guardar(factura);
 
-                return $"se registro la factura numero {facturaId} desde la logica ...";
+                return $"Se registro el documento {tipoDocumento} numero {facturaId} correctamente ...";
             }
             catch (Exception ex)
             {
-                return $"ocurrio un error al guardar: {ex.Message}";
+                return $"Ocurrio un error al guardar: {ex.Message}";
             }
         }
 
-        public string AgregarDetalle(int facturaId, int articuloId, int cantidad)
+        // AGREGAR DETALLE A FACTURA O COTIZACION
+        public string AgregarDetalle(
+            int facturaId,
+            int articuloId,
+            int cantidad)
         {
             try
             {
@@ -141,7 +210,8 @@ namespace LOGICA
                     return "No se encontro la factura ...";
                 }
 
-                if (factura.EstadoPago == "Pagada" || factura.EstadoPago == "Anulada")
+                if (factura.EstadoPago == "Pagada" ||
+                    factura.EstadoPago == "Anulada")
                 {
                     return $"No se pueden agregar articulos a una factura {factura.EstadoPago.ToLower()} ...";
                 }
@@ -151,7 +221,8 @@ namespace LOGICA
                     return "Debe seleccionar un articulo valido ...";
                 }
 
-                Articulo articulo = articuloRepositorio.BuscarId(articuloId);
+                Articulo articulo =
+                    articuloRepositorio.BuscarId(articuloId);
 
                 if (articulo == null)
                 {
@@ -163,69 +234,115 @@ namespace LOGICA
                     return "La cantidad debe estar entre 1 y 1000000 ...";
                 }
 
-                if (cantidad > articulo.Cantidad)
+                bool esVenta = string.Equals(
+                    factura.TipoDocumento,
+                    "VENTA",
+                    StringComparison.OrdinalIgnoreCase);
+
+                bool esCotizacion = string.Equals(
+                    factura.TipoDocumento,
+                    "COTIZACION",
+                    StringComparison.OrdinalIgnoreCase);
+
+                if (!esVenta && !esCotizacion)
                 {
-                    return $"No hay existencias suficientes, solo quedan {articulo.Cantidad} ...";
+                    return "La factura tiene un tipo de documento invalido ...";
                 }
 
-                foreach (var d in factura.Detalles)
+                // Validar existencias solo para repuestos vendidos
+                Repuesto repuesto = articulo as Repuesto;
+
+                if (esVenta && repuesto != null)
                 {
-                    if (d.Articulo.ArticuloId == articuloId)
+                    if (cantidad > repuesto.Cantidad)
+                    {
+                        return $"No hay existencias suficientes, solo quedan {repuesto.Cantidad} ...";
+                    }
+                }
+
+                // Obtener los detalles que ya existen en Oracle
+                factura.Detalles =
+                    detalleRepositorio.ConsultarPorFactura(facturaId);
+
+                // Evitar articulos duplicados
+                foreach (DetalleFactura existente in factura.Detalles)
+                {
+                    if (existente.Articulo != null &&
+                        existente.Articulo.ArticuloId == articuloId)
                     {
                         return "Ese articulo ya esta en la factura ...";
                     }
                 }
 
-                DetalleFactura detalle = new DetalleFactura();
-                detalle.DetalleFacturaID = GenerarDetalleId();
-                detalle.Cantidad = cantidad;
-                detalle.Articulo = articulo;
-                detalle.ValorUnitario = articulo.Precio;
-                detalle.ValorIVA = (articulo.Precio * cantidad) * (articulo.PorcentajeIVA / 100);
+                // Crear detalle utilizando el constructor existente
+                DetalleFactura detalle =
+                    new DetalleFactura(cantidad, articulo);
 
+                detalle.FacturaID = facturaId;
+
+                // Agregar a la factura en memoria para calcular
                 factura.Detalles.Add(detalle);
+
+                // Recalcular subtotal, IVA y total
                 factura.CalcularTotales();
 
-                articulo.Cantidad -= cantidad;
+                if (factura.Total < 0)
+                {
+                    return "El descuento no puede superar el valor de la factura ...";
+                }
 
-                return $"se agrego el detalle a la factura {facturaId} desde la logica ...";
+                // Guardar el nuevo detalle en Oracle
+                detalleRepositorio.Guardar(detalle);
+
+                // Actualizar los totales de la factura
+                repositorio.Modificar(factura);
+
+                // Descontar inventario solamente en ventas
+                if (esVenta && repuesto != null)
+                {
+                    repuesto.Cantidad -= cantidad;
+
+                    articuloRepositorio.Modificar(repuesto);
+                }
+
+                return $"Se agrego el detalle a la factura {facturaId} correctamente ...";
             }
             catch (Exception ex)
             {
-                return $"ocurrio un error al agregar el detalle: {ex.Message}";
+                return $"Ocurrio un error al agregar el detalle: {ex.Message}";
             }
         }
 
-        private int GenerarFacturaId()
-        {
-            int numero = siguienteFacturaId;
-
-            while (BuscarId(numero) != null)
-            {
-                numero++;
-            }
-
-            siguienteFacturaId = numero + 1;
-            return numero;
-        }
-
-        private int GenerarDetalleId()
-        {
-            int numero = siguienteDetalleId;
-            siguienteDetalleId = numero + 1;
-            return numero;
-        }
-
+        // BUSCAR FACTURA POR ID
         public Factura BuscarId(int facturaId)
         {
-            return repositorio.BuscarId(facturaId);
+            Factura factura = repositorio.BuscarId(facturaId);
+
+            if (factura != null)
+            {
+                factura.Detalles =
+                    detalleRepositorio.ConsultarPorFactura(facturaId);
+            }
+
+            return factura;
         }
 
+        // CONSULTAR TODAS LAS FACTURAS
         public List<Factura> Consultar()
         {
-            return repositorio.Consultar();
+            List<Factura> facturas = repositorio.Consultar();
+
+            foreach (Factura factura in facturas)
+            {
+                factura.Detalles =
+                    detalleRepositorio.ConsultarPorFactura(
+                        factura.FacturaID);
+            }
+
+            return facturas;
         }
 
+        // ELIMINAR FACTURA
         public string Eliminar(int facturaId)
         {
             try
@@ -237,7 +354,7 @@ namespace LOGICA
                     return "No se encontro la factura ...";
                 }
 
-                repositorio.Eliminar(factura);
+                repositorio.Eliminar(facturaId);
 
                 return "La factura se elimino correctamente ...";
             }

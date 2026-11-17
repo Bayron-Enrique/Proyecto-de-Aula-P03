@@ -18,14 +18,15 @@ namespace DATOS
                     try
                     {
                         using (OracleCommand cmd = new OracleCommand(
-                            @"INSERT INTO PERSONA (CEDULA, NOMBRES, APELLIDOS, SEXO, TELEFONO, DIRECCION, CORREOELECTRONICO)
+                            @"INSERT INTO TALLER.PERSONA (CEDULA, NOMBRES, APELLIDOS, SEXO, TELEFONO, DIRECCION, CORREOELECTRONICO)
                               VALUES (:cedula, :nombres, :apellidos, :sexo, :telefono, :direccion, :correo)", con))
                         {
                             cmd.Transaction = tx;
+                            cmd.BindByName = true;
                             AgregarParametrosPersona(cmd, empleado);
                             cmd.ExecuteNonQuery();
                         }
-                        using (OracleCommand cmd = new OracleCommand("INSERT INTO EMPLEADO (CEDULA, CARGO_CARGOID) VALUES (:cedula, :cargoId)", con))
+                        using (OracleCommand cmd = new OracleCommand("INSERT INTO TALLER.EMPLEADO (CEDULA, CARGO_CARGOID) VALUES (:cedula, :cargoId)", con))
                         {
                             cmd.Transaction = tx;
                             cmd.Parameters.Add(new OracleParameter("cedula", empleado.Cedula));
@@ -41,17 +42,16 @@ namespace DATOS
 
         public List<Empleado> Consultar()
         {
-            // consulta una funcion que retorna un cursor de empleados
             List<Empleado> empleados = new List<Empleado>();
-            const string NombreFuncion = "FN_OBTENER_EMPLEADOS";
+            const string sql = @"SELECT P.CEDULA, P.NOMBRES, P.APELLIDOS, P.SEXO, P.TELEFONO,
+                                        P.DIRECCION, P.CORREOELECTRONICO, C.CARGOID, C.NOMBRECARGO
+                                 FROM TALLER.EMPLEADO E
+                                 JOIN TALLER.PERSONA P ON P.CEDULA = E.CEDULA
+                                 JOIN TALLER.CARGO C ON C.CARGOID = E.CARGO_CARGOID
+                                 ORDER BY P.APELLIDOS, P.NOMBRES";
             using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand(NombreFuncion, con))
+            using (OracleCommand cmd = new OracleCommand(sql, con))
             {
-                cmd.CommandType = CommandType.StoredProcedure;
-                OracleParameter paramCursor = new OracleParameter("p_cursor", OracleDbType.RefCursor);
-                paramCursor.Direction = ParameterDirection.ReturnValue; // obtener el cursor de retorno
-                cmd.Parameters.Add(paramCursor);
-
                 con.Open();
                 using (OracleDataReader reader = cmd.ExecuteReader())
                 {
@@ -64,16 +64,17 @@ namespace DATOS
 
         public Empleado BuscarCedula(string cedula)
         {
-            const string NombreFuncion = "FN_OBTENER_EMPLEADO_POR_CEDULA";
+            const string sql = @"SELECT P.CEDULA, P.NOMBRES, P.APELLIDOS, P.SEXO, P.TELEFONO,
+                                        P.DIRECCION, P.CORREOELECTRONICO, C.CARGOID, C.NOMBRECARGO
+                                 FROM TALLER.EMPLEADO E
+                                 JOIN TALLER.PERSONA P ON P.CEDULA = E.CEDULA
+                                 JOIN TALLER.CARGO C ON C.CARGOID = E.CARGO_CARGOID
+                                 WHERE E.CEDULA = :cedula";
             using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand(NombreFuncion, con))
+            using (OracleCommand cmd = new OracleCommand(sql, con))
             {
-                cmd.CommandType = CommandType.StoredProcedure;
-
-                OracleParameter paramCursor = new OracleParameter("p_cursor", OracleDbType.RefCursor);
-                paramCursor.Direction = ParameterDirection.ReturnValue;
-                cmd.Parameters.Add(paramCursor);
-                cmd.Parameters.Add(new OracleParameter("p_cedula", cedula));
+                cmd.BindByName = true;
+                cmd.Parameters.Add(new OracleParameter("cedula", cedula));
 
                 con.Open();
                 using (OracleDataReader reader = cmd.ExecuteReader())
@@ -94,17 +95,19 @@ namespace DATOS
                     try
                     {
                         using (OracleCommand cmd = new OracleCommand(
-                            @"UPDATE PERSONA P SET NOMBRES = :nombres, APELLIDOS = :apellidos, SEXO = :sexo,
+                            @"UPDATE TALLER.PERSONA SET NOMBRES = :nombres, APELLIDOS = :apellidos, SEXO = :sexo,
                               TELEFONO = :telefono, DIRECCION = :direccion, CORREOELECTRONICO = :correo
-                              WHERE P.CEDULA = :cedula AND EXISTS (SELECT 1 FROM EMPLEADO E WHERE E.CEDULA = P.CEDULA)", con))
+                              WHERE CEDULA = :cedula AND EXISTS (SELECT 1 FROM TALLER.EMPLEADO E WHERE E.CEDULA = :cedula)", con))
                         {
                             cmd.Transaction = tx;
+                            cmd.BindByName = true;
                             AgregarParametrosPersona(cmd, empleado);
                             cmd.ExecuteNonQuery();
                         }
-                        using (OracleCommand cmd = new OracleCommand("UPDATE EMPLEADO SET CARGO_CARGOID = :cargoId WHERE CEDULA = :cedula", con))
+                        using (OracleCommand cmd = new OracleCommand("UPDATE TALLER.EMPLEADO SET CARGO_CARGOID = :cargoId WHERE CEDULA = :cedula", con))
                         {
                             cmd.Transaction = tx;
+                            cmd.BindByName = true;
                             cmd.Parameters.Add(new OracleParameter("cargoId", empleado.Cargo.CargoId));
                             cmd.Parameters.Add(new OracleParameter("cedula", empleado.Cedula));
                             cmd.ExecuteNonQuery();
@@ -125,13 +128,13 @@ namespace DATOS
                 {
                     try
                     {
-                        using (OracleCommand cmd = new OracleCommand("DELETE FROM EMPLEADO WHERE CEDULA = :cedula", con))
+                        using (OracleCommand cmd = new OracleCommand("DELETE FROM TALLER.EMPLEADO WHERE CEDULA = :cedula", con))
                         {
                             cmd.Transaction = tx;
                             cmd.Parameters.Add(new OracleParameter("cedula", empleado.Cedula));
                             cmd.ExecuteNonQuery();
                         }
-                        using (OracleCommand cmd = new OracleCommand("DELETE FROM PERSONA WHERE CEDULA = :cedula", con))
+                        using (OracleCommand cmd = new OracleCommand("DELETE FROM TALLER.PERSONA WHERE CEDULA = :cedula", con))
                         {
                             cmd.Transaction = tx;
                             cmd.Parameters.Add(new OracleParameter("cedula", empleado.Cedula));

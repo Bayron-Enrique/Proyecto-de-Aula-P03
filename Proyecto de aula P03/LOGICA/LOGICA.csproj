@@ -33,6 +33,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="System.Configuration" />
     <Reference Include="Microsoft.Bcl.AsyncInterfaces, Version=10.0.0.9, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Bcl.AsyncInterfaces.10.0.9\lib\net462\Microsoft.Bcl.AsyncInterfaces.dll</HintPath>
     </Reference>
@@ -132,6 +133,7 @@
     <Compile Include="CargoService.cs" />
     <Compile Include="ClienteService.cs" />
     <Compile Include="EmpleadoService.cs" />
+    <Compile Include="Email.cs" />
     <Compile Include="FacturaService.cs" />
     <Compile Include="NotificacionMantenimientoService.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

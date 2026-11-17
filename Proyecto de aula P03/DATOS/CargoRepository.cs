@@ -7,11 +7,21 @@ namespace DATOS
 {
     public class CargoRepository : ManejadorConexion, IRepository<Cargo>
     {
+        public int ObtenerSiguienteCargoId()
+        {
+            using (OracleConnection con = ObtenerConexion())
+            using (OracleCommand cmd = new OracleCommand("SELECT TALLER.SEQ_CARGOID.NEXTVAL FROM DUAL", con))
+            {
+                con.Open();
+                return Convert.ToInt32(cmd.ExecuteScalar());
+            }
+        }
+
         public void Guardar(Cargo cargo)
         {
             using (OracleConnection con = ObtenerConexion())
             using (OracleCommand cmd = new OracleCommand(
-                "INSERT INTO CARGO (CARGOID, NOMBRECARGO) VALUES (:cargoId, :nombreCargo)", con))
+                "INSERT INTO TALLER.CARGO (CARGOID, NOMBRECARGO) VALUES (:cargoId, :nombreCargo)", con))
             {
                 AgregarParametros(cmd, cargo);
                 con.Open();
@@ -23,7 +33,7 @@ namespace DATOS
         {
             List<Cargo> cargos = new List<Cargo>();
             using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand("SELECT CARGOID, NOMBRECARGO FROM CARGO", con))
+            using (OracleCommand cmd = new OracleCommand("SELECT CARGOID, NOMBRECARGO FROM TALLER.CARGO", con))
             {
                 con.Open();
                 using (OracleDataReader reader = cmd.ExecuteReader())
@@ -35,7 +45,7 @@ namespace DATOS
         public Cargo BuscarId(int cargoId)
         {
             using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand("SELECT CARGOID, NOMBRECARGO FROM CARGO WHERE CARGOID = :cargoId", con))
+            using (OracleCommand cmd = new OracleCommand("SELECT CARGOID, NOMBRECARGO FROM TALLER.CARGO WHERE CARGOID = :cargoId", con))
             {
                 cmd.Parameters.Add(new OracleParameter("cargoId", cargoId));
                 con.Open();
@@ -47,8 +57,9 @@ namespace DATOS
         public void Modificar(Cargo cargo)
         {
             using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand("UPDATE CARGO SET NOMBRECARGO = :nombreCargo WHERE CARGOID = :cargoId", con))
+            using (OracleCommand cmd = new OracleCommand("UPDATE TALLER.CARGO SET NOMBRECARGO = :nombreCargo WHERE CARGOID = :cargoId", con))
             {
+                cmd.BindByName = true;
                 AgregarParametros(cmd, cargo);
                 con.Open();
                 cmd.ExecuteNonQuery();
@@ -58,7 +69,7 @@ namespace DATOS
         public void Eliminar(Cargo cargo)
         {
             using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand("DELETE FROM CARGO WHERE CARGOID = :cargoId", con))
+            using (OracleCommand cmd = new OracleCommand("DELETE FROM TALLER.CARGO WHERE CARGOID = :cargoId", con))
             {
                 cmd.Parameters.Add(new OracleParameter("cargoId", cargo.CargoId));
                 con.Open();
@@ -73,6 +84,7 @@ namespace DATOS
 
         private void AgregarParametros(OracleCommand cmd, Cargo cargo)
         {
+            cmd.BindByName = true;
             cmd.Parameters.Add(new OracleParameter("cargoId", cargo.CargoId));
             cmd.Parameters.Add(new OracleParameter("nombreCargo", cargo.NombreCargo));
         }

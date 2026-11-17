@@ -14,6 +14,7 @@ namespace DATOS
             using (OracleConnection con = ObtenerConexion())
             using (OracleCommand cmd = new OracleCommand(sql, con))
             {
+                cmd.BindByName = true;
                 AgregarParametros(cmd, vehiculo);
                 con.Open();
                 cmd.ExecuteNonQuery();
@@ -51,6 +52,7 @@ namespace DATOS
             using (OracleConnection con = ObtenerConexion())
             using (OracleCommand cmd = new OracleCommand(sql, con))
             {
+                cmd.BindByName = true;
                 AgregarParametros(cmd, vehiculo);
                 con.Open();
                 cmd.ExecuteNonQuery();
@@ -81,8 +83,7 @@ namespace DATOS
                 TipoVehiculo = reader["TIPO_VEHICULO"].ToString(),
                 Color = reader["COLOR"] == DBNull.Value ? null : reader["COLOR"].ToString(),
                 Linea = reader["LINEA"] == DBNull.Value ? null : reader["LINEA"].ToString(),
-                Cliente = new Cliente { Cedula = reader["CLIENTE_CEDULA"].ToString().Trim() },
-                ClienteVehiculo = reader["CLIENTE_CEDULA"].ToString().Trim()
+                Cliente = new Cliente { Cedula = reader["CLIENTE_CEDULA"].ToString().Trim() }
             };
         }
 
@@ -91,7 +92,11 @@ namespace DATOS
             cmd.Parameters.Add(new OracleParameter("placa", vehiculo.Placa));
             cmd.Parameters.Add(new OracleParameter("modelo", vehiculo.Modelo));
             cmd.Parameters.Add(new OracleParameter("marca", vehiculo.Marca !=null? (object)vehiculo.Marca :DBNull.Value));
-            cmd.Parameters.Add(new OracleParameter("clienteCedula", vehiculo.Cliente != null ? (object)vehiculo.Cliente.Cedula : vehiculo.ClienteVehiculo));
+            if (vehiculo.Cliente == null)
+            {
+                throw new ArgumentNullException("Debe seleccionar un cliente válido para el vehículo.");
+            }
+            cmd.Parameters.Add(new OracleParameter("clienteCedula", vehiculo.Cliente.Cedula));
             cmd.Parameters.Add(new OracleParameter("tipoVehiculo", vehiculo.TipoVehiculo));
             cmd.Parameters.Add(new OracleParameter("color", (object)vehiculo.Color ?? DBNull.Value));
             cmd.Parameters.Add(new OracleParameter("linea", (object)vehiculo.Linea ?? DBNull.Value));

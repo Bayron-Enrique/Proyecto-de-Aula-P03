@@ -13,14 +13,12 @@ namespace LOGICA
         NotificacionMantenimientoRepository repositorio;
         VehiculoRepository vehiculoRepositorio;
         ArticuloRepository articuloRepositorio;
-        int siguienteNotificacionId;
 
         public NotificacionMantenimientoService(NotificacionMantenimientoRepository repositorio, VehiculoRepository vehiculoRepositorio, ArticuloRepository articuloRepositorio)
         {
             this.repositorio = repositorio;
             this.vehiculoRepositorio = vehiculoRepositorio;
             this.articuloRepositorio = articuloRepositorio;
-            siguienteNotificacionId = 1;
         }
 
         public string Guardar(DateTime fecha, string comentario, string placa, int articuloId)
@@ -90,10 +88,7 @@ namespace LOGICA
                     }
                 }
 
-                int notificacionId = GenerarNotificacionId();
-
                 NotificacionMantenimiento notificacion = new NotificacionMantenimiento();
-                notificacion.NotificacionID = notificacionId;
                 notificacion.Fecha = fecha;
                 notificacion.Comentario = comentario;
                 notificacion.Vehiculo = vehiculo;
@@ -101,25 +96,12 @@ namespace LOGICA
 
                 repositorio.Guardar(notificacion);
 
-                return $"se registro la notificacion numero {notificacionId} desde la logica ...";
+                return $"se registro la notificacion numero {notificacion.NotificacionID} desde la logica ...";
             }
             catch (Exception ex)
             {
                 return $"ocurrio un error al guardar: {ex.Message}";
             }
-        }
-
-        private int GenerarNotificacionId()
-        {
-            int numero = siguienteNotificacionId;
-
-            while (BuscarId(numero) != null)
-            {
-                numero++;
-            }
-
-            siguienteNotificacionId = numero + 1;
-            return numero;
         }
 
         public NotificacionMantenimiento BuscarId(int notificacionId)

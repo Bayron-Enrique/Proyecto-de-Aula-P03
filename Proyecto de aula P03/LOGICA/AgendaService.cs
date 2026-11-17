@@ -14,15 +14,15 @@ namespace LOGICA
         ClienteRepository clienteRepositorio;
         VehiculoRepository vehiculoRepositorio;
         EmpleadoRepository empleadoRepositorio;
-        int siguienteAgendaId;
+        ArticuloRepository articuloRepositorio;
 
-        public AgendaService(AgendaRepository repositorio, ClienteRepository clienteRepositorio, VehiculoRepository vehiculoRepositorio, EmpleadoRepository empleadoRepositorio)
+        public AgendaService(AgendaRepository repositorio, ClienteRepository clienteRepositorio, VehiculoRepository vehiculoRepositorio, EmpleadoRepository empleadoRepositorio, ArticuloRepository articuloRepositorio)
         {
             this.repositorio = repositorio;
             this.clienteRepositorio = clienteRepositorio;
             this.vehiculoRepositorio = vehiculoRepositorio;
             this.empleadoRepositorio = empleadoRepositorio;
-            siguienteAgendaId = 1;
+            this.articuloRepositorio = articuloRepositorio;
         }
 
         public string Guardar(DateTime fecha, string comentario, string nombreServicio, string estado, string cedulaCliente, string placa, string cedulaEmpleado)
@@ -134,55 +134,38 @@ namespace LOGICA
                     return "El empleado seleccionado no existe ...";
                 }
 
-                // Cruces de horario
-                foreach (var existente in repositorio.Consultar())
+                Servicio servicio = articuloRepositorio.Consultar()
+                    .OfType<Servicio>()
+                    .FirstOrDefault(a => string.Equals(a.Nombre, nombreServicio, StringComparison.OrdinalIgnoreCase));
+                if (servicio == null)
                 {
-                    if (existente.Estado != "Cancelada" && existente.Fecha == fecha)
-                    {
-                        if (existente.Empleado.Cedula == cedulaEmpleado)
-                        {
-                            return "Ese empleado ya tiene una cita en esa fecha y hora ...";
-                        }
-                        if (existente.Vehiculo.Placa == placa)
-                        {
-                            return "Ese vehiculo ya tiene una cita en esa fecha y hora ...";
-                        }
-                    }
+                    return "El servicio seleccionado no existe ...";
                 }
 
-                int agendaId = GenerarAgendaId();
+                // La función Oracle centraliza la validación de cruces del empleado.
+                if (!repositorio.EmpleadoDisponible(cedulaEmpleado, fecha))
+                    return "Ese empleado ya tiene una cita en ese horario ...";
+
+                foreach (var existente in repositorio.Consultar())
+                    if (existente.Estado != "Cancelada" && existente.Fecha == fecha && existente.Vehiculo.Placa == placa)
+                        return "Ese vehiculo ya tiene una cita en esa fecha y hora ...";
 
                 Agenda agenda = new Agenda();
-                agenda.AgendaID = agendaId;
                 agenda.Fecha = fecha;
                 agenda.Comentario = comentario;
-                agenda.NombreServicio = nombreServicio;
                 agenda.Estado = estado;
-                agenda.Cliente = cliente;
                 agenda.Vehiculo = vehiculo;
                 agenda.Empleado = empleado;
+                agenda.ArticuloServicio = servicio;
 
                 repositorio.Guardar(agenda);
 
-                return $"se registro la agenda numero {agendaId} desde la logica ...";
+                return $"se registro la agenda numero {agenda.AgendaID} desde la logica ...";
             }
             catch (Exception ex)
             {
                 return $"ocurrio un error al guardar: {ex.Message}";
             }
-        }
-
-        private int GenerarAgendaId()
-        {
-            int numero = siguienteAgendaId;
-
-            while (BuscarId(numero) != null)
-            {
-                numero++;
-            }
-
-            siguienteAgendaId = numero + 1;
-            return numero;
         }
 
         public Agenda BuscarId(int agendaId)

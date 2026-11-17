@@ -1,0 +1,324 @@
+using DATOS;
+using ENTIDADES;
+using LOGICA;
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
+using System.Windows.Forms;
+
+namespace PRESENTACION
+{
+    public partial class FrmEmpleados : Form
+    {
+        private readonly CargoService cargoService;
+        private readonly EmpleadoService empleadoService;
+        private readonly Validacion validacion = new Validacion();
+        private readonly ErrorProvider errores;
+        private List<Empleado> empleados = new List<Empleado>();
+        private List<Cargo> cargos = new List<Cargo>();
+        private TextBox txtCedula, txtNombres, txtApellidos, txtTelefono, txtCorreo, txtDireccion, txtBuscar, txtCargo;
+        private ComboBox cmbSexo, cmbCargo;
+        private DataGridView gridEmpleados, gridCargos;
+        private Button btnGuardarEmpleado, btnNuevoEmpleado;
+        private bool editando;
+
+        public FrmEmpleados()
+        {
+            InitializeComponent();
+            var cargoRepository = new CargoRepository();
+            cargoService = new CargoService(cargoRepository);
+            empleadoService = new EmpleadoService(new EmpleadoRepository(), cargoRepository);
+            errores = new ErrorProvider(components) { ContainerControl = this };
+            ConstruirInterfaz();
+            Load += (s, e) => CargarTodo();
+        }
+
+        private void ConstruirInterfaz()
+        {
+            Text = "Gestión de empleados y cargos";
+            BackColor = Color.FromArgb(245, 247, 250);
+            Font = new Font("Segoe UI", 9F);
+            var encabezado = new Label
+            {
+                Text = "EMPLEADOS Y CARGOS", Dock = DockStyle.Top, Height = 42,
+                Padding = new Padding(18, 8, 0, 0), Font = new Font("Segoe UI", 16F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(35, 45, 60)
+            };
+            Controls.Add(encabezado);
+
+            var split = new SplitContainer
+            {
+                Dock = DockStyle.Fill, SplitterDistance = 540, FixedPanel = FixedPanel.Panel2,
+                BackColor = BackColor, BorderStyle = BorderStyle.None, Panel1MinSize = 420, Panel2MinSize = 230
+            };
+            Controls.Add(split);
+            encabezado.BringToFront();
+
+            var busqueda = new Panel { Dock = DockStyle.Top, Height = 40, Padding = new Padding(14, 3, 14, 3) };
+            busqueda.Controls.Add(new Label { Text = "Buscar por cédula o nombre:", AutoSize = true, Location = new Point(14, 11) });
+            txtBuscar = new TextBox { Location = new Point(195, 5), Width = 300, Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right };
+            txtBuscar.TextChanged += (s, e) => MostrarEmpleados();
+            busqueda.Controls.Add(txtBuscar);
+            split.Panel1.Controls.Add(busqueda);
+
+            var campos = new TableLayoutPanel
+            {
+                Dock = DockStyle.Top, Height = 160, Padding = new Padding(14, 2, 14, 2),
+                BackColor = Color.White, ColumnCount = 4, RowCount = 4
+            };
+            campos.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92));
+            campos.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+            campos.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92));
+            campos.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+            for (int i = 0; i < 4; i++) campos.RowStyles.Add(new RowStyle(SizeType.Percent, 25));
+            txtCedula = CrearTexto(10);
+            txtNombres = CrearTexto(100);
+            txtApellidos = CrearTexto(100);
+            cmbSexo = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill };
+            cmbSexo.Items.AddRange(new object[] { "M", "F" });
+            cmbCargo = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill };
+            txtTelefono = CrearTexto(15);
+            txtCorreo = CrearTexto(100);
+            txtDireccion = CrearTexto(150);
+            AgregarCampo(campos, 0, "Cédula", txtCedula, 0);
+            AgregarCampo(campos, 0, "Nombres", txtNombres, 2);
+            AgregarCampo(campos, 1, "Apellidos", txtApellidos, 0);
+            AgregarCampo(campos, 1, "Sexo", cmbSexo, 2);
+            AgregarCampo(campos, 2, "Teléfono", txtTelefono, 0);
+            AgregarCampo(campos, 2, "Correo", txtCorreo, 2);
+            AgregarCampo(campos, 3, "Cargo", cmbCargo, 0);
+            AgregarCampo(campos, 3, "Dirección", txtDireccion, 2);
+            split.Panel1.Controls.Add(campos);
+
+            var acciones = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 44, Padding = new Padding(10, 3, 0, 3), BackColor = Color.White };
+            btnGuardarEmpleado = CrearBoton("Guardar", Color.FromArgb(29, 111, 180));
+            btnNuevoEmpleado = CrearBoton("Nuevo", Color.FromArgb(85, 95, 110));
+            var btnEliminarEmpleado = CrearBoton("Eliminar", Color.FromArgb(173, 58, 58));
+            btnGuardarEmpleado.Click += GuardarEmpleado_Click;
+            btnNuevoEmpleado.Click += (s, e) => LimpiarEmpleado();
+            btnEliminarEmpleado.Click += EliminarEmpleado_Click;
+            acciones.Controls.AddRange(new Control[] { btnGuardarEmpleado, btnNuevoEmpleado, btnEliminarEmpleado });
+            split.Panel1.Controls.Add(acciones);
+
+            gridEmpleados = CrearGrid();
+            gridEmpleados.Columns.Add(Columna("Cédula", "Cedula"));
+            gridEmpleados.Columns.Add(Columna("Nombres", "Nombre"));
+            gridEmpleados.Columns.Add(Columna("Apellidos", "Apellido"));
+            gridEmpleados.Columns.Add(Columna("Sexo", "Sexo"));
+            gridEmpleados.Columns.Add(Columna("Teléfono", "Telefono"));
+            gridEmpleados.Columns.Add(Columna("Correo", "CorreoElectronico"));
+            gridEmpleados.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Cargo", Name = "Cargo", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
+            gridEmpleados.SelectionChanged += GridEmpleados_SelectionChanged;
+            split.Panel1.Controls.Add(gridEmpleados);
+
+            var panelCargo = split.Panel2;
+            panelCargo.Padding = new Padding(10);
+            var encabezadoCargo = new Label
+            {
+                Text = "GESTIÓN RÁPIDA DE CARGOS", Dock = DockStyle.Top, Height = 34,
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold), TextAlign = ContentAlignment.MiddleLeft
+            };
+            panelCargo.Controls.Add(encabezadoCargo);
+            txtCargo = new TextBox { Dock = DockStyle.Top, MaxLength = 100, Margin = new Padding(0, 5, 0, 5) };
+            panelCargo.Controls.Add(txtCargo);
+            var accionesCargo = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 42, WrapContents = false };
+            var btnCrearCargo = CrearBoton("Crear", Color.FromArgb(29, 111, 180));
+            var btnEliminarCargo = CrearBoton("Eliminar", Color.FromArgb(173, 58, 58));
+            btnCrearCargo.Width = 88;
+            btnEliminarCargo.Width = 88;
+            btnCrearCargo.Click += CrearCargo_Click;
+            btnEliminarCargo.Click += EliminarCargo_Click;
+            accionesCargo.Controls.AddRange(new Control[] { btnCrearCargo, btnEliminarCargo });
+            panelCargo.Controls.Add(accionesCargo);
+            gridCargos = CrearGrid();
+            gridCargos.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "ID", Name = "CargoId", Width = 55 });
+            gridCargos.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Cargo", Name = "NombreCargo", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
+            panelCargo.Controls.Add(gridCargos);
+
+            split.Panel1.Controls.SetChildIndex(busqueda, 0);
+            split.Panel1.Controls.SetChildIndex(campos, 1);
+            split.Panel1.Controls.SetChildIndex(acciones, 2);
+            split.Panel1.Controls.SetChildIndex(gridEmpleados, 3);
+            panelCargo.Controls.SetChildIndex(encabezadoCargo, 0);
+            panelCargo.Controls.SetChildIndex(txtCargo, 1);
+            panelCargo.Controls.SetChildIndex(accionesCargo, 2);
+            panelCargo.Controls.SetChildIndex(gridCargos, 3);
+        }
+
+        private void CargarTodo()
+        {
+            try
+            {
+                cargos = cargoService.Consultar();
+                MostrarCargos();
+                empleados = empleadoService.Consultar();
+                MostrarEmpleados();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "No se pudieron cargar empleados y cargos. " + ex.Message, "Error de consulta", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void MostrarCargos()
+        {
+            gridCargos.Rows.Clear();
+            foreach (Cargo cargo in cargos)
+            {
+                int fila = gridCargos.Rows.Add(cargo.CargoId, cargo.NombreCargo);
+                gridCargos.Rows[fila].Tag = cargo;
+            }
+            cmbCargo.DataSource = null;
+            cmbCargo.DataSource = cargos.ToList();
+            cmbCargo.DisplayMember = "NombreCargo";
+            cmbCargo.ValueMember = "CargoId";
+            cmbCargo.SelectedIndex = cargos.Count > 0 ? 0 : -1;
+        }
+
+        private void MostrarEmpleados()
+        {
+            if (gridEmpleados == null) return;
+            string filtro = txtBuscar == null ? string.Empty : txtBuscar.Text.Trim();
+            IEnumerable<Empleado> lista = empleados;
+            if (filtro.Length > 0)
+                lista = empleados.Where(x => x.Cedula.IndexOf(filtro, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    (x.Nombre + " " + x.Apellido).IndexOf(filtro, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    x.Nombre.IndexOf(filtro, StringComparison.OrdinalIgnoreCase) >= 0 || x.Apellido.IndexOf(filtro, StringComparison.OrdinalIgnoreCase) >= 0);
+            gridEmpleados.Rows.Clear();
+            foreach (Empleado empleado in lista)
+            {
+                int fila = gridEmpleados.Rows.Add(empleado.Cedula, empleado.Nombre, empleado.Apellido, empleado.Sexo,
+                    empleado.Telefono, empleado.CorreoElectronico, empleado.Cargo == null ? "" : empleado.Cargo.NombreCargo);
+                gridEmpleados.Rows[fila].Tag = empleado;
+            }
+        }
+
+        private void GuardarEmpleado_Click(object sender, EventArgs e)
+        {
+            if (!ValidarEmpleado()) return;
+            int cargoId = Convert.ToInt32(cmbCargo.SelectedValue);
+            string resultado = editando
+                ? empleadoService.Modificar(txtCedula.Text.Trim(), txtNombres.Text.Trim(), txtApellidos.Text.Trim(), cmbSexo.Text,
+                    TextoOpcional(txtTelefono), TextoOpcional(txtDireccion), TextoOpcional(txtCorreo), cargoId)
+                : empleadoService.Guardar(txtCedula.Text.Trim(), txtNombres.Text.Trim(), txtApellidos.Text.Trim(), cmbSexo.Text,
+                    TextoOpcional(txtTelefono), TextoOpcional(txtDireccion), TextoOpcional(txtCorreo), cargoId);
+            bool correcto = resultado.StartsWith("se registro el empleado", StringComparison.OrdinalIgnoreCase) ||
+                            resultado.StartsWith("El empleado se modifico", StringComparison.OrdinalIgnoreCase);
+            MessageBox.Show(this, resultado, correcto ? "Empleados" : "No se pudo guardar", MessageBoxButtons.OK,
+                correcto ? MessageBoxIcon.Information : MessageBoxIcon.Error);
+            if (correcto) { CargarTodo(); LimpiarEmpleado(); }
+        }
+
+        private bool ValidarEmpleado()
+        {
+            bool valido = true;
+            valido &= validacion.ValidarCampoVacioEspecifico(txtCedula, errores);
+            valido &= validacion.ValidarCampoVacioEspecifico(txtNombres, errores);
+            valido &= validacion.ValidarCampoVacioEspecifico(txtApellidos, errores);
+            valido &= validacion.ValidarCampoVacioEspecificoCombo(cmbSexo, errores);
+            valido &= validacion.ValidarCampoVacioEspecificoCombo(cmbCargo, errores);
+            if (!valido) MessageBox.Show(this, "Completa los campos obligatorios y selecciona un cargo.", "Validación", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return valido;
+        }
+
+        private void EliminarEmpleado_Click(object sender, EventArgs e)
+        {
+            Empleado empleado = gridEmpleados.SelectedRows.Count == 0 ? null : gridEmpleados.SelectedRows[0].Tag as Empleado;
+            if (empleado == null) return;
+            if (MessageBox.Show(this, "¿Eliminar el empleado seleccionado?", "Confirmar eliminación", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            string resultado = empleadoService.Eliminar(empleado.Cedula);
+            bool correcto = resultado.StartsWith("El empleado se elimino", StringComparison.OrdinalIgnoreCase);
+            MessageBox.Show(this, resultado, correcto ? "Empleados" : "No se pudo eliminar", MessageBoxButtons.OK, correcto ? MessageBoxIcon.Information : MessageBoxIcon.Error);
+            if (correcto) { CargarTodo(); LimpiarEmpleado(); }
+        }
+
+        private void CrearCargo_Click(object sender, EventArgs e)
+        {
+            string resultado = cargoService.Guardar(txtCargo.Text.Trim());
+            bool correcto = resultado.StartsWith("se registro el cargo", StringComparison.OrdinalIgnoreCase);
+            MessageBox.Show(this, resultado, correcto ? "Cargos" : "No se pudo guardar", MessageBoxButtons.OK, correcto ? MessageBoxIcon.Information : MessageBoxIcon.Error);
+            if (correcto) { txtCargo.Clear(); CargarTodo(); }
+        }
+
+        private void EliminarCargo_Click(object sender, EventArgs e)
+        {
+            Cargo cargo = gridCargos.SelectedRows.Count == 0 ? null : gridCargos.SelectedRows[0].Tag as Cargo;
+            if (cargo == null) return;
+            if (MessageBox.Show(this, "¿Eliminar el cargo seleccionado? Si tiene empleados asignados Oracle rechazará la operación.",
+                "Confirmar eliminación", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            string resultado = cargoService.Eliminar(cargo.CargoId);
+            bool correcto = resultado.StartsWith("El cargo se elimino", StringComparison.OrdinalIgnoreCase);
+            MessageBox.Show(this, resultado, correcto ? "Cargos" : "No se pudo eliminar", MessageBoxButtons.OK,
+                correcto ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+            if (correcto) CargarTodo();
+        }
+
+        private void GridEmpleados_SelectionChanged(object sender, EventArgs e)
+        {
+            Empleado empleado = gridEmpleados.SelectedRows.Count == 0 ? null : gridEmpleados.SelectedRows[0].Tag as Empleado;
+            if (empleado == null) return;
+            editando = true;
+            txtCedula.Text = empleado.Cedula;
+            txtCedula.Enabled = false;
+            txtNombres.Text = empleado.Nombre;
+            txtApellidos.Text = empleado.Apellido;
+            cmbSexo.SelectedItem = empleado.Sexo;
+            txtTelefono.Text = empleado.Telefono;
+            txtCorreo.Text = empleado.CorreoElectronico;
+            txtDireccion.Text = empleado.Direccion;
+            cmbCargo.SelectedValue = empleado.Cargo == null ? -1 : empleado.Cargo.CargoId;
+            btnGuardarEmpleado.Text = "Actualizar";
+        }
+
+        private void LimpiarEmpleado()
+        {
+            editando = false;
+            txtCedula.Enabled = true;
+            txtCedula.Clear(); txtNombres.Clear(); txtApellidos.Clear(); txtTelefono.Clear(); txtCorreo.Clear(); txtDireccion.Clear();
+            cmbSexo.SelectedIndex = -1;
+            cmbCargo.SelectedIndex = cargos.Count > 0 ? 0 : -1;
+            btnGuardarEmpleado.Text = "Guardar";
+            foreach (Control control in new Control[] { txtCedula, txtNombres, txtApellidos, cmbSexo, cmbCargo }) errores.SetError(control, string.Empty);
+            gridEmpleados.ClearSelection();
+            txtCedula.Focus();
+        }
+
+        private static TextBox CrearTexto(int maximo)
+        {
+            return new TextBox { Dock = DockStyle.Fill, MaxLength = maximo, Margin = new Padding(4, 7, 8, 3) };
+        }
+
+        private static void AgregarCampo(TableLayoutPanel panel, int fila, string texto, Control control, int columna)
+        {
+            panel.Controls.Add(new Label { Text = texto, TextAlign = ContentAlignment.MiddleLeft, Dock = DockStyle.Fill }, columna, fila);
+            panel.Controls.Add(control, columna + 1, fila);
+        }
+
+        private static Button CrearBoton(string texto, Color color)
+        {
+            return new Button { Text = texto, Width = 104, Height = 32, FlatStyle = FlatStyle.Flat, ForeColor = Color.White, BackColor = color, Margin = new Padding(4), Cursor = Cursors.Hand };
+        }
+
+        private static DataGridView CrearGrid()
+        {
+            return new DataGridView
+            {
+                Dock = DockStyle.Fill, ReadOnly = true, AllowUserToAddRows = false, AllowUserToDeleteRows = false,
+                AutoGenerateColumns = false, MultiSelect = false, SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                BackgroundColor = Color.White, BorderStyle = BorderStyle.None, RowHeadersVisible = false,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
+            };
+        }
+
+        private static DataGridViewTextBoxColumn Columna(string encabezado, string propiedad)
+        {
+            return new DataGridViewTextBoxColumn { HeaderText = encabezado, DataPropertyName = propiedad, SortMode = DataGridViewColumnSortMode.NotSortable };
+        }
+
+        private static string TextoOpcional(TextBox control)
+        {
+            return string.IsNullOrWhiteSpace(control.Text) ? null : control.Text.Trim();
+        }
+    }
+}

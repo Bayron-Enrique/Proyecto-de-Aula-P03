@@ -1,4 +1,5 @@
-﻿using System;
+﻿
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -14,10 +15,18 @@ namespace PRESENTACION
     public partial class Form1 : Form
     {
         FrmPanel frmPanel;
+
+        // AGREGADO: botones de los modulos faltantes
+        private Button btnArticulosMenu;
+        private Button btnFacturacionMenu;
+        private Button btnEmpleadosMenu;
+
         public Form1()
         {
             InitializeComponent();
-            
+
+            // AGREGADO: crear botones de Inventario y Facturacion
+            CrearBotonesAdicionales();
         }
 
         bool menuExpand = false;
@@ -36,11 +45,11 @@ namespace PRESENTACION
 
         private void MenuTransition_Tick(object sender, EventArgs e)
         {
-            if(menuExpand == false)
+            if (menuExpand == false)
             {
                 menuContainer.Height += 10;
 
-                if(menuContainer.Height >= 165)
+                if (menuContainer.Height >= 165)
                 {
                     MenuTransition.Stop();
                     menuExpand = true;
@@ -50,7 +59,7 @@ namespace PRESENTACION
             else
             {
                 menuContainer.Height -= 10;
-                if(menuContainer.Height <= 53)
+                if (menuContainer.Height <= 53)
                 {
                     MenuTransition.Stop();
                     menuExpand = false;
@@ -62,9 +71,13 @@ namespace PRESENTACION
         {
             MenuTransition.Start();
             PintarBotonActivo(btnAgenda);
+
+            // AGREGADO: abrir Agenda
+            AbrirFormularioHijo(new FrmAgenda());
         }
 
         bool sidebarExpand = true;
+
         private void sidebarTransition_Tick(object sender, EventArgs e)
         {
             sidebar.SuspendLayout();
@@ -80,7 +93,15 @@ namespace PRESENTACION
                 pnClientes.Width = sidebar.Width;
                 pnConfiguracion.Width = sidebar.Width;
 
-                if(sidebar.Width < 150)
+                // AGREGADO
+                if (btnArticulosMenu != null)
+                {
+                    btnArticulosMenu.Parent.Width = sidebar.Width;
+                    btnFacturacionMenu.Parent.Width = sidebar.Width;
+                    btnEmpleadosMenu.Parent.Width = sidebar.Width;
+                }
+
+                if (sidebar.Width < 150)
                 {
                     button2.Text = "";
                     btnAgenda.Text = "";
@@ -88,6 +109,11 @@ namespace PRESENTACION
                     btnVehiculos.Text = "";
                     btnClientes.Text = "";
                     btnConfiguracion.Text = "";
+
+                    // AGREGADO
+                    btnArticulosMenu.Text = "";
+                    btnFacturacionMenu.Text = "";
+                    btnEmpleadosMenu.Text = "";
                 }
 
                 if (sidebar.Width <= 57)
@@ -109,6 +135,14 @@ namespace PRESENTACION
                 pnClientes.Width = sidebar.Width;
                 pnConfiguracion.Width = sidebar.Width;
 
+                // AGREGADO
+                if (btnArticulosMenu != null)
+                {
+                    btnArticulosMenu.Parent.Width = sidebar.Width;
+                    btnFacturacionMenu.Parent.Width = sidebar.Width;
+                    btnEmpleadosMenu.Parent.Width = sidebar.Width;
+                }
+
                 if (sidebar.Width >= 251)
                 {
                     RellenarTexto();
@@ -129,6 +163,11 @@ namespace PRESENTACION
             btnVehiculos.Text = "            Vehiculos";
             btnClientes.Text = "           Clientes";
             btnConfiguracion.Text = "           Configuracion";
+
+            // AGREGADO
+            btnArticulosMenu.Text = "           Inventario";
+            btnFacturacionMenu.Text = "           Facturacion";
+            btnEmpleadosMenu.Text = "           Empleados y cargos";
         }
 
         private void btnHam_Click(object sender, EventArgs e)
@@ -138,13 +177,13 @@ namespace PRESENTACION
 
         private void btnSalir_Click(object sender, EventArgs e)
         {
-            
+
             this.Close();
         }
 
         private void btnMinimizar_Click(object sender, EventArgs e)
         {
-            
+
             this.WindowState = FormWindowState.Minimized;
         }
 
@@ -152,7 +191,7 @@ namespace PRESENTACION
         {
             if (WindowState == FormWindowState.Normal)
             {
-                
+
                 this.MaximizedBounds = Screen.FromHandle(this.Handle).WorkingArea;
                 this.WindowState = FormWindowState.Maximized;
 
@@ -169,7 +208,7 @@ namespace PRESENTACION
             if (e.Button == MouseButtons.Left)
             {
                 ReleaseCapture();
-                
+
                 SendMessage(Handle, WM_NCLBUTTONDOWN, HT_CAPTION, 0);
             }
         }
@@ -179,7 +218,7 @@ namespace PRESENTACION
             pnBarraSuperior.Cursor = Cursors.Default;
         }
 
-        
+
         private void PintarBotonActivo(Button activo)
         {
             button2.BackColor = colorNormal;
@@ -189,6 +228,11 @@ namespace PRESENTACION
             btnClientes.BackColor = colorNormal;
             btnConfiguracion.BackColor = colorNormal;
 
+            // AGREGADO
+            btnArticulosMenu.BackColor = colorNormal;
+            btnFacturacionMenu.BackColor = colorNormal;
+            btnEmpleadosMenu.BackColor = colorNormal;
+
             activo.BackColor = colorActivo;
         }
 
@@ -196,7 +240,7 @@ namespace PRESENTACION
         {
             PintarBotonActivo(button2);
 
-            if(frmPanel == null)
+            if (frmPanel == null)
             {
                 frmPanel = new FrmPanel();
                 frmPanel.FormClosed += FrmPanel_FormClosed;
@@ -208,7 +252,7 @@ namespace PRESENTACION
             {
                 frmPanel.Activate();
             }
-            
+
         }
 
         private void FrmPanel_FormClosed(object sender, FormClosedEventArgs e)
@@ -224,11 +268,125 @@ namespace PRESENTACION
         private void btnVehiculos_Click(object sender, EventArgs e)
         {
             PintarBotonActivo(btnVehiculos);
+
+            // AGREGADO
+            AbrirFormularioHijo(new FrmVehiculos());
         }
 
         private void btnClientes_Click(object sender, EventArgs e)
         {
             PintarBotonActivo(btnClientes);
+
+            // AGREGADO
+            AbrirFormularioHijo(new FrmClientes());
+        }
+
+        // ==========================================
+        // AGREGADO: CREAR LOS BOTONES FALTANTES
+        // ==========================================
+
+        private void CrearBotonesAdicionales()
+        {
+            btnArticulosMenu = CrearBotonLateral(
+                "btnArticulosMenu",
+                "           Inventario",
+                btnArticulosMenu_Click);
+
+            btnFacturacionMenu = CrearBotonLateral(
+                "btnFacturacionMenu",
+                "           Facturacion",
+                btnFacturacionMenu_Click);
+
+            btnEmpleadosMenu = CrearBotonLateral(
+                "btnEmpleadosMenu",
+                "           Empleados y cargos",
+                btnEmpleadosMenu_Click);
+        }
+
+        private Button CrearBotonLateral(
+            string nombre,
+            string texto,
+            EventHandler eventoClick)
+        {
+            Panel panel = new Panel();
+
+            panel.Name = "pn" + nombre;
+            panel.Size = pnClientes.Size;
+            panel.Margin = pnClientes.Margin;
+            panel.Cursor = Cursors.Hand;
+
+            Button boton = new Button();
+
+            boton.Name = nombre;
+            boton.Text = texto;
+            boton.BackColor = colorNormal;
+            boton.ForeColor = Color.White;
+            boton.Font = btnClientes.Font;
+            boton.FlatStyle = FlatStyle.Flat;
+            boton.FlatAppearance.BorderSize = 0;
+            boton.FlatAppearance.MouseOverBackColor =
+                Color.FromArgb(40, 40, 40);
+
+            boton.TextAlign = ContentAlignment.MiddleLeft;
+            boton.Size = btnClientes.Size;
+            boton.Location = btnClientes.Location;
+            boton.Padding = btnClientes.Padding;
+            boton.Cursor = Cursors.Hand;
+            boton.UseVisualStyleBackColor = false;
+
+            boton.Click += eventoClick;
+
+            panel.Controls.Add(boton);
+            sidebar.Controls.Add(panel);
+
+            // Colocar antes de Configuracion
+            sidebar.Controls.SetChildIndex(
+                panel,
+                sidebar.Controls.GetChildIndex(pnConfiguracion));
+
+            return boton;
+        }
+
+        // ==========================================
+        // AGREGADO: ABRIR FORMULARIOS HIJOS
+        // ==========================================
+
+        private void AbrirFormularioHijo(Form formulario)
+        {
+            // Cerrar el formulario hijo anterior
+            foreach (Form hijo in this.MdiChildren)
+            {
+                hijo.Close();
+            }
+
+            formulario.FormBorderStyle = FormBorderStyle.None;
+            formulario.MdiParent = this;
+            formulario.Dock = DockStyle.Fill;
+            formulario.Show();
+        }
+
+        // ==========================================
+        // AGREGADO: EVENTOS DE INVENTARIO Y FACTURACION
+        // ==========================================
+
+        private void btnArticulosMenu_Click(object sender, EventArgs e)
+        {
+            PintarBotonActivo(btnArticulosMenu);
+
+            AbrirFormularioHijo(new FrmArticulos());
+        }
+
+        private void btnFacturacionMenu_Click(object sender, EventArgs e)
+        {
+            PintarBotonActivo(btnFacturacionMenu);
+
+            AbrirFormularioHijo(new FrmFacturacion());
+        }
+
+        private void btnEmpleadosMenu_Click(object sender, EventArgs e)
+        {
+            PintarBotonActivo(btnEmpleadosMenu);
+            AbrirFormularioHijo(new FrmEmpleados());
         }
     }
 }

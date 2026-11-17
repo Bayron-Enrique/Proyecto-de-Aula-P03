@@ -31,7 +31,7 @@ namespace ENTIDADES
         public string Color { get; set; }
         public string Linea { get; set; }
         public Cliente Cliente { get; set; }
-        public string ClienteVehiculo { get; set; }
+
 
         public Vehiculo()
         {
@@ -40,7 +40,7 @@ namespace ENTIDADES
 
         public override string ToString()
         {
-            return $"| Placa: {Placa} | Tipo: {TipoVehiculo} | Marca: {Marca} {Linea} ({Modelo}) | Color: {Color} | Cédula Dueño: {ClienteVehiculo} |";
+            return $"| Placa: {Placa} | Tipo: {TipoVehiculo} | Marca: {Marca} {Linea} ({Modelo}) | Color: {Color} | Cédula Dueño: {Cliente.Cedula} |";
         }
     }
 }

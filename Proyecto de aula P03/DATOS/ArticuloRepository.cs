@@ -10,15 +10,14 @@ namespace DATOS
 {
     public class ArticuloRepository : ManejadorConexion, IRepository<Articulo>
     {
-        List<Articulo> articulos;
-
         public void Guardar(Articulo articulo)
         {
             using (OracleConnection con = ObtenerConexion())
             {
-                string sql = @"INSERT INTO Articulo 
-                                 (ARTICULOID, NOMBRE, PRECIO, PORCENTAJEIVA, CANTIDAD, DESCRIPCION, DURACION, PROVEEDOR_NIT, TIPO_ARTICULO_ID) 
-                                 VALUES (Seq_ArticuloID.NEXTVAL, :nombre, :precioventa, :porcentajeiva, :cantidad, :descripcion, :duracion, :proveedorNit, :tipoArticuloId)";
+                string sql = @"INSERT INTO TALLER.ARTICULO
+                                 (ARTICULOID, NOMBRE, PRECIO, PORCENTAJEIVA, CANTIDAD, DESCRIPCION, DURACION, PROVEEDOR_NIT, TIPO_ARTICULO_ID)
+                                 VALUES (TALLER.SEQ_ARTICULOID.NEXTVAL, :nombre, :precioventa, :porcentajeiva, :cantidad, :descripcion, :duracion, :proveedorNit,
+                                         (SELECT TIPO_ARTICULO_ID FROM TALLER.TIPO_ARTICULO WHERE UPPER(NOMBRE) = UPPER(:tipoArticulo)))";
 
                 using (OracleCommand cmd = new OracleCommand(sql, con))
                 {
@@ -59,8 +58,7 @@ namespace DATOS
                 cmd.Parameters.Add(new OracleParameter("proveedorNit", DBNull.Value));
             }
 
-            int tipoArticuloId = articulo is Repuesto ? 1 : 2;
-            cmd.Parameters.Add(new OracleParameter("tipoArticuloId", tipoArticuloId));
+            cmd.Parameters.Add(new OracleParameter("tipoArticulo", articulo is Repuesto ? "Repuesto" : "Servicio"));
         }
 
         public List<Articulo> Consultar()
@@ -68,7 +66,11 @@ namespace DATOS
             List<Articulo> articulos = new List<Articulo>();
             using (OracleConnection con = ObtenerConexion())
             {
-                string sql = "SELECT ARTICULOID, NOMBRE, PRECIO, PORCENTAJEIVA, CANTIDAD, DESCRIPCION, DURACION, PROVEEDOR_NIT, TIPO_ARTICULO_ID FROM Articulo";
+                string sql = @"SELECT A.ARTICULOID, A.NOMBRE, A.PRECIO, A.PORCENTAJEIVA, A.CANTIDAD,
+                                      A.DESCRIPCION, A.DURACION, A.PROVEEDOR_NIT, A.TIPO_ARTICULO_ID,
+                                      T.NOMBRE AS TIPO_ARTICULO
+                               FROM TALLER.ARTICULO A
+                               JOIN TALLER.TIPO_ARTICULO T ON T.TIPO_ARTICULO_ID = A.TIPO_ARTICULO_ID";
 
                 using (OracleCommand cmd = new OracleCommand(sql, con))
                 {
@@ -87,14 +89,13 @@ namespace DATOS
 
         private Articulo Mapear(OracleDataReader reader)
         {
-            int tipoArticuloId = Convert.ToInt32(reader["TIPO_ARTICULO_ID"]);
+            string tipoArticulo = reader["TIPO_ARTICULO"].ToString();
             int id = Convert.ToInt32(reader["ARTICULOID"]);
             string nombre = reader["NOMBRE"].ToString();
             decimal precio = Convert.ToDecimal(reader["PRECIO"]);
             decimal iva = Convert.ToDecimal(reader["PORCENTAJEIVA"]);
 
-            // Si el tipo es 1 (Repuesto), devolvemos un Repuesto
-            if (tipoArticuloId == 1)
+            if (string.Equals(tipoArticulo, "Repuesto", StringComparison.OrdinalIgnoreCase))
             {
                 return new Repuesto
                 {
@@ -106,7 +107,7 @@ namespace DATOS
                     Proveedor = reader["PROVEEDOR_NIT"] != DBNull.Value ? new Proveedor { Nit = reader["PROVEEDOR_NIT"].ToString() } : null
                 };
             }
-            else // Si es 2, devolvemos un Servicio
+            if (string.Equals(tipoArticulo, "Servicio", StringComparison.OrdinalIgnoreCase))
             {
                 return new Servicio
                 {
@@ -118,17 +119,19 @@ namespace DATOS
                     Descripcion = reader["DESCRIPCION"] != DBNull.Value ? reader["DESCRIPCION"].ToString() : string.Empty
                 };
             }
+            throw new InvalidOperationException("El tipo de artículo guardado en Oracle no es Repuesto ni Servicio: " + tipoArticulo);
         }
 
         public Articulo BuscarId(int articuloId)
         {
             using (OracleConnection con = ObtenerConexion())
             {
-                string sql = @"SELECT ARTICULOID, NOMBRE, PRECIO, PORCENTAJEIVA, 
-                               CANTIDAD, DESCRIPCION, DURACION, PROVEEDOR_NIT,
-                               TIPO_ARTICULO_ID 
-                               FROM Articulo 
-                               WHERE ARTICULOID = :articuloId"; ;
+                string sql = @"SELECT A.ARTICULOID, A.NOMBRE, A.PRECIO, A.PORCENTAJEIVA,
+                                      A.CANTIDAD, A.DESCRIPCION, A.DURACION, A.PROVEEDOR_NIT,
+                                      A.TIPO_ARTICULO_ID, T.NOMBRE AS TIPO_ARTICULO
+                               FROM TALLER.ARTICULO A
+                               JOIN TALLER.TIPO_ARTICULO T ON T.TIPO_ARTICULO_ID = A.TIPO_ARTICULO_ID
+                               WHERE A.ARTICULOID = :articuloId";
 
                 using (OracleCommand cmd = new OracleCommand(sql, con))
                 {
@@ -151,7 +154,7 @@ namespace DATOS
         {
             using (OracleConnection con = ObtenerConexion())
             {
-                string sql = @"DELETE FROM Articulo WHERE ARTICULOID = :articuloId";
+                string sql = @"DELETE FROM TALLER.ARTICULO WHERE ARTICULOID = :articuloId";
 
                 using (OracleCommand cmd = new OracleCommand(sql, con))
                 {
@@ -165,7 +168,7 @@ namespace DATOS
         {
             using (OracleConnection con = ObtenerConexion())
             {
-                string sql = @"UPDATE Articulo SET 
+                string sql = @"UPDATE TALLER.ARTICULO SET
                  NOMBRE = :nombre, 
                  PRECIO = :precioventa, 
                  PORCENTAJEIVA = :porcentajeiva, 
@@ -173,7 +176,7 @@ namespace DATOS
                  DESCRIPCION = :descripcion, 
                  DURACION = :duracion, 
                  PROVEEDOR_NIT = :proveedorNit, 
-                 TIPO_ARTICULO_ID = :tipoArticuloId 
+                 TIPO_ARTICULO_ID = (SELECT TIPO_ARTICULO_ID FROM TALLER.TIPO_ARTICULO WHERE UPPER(NOMBRE) = UPPER(:tipoArticulo))
                WHERE ARTICULOID = :articuloId";
 
                 using (OracleCommand cmd = new OracleCommand(sql, con))
