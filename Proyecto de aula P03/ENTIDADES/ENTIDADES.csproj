@@ -143,6 +143,7 @@
     <Compile Include="Soat.cs" />
     <Compile Include="Articulo\TipoArticulo.cs" />
     <Compile Include="Vehiculo.cs" />
+    <Compile Include="DetalleVehiculo.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

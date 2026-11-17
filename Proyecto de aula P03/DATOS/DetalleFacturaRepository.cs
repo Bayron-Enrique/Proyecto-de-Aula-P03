@@ -16,11 +16,22 @@ namespace DATOS
 
             using (OracleConnection con = ObtenerConexion())
             {
-                string sql = @"SELECT D.DETALLEFACTURAID, D.CANTIDAD, D.VALORUNITARIO, D.VALORIVA, 
-                                      D.FACTURA_FACTURAID, D.ARTICULO_ARTICULOID, D.PORCENTAJEIVA, 
-                                      D.DESCRIPCION, D.SUBTOTAL, D.TOTAL, A.TIPODEARTICULO 
-                               FROM DETALLEFACTURA D
-                               JOIN ARTICULO A ON D.ARTICULO_ARTICULOID = A.ARTICULOID";
+                string sql = @"SELECT D.DETALLEFACTURAID, 
+                               D.CANTIDAD, 
+                               D.VALORUNITARIO, 
+                               D.VALORIVA, 
+                               D.FACTURA_FACTURAID, 
+                               D.ARTICULO_ARTICULOID, 
+                               D.PORCENTAJEIVA, 
+                               D.DESCRIPCION AS DESCRIPCION_DETALLE,
+                               A.NOMBRE AS NOMBRE_ARTICULO,         
+                               D.SUBTOTAL, 
+                               D.TOTAL, 
+                               T.NOMBRE AS TIPODEARTICULO
+                                FROM DETALLE_FACTURA D
+                                JOIN ARTICULO A ON D.ARTICULO_ARTICULOID = A.ARTICULOID
+                                JOIN TIPO_ARTICULO T ON A.TIPO_ARTICULO_ID = T.TIPO_ARTICULO_ID
+                                WHERE D.FACTURA_FACTURAID = :facturaId";
                                
 
                 using (OracleCommand cmd = new OracleCommand(sql, con))
@@ -100,10 +111,15 @@ namespace DATOS
             List<DetalleFactura> detalles = new List<DetalleFactura>();
             using (OracleConnection con = ObtenerConexion())
             {
-                string sql = @"SELECT DETALLEFACTURAID, CANTIDAD, VALORUNITARIO, VALORIVA, FACTURA_FACTURAID, 
-                               ARTICULO_ARTICULOID, PORCENTAJEIVA, DESCRIPCION, SUBTOTAL, TOTAL
-                               FROM DETALLEFACTURA
-                               WHERE FACTURA_FACTURAID = :facturaId";
+                string sql = @"SELECT D.DETALLEFACTURAID, D.CANTIDAD, D.VALORUNITARIO, D.VALORIVA, D.FACTURA_FACTURAID, 
+                               D.ARTICULO_ARTICULOID, D.PORCENTAJEIVA, D.DESCRIPCION, D.SUBTOTAL, D.TOTAL,
+                               T.NOMBRE AS TIPODEARTICULO
+                               FROM DETALLE_FACTURA D
+                               JOIN ARTICULO A 
+                               ON D.ARTICULO_ARTICULOID = A.ARTICULOID
+                               JOIN TIPO_ARTICULO T 
+                               ON A.TIPO_ARTICULO_ID = T.TIPO_ARTICULO_ID
+                               WHERE D.FACTURA_FACTURAID = :facturaId";
                 using (OracleCommand cmd = new OracleCommand(sql, con))
                 {
                     cmd.Parameters.Add(new OracleParameter("facturaId", facturaId));
@@ -126,7 +142,7 @@ namespace DATOS
         private DetalleFactura Mapear(OracleDataReader reader)
         {
             int articuloId = Convert.ToInt32(reader["ARTICULO_ARTICULOID"]);
-            string nombre = reader["DESCRIPCION"].ToString();
+            string nombreArticulo = reader["NOMBRE_ARTICULO"].ToString();
             decimal precioVenta = Convert.ToDecimal(reader["VALORUNITARIO"]);
             decimal porcentajeIva = Convert.ToDecimal(reader["PORCENTAJEIVA"]);
             string tipoArticulo = reader["TIPODEARTICULO"]?.ToString();
@@ -135,11 +151,11 @@ namespace DATOS
             Articulo articulo;
             if (tipoArticulo == "Repuesto" || tipoArticulo == "1")
             {
-                articulo = new Repuesto { ArticuloId = articuloId, Nombre = nombre, PrecioVenta = precioVenta, PorcentajeIVA = porcentajeIva };
+                articulo = new Repuesto { ArticuloId = articuloId, Nombre = nombreArticulo, PrecioVenta = precioVenta, PorcentajeIVA = porcentajeIva };
             }
             else
             {
-                articulo = new Servicio { ArticuloId = articuloId, Nombre = nombre, PrecioVenta = precioVenta, PorcentajeIVA = porcentajeIva };
+                articulo = new Servicio { ArticuloId = articuloId, Nombre = nombreArticulo, PrecioVenta = precioVenta, PorcentajeIVA = porcentajeIva };
             }
 
             int cantidad = Convert.ToInt32(reader["CANTIDAD"]);
@@ -149,6 +165,7 @@ namespace DATOS
                 DetalleFacturaID = reader["DETALLEFACTURAID"] != DBNull.Value ? Convert.ToInt32(reader["DETALLEFACTURAID"]) : 0,
                 FacturaID = reader["FACTURA_FACTURAID"] != DBNull.Value ? Convert.ToInt32(reader["FACTURA_FACTURAID"]) : 0
             };
+            detalle.Descripcion = reader["DESCRIPCION"] != DBNull.Value ? reader["DESCRIPCION"].ToString() : string.Empty;
 
             return detalle;
         }
