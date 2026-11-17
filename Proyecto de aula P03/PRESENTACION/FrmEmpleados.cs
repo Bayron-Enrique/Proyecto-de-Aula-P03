@@ -49,10 +49,14 @@ namespace PRESENTACION
 
             var split = new SplitContainer
             {
-                Dock = DockStyle.Fill, SplitterDistance = 540, FixedPanel = FixedPanel.Panel2,
-                BackColor = BackColor, BorderStyle = BorderStyle.None, Panel1MinSize = 420, Panel2MinSize = 230
+                Dock = DockStyle.Fill, FixedPanel = FixedPanel.Panel2,
+                BackColor = BackColor, BorderStyle = BorderStyle.None
             };
             Controls.Add(split);
+            split.PerformLayout();
+            int distanciaMaxima = split.ClientSize.Width - split.SplitterWidth - split.Panel2MinSize;
+            if (distanciaMaxima >= split.Panel1MinSize)
+                split.SplitterDistance = Math.Max(split.Panel1MinSize, Math.Min(540, distanciaMaxima));
             encabezado.BringToFront();
 
             var busqueda = new Panel { Dock = DockStyle.Top, Height = 40, Padding = new Padding(14, 3, 14, 3) };
