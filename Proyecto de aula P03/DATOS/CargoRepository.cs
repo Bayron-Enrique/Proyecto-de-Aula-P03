@@ -7,6 +7,16 @@ namespace DATOS
 {
     public class CargoRepository : ManejadorConexion, IRepository<Cargo>
     {
+        public int ObtenerSiguienteCargoId()
+        {
+            using (OracleConnection con = ObtenerConexion())
+            using (OracleCommand cmd = new OracleCommand("SELECT SEQ_CARGOID.NEXTVAL FROM DUAL", con))
+            {
+                con.Open();
+                return Convert.ToInt32(cmd.ExecuteScalar());
+            }
+        }
+
         public void Guardar(Cargo cargo)
         {
             using (OracleConnection con = ObtenerConexion())
@@ -49,6 +59,7 @@ namespace DATOS
             using (OracleConnection con = ObtenerConexion())
             using (OracleCommand cmd = new OracleCommand("UPDATE CARGO SET NOMBRECARGO = :nombreCargo WHERE CARGOID = :cargoId", con))
             {
+                cmd.BindByName = true;
                 AgregarParametros(cmd, cargo);
                 con.Open();
                 cmd.ExecuteNonQuery();

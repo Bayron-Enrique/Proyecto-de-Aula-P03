@@ -33,12 +33,18 @@ namespace DATOS
         {
             using (OracleConnection con = ObtenerConexion())
             {
-                string sql = @"INSERT INTO Factura 
-                         (FACTURAID, FECHA, DESCUENTO, SUBTOTAL, IVA, TOTAL, OBSERVACIONES, ESTADOPAGO, CLIENTE_CEDULA, EMPLEADO_CEDULA, TIPO_DOCUMENTO) 
-                         VALUES (:facturaId, :fecha, :descuento, :subtotal, :iva, :total, :observaciones, :estadoPago, :clienteCedula, :empleadoCedula, :tipoDocumento)";
+                string sql = @"INSERT INTO Factura
+                            (FACTURAID, FECHA, DESCUENTO, SUBTOTAL, IVA, TOTAL,
+                             OBSERVACIONES, ESTADOPAGO, CLIENTE_CEDULA, EMPLEADO_CEDULA,
+                             TIPO_DOCUMENTO, DOMICILIO, DIRECCION_DOMICILIO, AGENDA_AGENDAID)
+                            VALUES
+                            (:facturaId, :fecha, :descuento, :subtotal, :iva, :total,
+                             :observaciones, :estadoPago, :clienteCedula, :empleadoCedula,
+                             :tipoDocumento, :domicilio, :direccionDomicilio, :agendaId)";
                 using (OracleCommand cmd = new OracleCommand(sql, con))
                 {
                     AgregarPararms(cmd, factura);
+                    cmd.BindByName = true;
                     con.Open();
                     cmd.ExecuteNonQuery();
                 }
@@ -58,6 +64,10 @@ namespace DATOS
             cmd.Parameters.Add(new OracleParameter("clienteCedula", factura.Cliente != null? (object)factura.Cliente.Cedula:DBNull.Value));
             cmd.Parameters.Add(new OracleParameter("empleadoCedula", factura.Empleado != null ? (object)factura.Empleado.Cedula : DBNull.Value));
             cmd.Parameters.Add(new OracleParameter("tipoDocumento", string.IsNullOrEmpty(factura.TipoDocumento)? "VENTA" : factura.TipoDocumento));
+            cmd.Parameters.Add(new OracleParameter("domicilio", factura.Domicilio ? "S" : "N"));
+            cmd.Parameters.Add(new OracleParameter("direccionDomicilio",
+                string.IsNullOrEmpty(factura.DireccionDomicilio) ? (object)DBNull.Value : factura.DireccionDomicilio));
+            cmd.Parameters.Add(new OracleParameter("agendaId",(object)factura.AgendaID ?? DBNull.Value));
         }
 
         public List<Factura> Consultar()
@@ -66,11 +76,10 @@ namespace DATOS
 
             using (OracleConnection con = ObtenerConexion())
             {
-                string sql = "SELECT FACTURAID, FECHA," +
-                            " DESCUENTO, SUBTOTAL, IVA, TOTAL," +
-                            " OBSERVACIONES, ESTADOPAGO, CLIENTE_CEDULA," +
-                            " EMPLEADO_CEDULA, TIPO_DOCUMENTO " +
-                            "FROM Factura";
+                string sql = @"SELECT FACTURAID, FECHA, DESCUENTO, SUBTOTAL, IVA, TOTAL,
+                      OBSERVACIONES, ESTADOPAGO, CLIENTE_CEDULA, EMPLEADO_CEDULA,
+                      TIPO_DOCUMENTO, DOMICILIO, DIRECCION_DOMICILIO, AGENDA_AGENDAID
+                      FROM FACTURA";
                 using (OracleCommand cmd = new OracleCommand(sql,con))
                 {
                     con.Open();
@@ -99,7 +108,10 @@ namespace DATOS
                 Total = Convert.ToDecimal(reader["TOTAL"]),
                 Observaciones = reader["OBSERVACIONES"] != DBNull.Value ? reader["OBSERVACIONES"].ToString() : string.Empty,
                 EstadoPago = reader["ESTADOPAGO"].ToString(),
-                TipoDocumento = reader["TIPO_DOCUMENTO"].ToString()
+                TipoDocumento = reader["TIPO_DOCUMENTO"].ToString(),
+                Domicilio = reader["DOMICILIO"] != DBNull.Value && reader["DOMICILIO"].ToString() == "S",
+                DireccionDomicilio = reader["DIRECCION_DOMICILIO"] != DBNull.Value ? reader["DIRECCION_DOMICILIO"].ToString() : string.Empty,
+                AgendaID = reader["AGENDA_AGENDAID"] != DBNull.Value ? (int?)Convert.ToInt32(reader["AGENDA_AGENDAID"]):null
             };
 
             if (reader["CLIENTE_CEDULA"] != DBNull.Value)
@@ -119,11 +131,11 @@ namespace DATOS
         {
             using (OracleConnection con = ObtenerConexion())
             {
-                string sql = "SELECT FACTURAID, FECHA, DESCUENTO, SUBTOTAL," +
-                             " IVA, TOTAL, OBSERVACIONES, ESTADOPAGO, CLIENTE_CEDULA," +
-                             " EMPLEADO_CEDULA, TIPO_DOCUMENTO" +
-                             " FROM Factura" +
-                             " WHERE FACTURAID = :facturaId";
+                string sql = @"SELECT FACTURAID, FECHA, DESCUENTO, SUBTOTAL, IVA, TOTAL,
+                      OBSERVACIONES, ESTADOPAGO, CLIENTE_CEDULA, EMPLEADO_CEDULA,
+                      TIPO_DOCUMENTO, DOMICILIO, DIRECCION_DOMICILIO, AGENDA_AGENDAID
+                      FROM FACTURA
+                      WHERE FACTURAID = :facturaId";
 
                 using (OracleCommand cmd = new OracleCommand(sql, con))
                 {
@@ -169,12 +181,16 @@ namespace DATOS
                                  ESTADOPAGO = :estadoPago, 
                                  CLIENTE_CEDULA = :clienteCedula, 
                                  EMPLEADO_CEDULA = :empleadoCedula, 
-                                 TIPO_DOCUMENTO = :tipoDocumento 
-                               WHERE FACTURAID = :facturaId";
+                                 TIPO_DOCUMENTO = :tipoDocumento,
+                                 DOMICILIO = :domicilio,
+                                 DIRECCION_DOMICILIO = :direccionDomicilio,
+                                 AGENDA_AGENDAID = :agendaId
+                                 WHERE FACTURAID = :facturaId";
 
                 using (OracleCommand cmd = new OracleCommand(sql, con))
                 {
                     AgregarPararms(cmd, factura);
+                    cmd.BindByName = true;
                     con.Open();
                     cmd.ExecuteNonQuery();
                 }

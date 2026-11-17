@@ -11,12 +11,10 @@ namespace LOGICA
     public class CargoService
     {
         CargoRepository repositorio;
-        int siguienteCargoId;
 
         public CargoService(CargoRepository repositorio)
         {
             this.repositorio = repositorio;
-            siguienteCargoId = 1;
         }
 
         public string Guardar(string nombreCargo)
@@ -55,7 +53,7 @@ namespace LOGICA
                     }
                 }
 
-                int cargoId = GenerarCargoId();
+                int cargoId = repositorio.ObtenerSiguienteCargoId();
 
                 Cargo cargo = new Cargo(cargoId, nombreCargo);
                 repositorio.Guardar(cargo);
@@ -68,22 +66,52 @@ namespace LOGICA
             }
         }
 
-        private int GenerarCargoId()
-        {
-            int numero = siguienteCargoId;
-
-            while (BuscarId(numero) != null)
-            {
-                numero++;
-            }
-
-            siguienteCargoId = numero + 1;
-            return numero;
-        }
-
         public Cargo BuscarId(int cargoId)
         {
             return repositorio.BuscarId(cargoId);
+        }
+
+        public string Modificar(int cargoId, string nombreCargo)
+        {
+            try
+            {
+                Cargo cargo = BuscarId(cargoId);
+                if (cargo == null)
+                {
+                    return "No se encontro el cargo ...";
+                }
+                if (string.IsNullOrWhiteSpace(nombreCargo) || nombreCargo != nombreCargo.Trim() || nombreCargo.Contains("  "))
+                {
+                    return "El nombre del cargo es obligatorio y no puede tener espacios al inicio, al final ni seguidos ...";
+                }
+                if (nombreCargo.Length < 3 || nombreCargo.Length > 100)
+                {
+                    return "El nombre del cargo debe tener entre 3 y 100 caracteres ...";
+                }
+                foreach (char c in nombreCargo)
+                {
+                    if (!char.IsLetter(c) && c != ' ')
+                    {
+                        return $"El nombre del cargo tiene el caracter '{c}' que no esta permitido, solo letras ...";
+                    }
+                }
+
+                foreach (Cargo existente in repositorio.Consultar())
+                {
+                    if (existente.CargoId != cargoId && string.Equals(existente.NombreCargo, nombreCargo, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return "Ya existe otro cargo con ese nombre ...";
+                    }
+                }
+
+                cargo.NombreCargo = nombreCargo;
+                repositorio.Modificar(cargo);
+                return "El cargo se modifico correctamente ...";
+            }
+            catch (Exception ex)
+            {
+                return $"Ocurrio un error al modificar el cargo: {ex.Message}";
+            }
         }
 
         public List<Cargo> Consultar()

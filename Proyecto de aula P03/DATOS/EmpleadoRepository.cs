@@ -22,6 +22,7 @@ namespace DATOS
                               VALUES (:cedula, :nombres, :apellidos, :sexo, :telefono, :direccion, :correo)", con))
                         {
                             cmd.Transaction = tx;
+                            cmd.BindByName = true;
                             AgregarParametrosPersona(cmd, empleado);
                             cmd.ExecuteNonQuery();
                         }
@@ -99,12 +100,14 @@ namespace DATOS
                               WHERE P.CEDULA = :cedula AND EXISTS (SELECT 1 FROM EMPLEADO E WHERE E.CEDULA = P.CEDULA)", con))
                         {
                             cmd.Transaction = tx;
+                            cmd.BindByName = true;
                             AgregarParametrosPersona(cmd, empleado);
                             cmd.ExecuteNonQuery();
                         }
                         using (OracleCommand cmd = new OracleCommand("UPDATE EMPLEADO SET CARGO_CARGOID = :cargoId WHERE CEDULA = :cedula", con))
                         {
                             cmd.Transaction = tx;
+                            cmd.BindByName = true;
                             cmd.Parameters.Add(new OracleParameter("cargoId", empleado.Cargo.CargoId));
                             cmd.Parameters.Add(new OracleParameter("cedula", empleado.Cedula));
                             cmd.ExecuteNonQuery();

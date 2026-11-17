@@ -14,14 +14,16 @@ namespace LOGICA
         ClienteRepository clienteRepositorio;
         VehiculoRepository vehiculoRepositorio;
         EmpleadoRepository empleadoRepositorio;
+        ArticuloRepository articuloRepositorio;
         int siguienteAgendaId;
 
-        public AgendaService(AgendaRepository repositorio, ClienteRepository clienteRepositorio, VehiculoRepository vehiculoRepositorio, EmpleadoRepository empleadoRepositorio)
+        public AgendaService(AgendaRepository repositorio, ClienteRepository clienteRepositorio, VehiculoRepository vehiculoRepositorio, EmpleadoRepository empleadoRepositorio, ArticuloRepository articuloRepositorio)
         {
             this.repositorio = repositorio;
             this.clienteRepositorio = clienteRepositorio;
             this.vehiculoRepositorio = vehiculoRepositorio;
             this.empleadoRepositorio = empleadoRepositorio;
+            this.articuloRepositorio = articuloRepositorio;
             siguienteAgendaId = 1;
         }
 
@@ -134,6 +136,14 @@ namespace LOGICA
                     return "El empleado seleccionado no existe ...";
                 }
 
+                Servicio servicio = articuloRepositorio.Consultar()
+                    .OfType<Servicio>()
+                    .FirstOrDefault(a => string.Equals(a.Nombre, nombreServicio, StringComparison.OrdinalIgnoreCase));
+                if (servicio == null)
+                {
+                    return "El servicio seleccionado no existe ...";
+                }
+
                 // Cruces de horario
                 foreach (var existente in repositorio.Consultar())
                 {
@@ -156,11 +166,10 @@ namespace LOGICA
                 agenda.AgendaID = agendaId;
                 agenda.Fecha = fecha;
                 agenda.Comentario = comentario;
-                agenda.NombreServicio = nombreServicio;
                 agenda.Estado = estado;
-                agenda.Cliente = cliente;
                 agenda.Vehiculo = vehiculo;
                 agenda.Empleado = empleado;
+                agenda.ArticuloServicio = servicio;
 
                 repositorio.Guardar(agenda);
 

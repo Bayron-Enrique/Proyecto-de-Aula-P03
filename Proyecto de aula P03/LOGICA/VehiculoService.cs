@@ -185,6 +185,76 @@ namespace LOGICA
             return repositorio.BuscarPlaca(placa);
         }
 
+        public string Modificar(string placa, int modelo, string marca, string tipoVehiculo,
+            string color, string linea, string cedulaCliente)
+        {
+            try
+            {
+                Vehiculo vehiculo = BuscarPlaca(placa);
+                if (vehiculo == null)
+                {
+                    return "No se encontro el vehiculo para modificar ...";
+                }
+                if (modelo < 1950 || modelo > DateTime.Now.Year + 1)
+                {
+                    return $"El modelo debe estar entre 1950 y {DateTime.Now.Year + 1} ...";
+                }
+                if (tipoVehiculo != "Automovil" && tipoVehiculo != "Motocicleta")
+                {
+                    return "El tipo de vehiculo debe ser Automovil o Motocicleta ...";
+                }
+
+                string error = ValidarCampoOpcional(marca, 2, 50, "marca", permitirGuion: false);
+                if (error != null) return error;
+                error = ValidarCampoOpcional(color, 3, 50, "color", permitirGuion: false);
+                if (error != null) return error;
+                error = ValidarCampoOpcional(linea, 1, 50, "linea", permitirGuion: true);
+                if (error != null) return error;
+
+                if (string.IsNullOrWhiteSpace(cedulaCliente))
+                {
+                    return "Debe seleccionar un cliente valido ...";
+                }
+                Cliente cliente = clienteRepositorio.BuscarCedula(cedulaCliente);
+                if (cliente == null)
+                {
+                    return "El cliente seleccionado no existe ...";
+                }
+
+                vehiculo.Modelo = modelo;
+                vehiculo.Marca = marca;
+                vehiculo.TipoVehiculo = tipoVehiculo;
+                vehiculo.Color = color;
+                vehiculo.Linea = linea;
+                vehiculo.Cliente = cliente;
+
+                repositorio.Modificar(vehiculo);
+                return "El vehiculo se modifico correctamente ...";
+            }
+            catch (Exception ex)
+            {
+                return $"Ocurrio un error al modificar el vehiculo: {ex.Message}";
+            }
+        }
+
+        private static string ValidarCampoOpcional(string valor, int minimo, int maximo, string nombreCampo, bool permitirGuion)
+        {
+            if (string.IsNullOrEmpty(valor)) return null;
+            if (string.IsNullOrWhiteSpace(valor) || valor != valor.Trim() || valor.Contains("  ") ||
+                valor.Length < minimo || valor.Length > maximo)
+            {
+                return $"El campo {nombreCampo} no cumple la longitud o el formato requerido ...";
+            }
+            foreach (char c in valor)
+            {
+                if (!char.IsLetterOrDigit(c) && c != ' ' && !(permitirGuion && c == '-'))
+                {
+                    return $"El campo {nombreCampo} contiene caracteres no permitidos ...";
+                }
+            }
+            return null;
+        }
+
         public List<Vehiculo> Consultar()
         {
             return repositorio.Consultar();

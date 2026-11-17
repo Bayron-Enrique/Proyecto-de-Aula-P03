@@ -1,4 +1,4 @@
-﻿using DATOS;
+using DATOS;
 using ENTIDADES;
 using System;
 using System.Collections.Generic;
@@ -27,7 +27,7 @@ namespace LOGICA
             siguienteDetalleId = 1;
         }
 
-        public string Guardar(DateTime fecha, double descuento, string observaciones, string estadoPago, string cedulaCliente, string cedulaEmpleado)
+        public string Guardar(DateTime fecha, decimal descuento, string observaciones, string estadoPago, string cedulaCliente, string cedulaEmpleado)
         {
             try
             {
@@ -46,7 +46,7 @@ namespace LOGICA
                 {
                     return "El descuento no puede ser negativo ...";
                 }
-                if (descuento > 99999999.99)
+                if (descuento > 99999999.99m)
                 {
                     return "El descuento es demasiado alto ...";
                 }
@@ -163,9 +163,10 @@ namespace LOGICA
                     return "La cantidad debe estar entre 1 y 1000000 ...";
                 }
 
-                if (cantidad > articulo.Cantidad)
+                Repuesto repuesto = articulo as Repuesto;
+                if (repuesto != null && cantidad > repuesto.Cantidad)
                 {
-                    return $"No hay existencias suficientes, solo quedan {articulo.Cantidad} ...";
+                    return $"No hay existencias suficientes, solo quedan {repuesto.Cantidad} ...";
                 }
 
                 foreach (var d in factura.Detalles)
@@ -176,17 +177,16 @@ namespace LOGICA
                     }
                 }
 
-                DetalleFactura detalle = new DetalleFactura();
+                DetalleFactura detalle = new DetalleFactura(cantidad, articulo);
                 detalle.DetalleFacturaID = GenerarDetalleId();
-                detalle.Cantidad = cantidad;
-                detalle.Articulo = articulo;
-                detalle.ValorUnitario = articulo.Precio;
-                detalle.ValorIVA = (articulo.Precio * cantidad) * (articulo.PorcentajeIVA / 100);
 
                 factura.Detalles.Add(detalle);
                 factura.CalcularTotales();
 
-                articulo.Cantidad -= cantidad;
+                if (repuesto != null)
+                {
+                    repuesto.Cantidad -= cantidad;
+                }
 
                 return $"se agrego el detalle a la factura {facturaId} desde la logica ...";
             }
@@ -237,7 +237,7 @@ namespace LOGICA
                     return "No se encontro la factura ...";
                 }
 
-                repositorio.Eliminar(factura);
+                repositorio.Eliminar(facturaId);
 
                 return "La factura se elimino correctamente ...";
             }

@@ -144,7 +144,9 @@ namespace LOGICA
                 // Duplicados
                 foreach (var existente in repositorio.Consultar())
                 {
-                    if (string.Equals(existente.Nombre, nombre, StringComparison.OrdinalIgnoreCase) && existente.Proveedor.Nit == nitProveedor)
+                    Repuesto repuestoExistente = existente as Repuesto;
+                    if (repuestoExistente != null && string.Equals(existente.Nombre, nombre, StringComparison.OrdinalIgnoreCase) &&
+                        repuestoExistente.Proveedor != null && repuestoExistente.Proveedor.Nit == nitProveedor)
                     {
                         return "Ya existe un articulo con ese nombre para ese proveedor ...";
                     }
@@ -152,7 +154,31 @@ namespace LOGICA
 
                 int articuloId = GenerarArticuloId();
 
-                Articulo articulo = new Articulo(articuloId, nombre, precio, porcentajeIVA, tipoArticulo, cantidad, descripcion, duracion, proveedor);
+                Articulo articulo;
+                if (string.Equals(tipoArticulo, "Servicio", StringComparison.OrdinalIgnoreCase))
+                {
+                    articulo = new Servicio
+                    {
+                        ArticuloId = articuloId,
+                        Nombre = nombre,
+                        PrecioVenta = Convert.ToDecimal(precio),
+                        PorcentajeIVA = Convert.ToDecimal(porcentajeIVA),
+                        Duracion = duracion,
+                        Descripcion = descripcion
+                    };
+                }
+                else
+                {
+                    articulo = new Repuesto
+                    {
+                        ArticuloId = articuloId,
+                        Nombre = nombre,
+                        PrecioVenta = Convert.ToDecimal(precio),
+                        PorcentajeIVA = Convert.ToDecimal(porcentajeIVA),
+                        Cantidad = cantidad,
+                        Proveedor = proveedor
+                    };
+                }
                 repositorio.Guardar(articulo);
 
                 return $"se registro el articulo numero {articuloId} desde la logica ...";
@@ -197,7 +223,7 @@ namespace LOGICA
                     return "No se encontro el articulo ...";
                 }
 
-                repositorio.Eliminar(articulo);
+                repositorio.Eliminar(articuloId);
 
                 return "El articulo se elimino correctamente ...";
             }

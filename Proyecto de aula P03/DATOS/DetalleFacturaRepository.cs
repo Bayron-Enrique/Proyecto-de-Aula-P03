@@ -53,7 +53,7 @@ namespace DATOS
         {
             using (OracleConnection con = ObtenerConexion())
             {
-                string sql = @"INSERT INTO DETALLEFACTURA 
+                string sql = @"INSERT INTO DETALLE_FACTURA
                             (DETALLEFACTURAID, CANTIDAD, VALORUNITARIO, VALORIVA, FACTURA_FACTURAID, 
                             ARTICULO_ARTICULOID, PORCENTAJEIVA, DESCRIPCION, SUBTOTAL, TOTAL) 
                             VALUES (Seq_DetalleFacturaID.NEXTVAL, :cantidad, :valorUnitario, :valorIva, :facturaId,
@@ -96,7 +96,7 @@ namespace DATOS
         {
             using (OracleConnection con = ObtenerConexion())
             {
-                string sql = "DELETE FROM DETALLEFACTURA WHERE DETALLEFACTURAID = :detalleId";
+                string sql = "DELETE FROM DETALLE_FACTURA WHERE DETALLEFACTURAID = :detalleId";
                 using (OracleCommand cmd = new OracleCommand(sql,con))
                 {
                     cmd.Parameters.Add(new OracleParameter("detalleId", id));
