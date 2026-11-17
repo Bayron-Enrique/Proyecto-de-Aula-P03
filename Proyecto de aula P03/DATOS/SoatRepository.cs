@@ -10,7 +10,7 @@ namespace DATOS
         public int ObtenerSiguienteSoatId()
         {
             using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand("SELECT SEQ_SOATID.NEXTVAL FROM DUAL", con))
+            using (OracleCommand cmd = new OracleCommand("SELECT TALLER.SEQ_SOATID.NEXTVAL FROM DUAL", con))
             {
                 con.Open();
                 return Convert.ToInt32(cmd.ExecuteScalar());
@@ -19,7 +19,7 @@ namespace DATOS
 
         public void Guardar(Soat soat)
         {
-            const string sql = @"INSERT INTO SOAT
+            const string sql = @"INSERT INTO TALLER.SOAT
                                  (SOATID, NUMEROSOAT, FECHAINICIO, VEHICULO_PLACA, FECHAFIN)
                                  VALUES (:soatId, :numeroSoat, :fechaInicio, :placa, :fechaFin)";
 
@@ -69,7 +69,7 @@ namespace DATOS
 
         public void Modificar(Soat soat)
         {
-            const string sql = @"UPDATE SOAT
+            const string sql = @"UPDATE TALLER.SOAT
                                  SET NUMEROSOAT = :numeroSoat,
                                      FECHAINICIO = :fechaInicio,
                                      VEHICULO_PLACA = :placa,
@@ -90,7 +90,7 @@ namespace DATOS
         public void Eliminar(Soat soat)
         {
             using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand("DELETE FROM SOAT WHERE SOATID = :soatId", con))
+            using (OracleCommand cmd = new OracleCommand("DELETE FROM TALLER.SOAT WHERE SOATID = :soatId", con))
             {
                 cmd.Parameters.Add(new OracleParameter("soatId", soat.SoatId));
                 con.Open();
@@ -100,7 +100,7 @@ namespace DATOS
 
         private const string SelectSoats = @"SELECT S.SOATID, S.NUMEROSOAT, S.FECHAINICIO,
                                                     S.FECHAFIN, S.VEHICULO_PLACA
-                                             FROM SOAT S";
+                                             FROM TALLER.SOAT S";
 
         private static Soat Mapear(OracleDataReader reader)
         {
@@ -116,6 +116,9 @@ namespace DATOS
 
         private static void AgregarParametros(OracleCommand cmd, Soat soat)
         {
+            if (soat.Vehiculo == null || string.IsNullOrWhiteSpace(soat.Vehiculo.Placa))
+                throw new ArgumentException("Debe seleccionar un vehículo para el SOAT.");
+            cmd.BindByName = true;
             cmd.Parameters.Add(new OracleParameter("numeroSoat", soat.NumeroSoat));
             cmd.Parameters.Add(new OracleParameter("fechaInicio", soat.FechaInicio));
             cmd.Parameters.Add(new OracleParameter("placa", soat.Vehiculo.Placa));

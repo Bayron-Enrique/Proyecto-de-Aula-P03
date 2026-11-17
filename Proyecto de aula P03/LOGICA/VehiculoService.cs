@@ -81,26 +81,9 @@ namespace LOGICA
                     }
                 }
 
-                // Tipo de vehiculo
-                if (string.IsNullOrWhiteSpace(tipoVehiculo))
-                {
-                    return "El tipo de vehiculo es obligatorio y no puede tener solo espacios ...";
-                }
-                if (tipoVehiculo != tipoVehiculo.Trim() || tipoVehiculo.Contains("  "))
-                {
-                    return "El tipo de vehiculo no puede tener espacios al inicio, al final ni seguidos ...";
-                }
-                if (tipoVehiculo.Length < 3 || tipoVehiculo.Length > 20)
-                {
-                    return "El tipo de vehiculo debe tener entre 3 y 20 caracteres ...";
-                }
-                foreach (char c in tipoVehiculo)
-                {
-                    if (!char.IsLetter(c) && c != ' ')
-                    {
-                        return $"El tipo de vehiculo tiene el caracter '{c}' que no esta permitido, solo letras ...";
-                    }
-                }
+                // Estos son los únicos valores aceptados por el CHECK de Oracle.
+                if (tipoVehiculo != "Automovil" && tipoVehiculo != "Motocicleta")
+                    return "El tipo de vehiculo debe ser Automovil o Motocicleta ...";
 
                 // Color (opcional)
                 if (!string.IsNullOrEmpty(color))
