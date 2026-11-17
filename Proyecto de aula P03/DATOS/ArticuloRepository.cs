@@ -31,13 +31,12 @@ namespace DATOS
 
         private void AgregarParams(OracleCommand cmd, Articulo articulo)
         {
-            
-            cmd.Parameters.Add(new OracleParameter("articuloId", articulo.ArticuloId));
+            cmd.BindByName = true;
+
             cmd.Parameters.Add(new OracleParameter("nombre", articulo.Nombre));
             cmd.Parameters.Add(new OracleParameter("precioventa", articulo.PrecioVenta));
             cmd.Parameters.Add(new OracleParameter("porcentajeiva", articulo.PorcentajeIVA));
 
-            
             if (articulo is Repuesto repuesto)
             {
                 cmd.Parameters.Add(new OracleParameter("cantidad", repuesto.Cantidad));
@@ -60,7 +59,6 @@ namespace DATOS
                 cmd.Parameters.Add(new OracleParameter("proveedorNit", DBNull.Value));
             }
 
-            
             int tipoArticuloId = articulo is Repuesto ? 1 : 2;
             cmd.Parameters.Add(new OracleParameter("tipoArticuloId", tipoArticuloId));
         }
@@ -153,11 +151,11 @@ namespace DATOS
         {
             using (OracleConnection con = ObtenerConexion())
             {
-                string sql = @"DELETE FROM Articulo WHERE ARTICULOID = :agendaId";
+                string sql = @"DELETE FROM Articulo WHERE ARTICULOID = :articuloId";
 
                 using (OracleCommand cmd = new OracleCommand(sql, con))
                 {
-                    cmd.Parameters.Add(new OracleParameter("agendaId", articuloId));
+                    cmd.Parameters.Add(new OracleParameter("articuloId", articuloId));
                     con.Open();
                     cmd.ExecuteNonQuery();
                 }
@@ -168,17 +166,20 @@ namespace DATOS
             using (OracleConnection con = ObtenerConexion())
             {
                 string sql = @"UPDATE Articulo SET 
-                         NOMBRE = :nombre, 
-                         PRECIOVENTA = :precioVenta, 
-                         PORCENTAJEIVA = :porcentajeIva, 
-                         STOCK = :stock, 
-                         TIPODEARTICULO = :tipoArticulo 
-                       WHERE ARTICULOID = :articuloId";
+                 NOMBRE = :nombre, 
+                 PRECIO = :precioventa, 
+                 PORCENTAJEIVA = :porcentajeiva, 
+                 CANTIDAD = :cantidad, 
+                 DESCRIPCION = :descripcion, 
+                 DURACION = :duracion, 
+                 PROVEEDOR_NIT = :proveedorNit, 
+                 TIPO_ARTICULO_ID = :tipoArticuloId 
+               WHERE ARTICULOID = :articuloId";
 
                 using (OracleCommand cmd = new OracleCommand(sql, con))
                 {
-                    // Llamamos al método que carga todos los parámetros de un solo golpe
                     AgregarParams(cmd, articulo);
+                    cmd.Parameters.Add(new OracleParameter("articuloId", articulo.ArticuloId));
 
                     con.Open();
                     cmd.ExecuteNonQuery();

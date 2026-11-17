@@ -10,6 +10,15 @@ namespace DATOS
 {
     public class AgendaRepository : ManejadorConexion, IRepository<Agenda>
     {
+        private const string SelectAgenda = @"SELECT A.AGENDAID, A.FECHA, A.COMENTARIO, A.VEHICULO_PLACA,
+                                      A.EMPLEADO_CEDULA, A.ESTADO, A.ARTICULO_ARTICULOID,
+                                      P.NOMBRES, P.APELLIDOS,
+                                      AR.NOMBRE AS NOMBRE_ARTICULO
+                                      FROM Agenda A
+                                      JOIN EMPLEADO E ON E.CEDULA = A.EMPLEADO_CEDULA
+                                      JOIN PERSONA P ON P.CEDULA = E.CEDULA
+                                      LEFT JOIN ARTICULO AR ON AR.ARTICULOID = A.ARTICULO_ARTICULOID";
+
         public void Guardar(Agenda agenda)
         {
             using (OracleConnection con = ObtenerConexion())
@@ -28,6 +37,8 @@ namespace DATOS
         }
         private void AgregarParams(OracleCommand cmd, Agenda agenda)
         {
+            cmd.BindByName = true;
+
             cmd.Parameters.Add(new OracleParameter("fecha", agenda.Fecha));
             cmd.Parameters.Add(new OracleParameter("comentario", string.IsNullOrEmpty(agenda.Comentario) ? (object)DBNull.Value : agenda.Comentario));
             cmd.Parameters.Add(new OracleParameter("vehiculoPlaca", agenda.Vehiculo.Placa));
@@ -47,13 +58,9 @@ namespace DATOS
         public List<Agenda> Consultar()
         {
             List<Agenda> agendas = new List<Agenda>();
-            using(OracleConnection con = ObtenerConexion())
+            using (OracleConnection con = ObtenerConexion())
             {
-                string sql = @"SELECT AGENDAID,
-                            FECHA, COMENTARIO, VEHICULO_PLACA, 
-                            EMPLEADO_CEDULA, ESTADO, ARTICULO_ARTICULOID 
-                            FROM Agenda";
-                using (OracleCommand cmd = new OracleCommand(sql, con))
+                using (OracleCommand cmd = new OracleCommand(SelectAgenda, con))
                 {
                     con.Open();
                     using (OracleDataReader reader = cmd.ExecuteReader())
@@ -64,14 +71,12 @@ namespace DATOS
                         }
                     }
                 }
-                
             }
             return agendas;
         }
 
         private Agenda Mapear(OracleDataReader reader)
         {
-            
             return new Agenda
             {
                 AgendaID = Convert.ToInt32(reader["AGENDAID"]),
@@ -79,29 +84,52 @@ namespace DATOS
                 Comentario = reader["COMENTARIO"] != DBNull.Value ? reader["COMENTARIO"].ToString() : string.Empty,
                 Estado = reader["ESTADO"].ToString(),
 
-                // Instanciamos los objetos solo con su llave primaria para mantener la estructura orientada a objetos
-                Vehiculo = new Vehiculo { Placa = reader["VEHICULO_PLACA"].ToString() },
-                Empleado = new Empleado { Cedula = reader["EMPLEADO_CEDULA"].ToString() },
+                Vehiculo = new Vehiculo { Placa = reader["VEHICULO_PLACA"].ToString().Trim() },
+                Empleado = new Empleado
+                {
+                    Cedula = reader["EMPLEADO_CEDULA"].ToString().Trim(),
+                    Nombre = reader["NOMBRES"].ToString(),
+                    Apellido = reader["APELLIDOS"].ToString()
+                },
                 ArticuloServicio = reader["ARTICULO_ARTICULOID"] != DBNull.Value
-                    ? new Servicio { ArticuloId = Convert.ToInt32(reader["ARTICULO_ARTICULOID"]) }
+                    ? new Servicio
+                    {
+                        ArticuloId = Convert.ToInt32(reader["ARTICULO_ARTICULOID"]),
+                        Nombre = reader["NOMBRE_ARTICULO"].ToString()
+                    }
                     : null
             };
         }
 
-        public void Modificar(Agenda entidad)
+        public void Modificar(Agenda agenda)
         {
-            throw new NotImplementedException();
+            using (OracleConnection con = ObtenerConexion())
+            {
+                string sql = @"UPDATE Agenda SET 
+                         FECHA = :fecha, 
+                         COMENTARIO = :comentario, 
+                         VEHICULO_PLACA = :vehiculoPlaca, 
+                         EMPLEADO_CEDULA = :empleadoCedula, 
+                         ESTADO = :estado, 
+                         ARTICULO_ARTICULOID = :articuloId 
+                       WHERE AGENDAID = :agendaId";
+
+                using (OracleCommand cmd = new OracleCommand(sql, con))
+                {
+                    AgregarParams(cmd, agenda);
+                    cmd.Parameters.Add(new OracleParameter("agendaId", agenda.AgendaID));
+
+                    con.Open();
+                    cmd.ExecuteNonQuery();
+                }
+            }
         }
 
         public Agenda BuscarId(int agendaId)
         {
             using (OracleConnection con = ObtenerConexion())
             {
-                string sql = @"SELECT AGENDAID, FECHA, COMENTARIO, VEHICULO_PLACA, 
-                               EMPLEADO_CEDULA, ESTADO, 
-                               ARTICULO_ARTICULOID 
-                               FROM Agenda 
-                               WHERE AGENDAID = :agendaId";
+                string sql = SelectAgenda + " WHERE A.AGENDAID = :agendaId";
 
                 using (OracleCommand cmd = new OracleCommand(sql, con))
                 {
