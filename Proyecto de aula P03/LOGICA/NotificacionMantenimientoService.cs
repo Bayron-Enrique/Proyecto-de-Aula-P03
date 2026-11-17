@@ -23,85 +23,78 @@ namespace LOGICA
 
         public string Guardar(DateTime fecha, string comentario, string placa, int articuloId)
         {
+            return Guardar(fecha, comentario, "PENDIENTE", placa, articuloId);
+        }
+
+        public string Guardar(DateTime fecha, string comentario, string estado, string placa, int articuloId)
+        {
+            return GuardarOActualizar(0, fecha, comentario, estado, placa, articuloId);
+        }
+
+        public string Modificar(int notificacionId, DateTime fecha, string comentario, string estado, string placa, int articuloId)
+        {
+            return GuardarOActualizar(notificacionId, fecha, comentario, estado, placa, articuloId);
+        }
+
+        private string GuardarOActualizar(int id, DateTime fecha, string comentario, string estado, string placa, int articuloId)
+        {
             try
             {
-                // Fecha
-                if (fecha.Year < 2000 || fecha > DateTime.Now.AddYears(5))
-                {
-                    return "La fecha de la notificacion no es valida ...";
-                }
-
-                // Comentario (opcional)
-                if (!string.IsNullOrEmpty(comentario))
-                {
-                    if (string.IsNullOrWhiteSpace(comentario))
-                    {
-                        return "El comentario no puede tener solo espacios ...";
-                    }
-                    if (comentario != comentario.Trim() || comentario.Contains("  "))
-                    {
-                        return "El comentario no puede tener espacios al inicio, al final ni seguidos ...";
-                    }
-                    if (comentario.Length < 3 || comentario.Length > 200)
-                    {
-                        return "El comentario debe tener entre 3 y 200 caracteres ...";
-                    }
-                    foreach (char c in comentario)
-                    {
-                        if (char.IsControl(c))
-                        {
-                            return "El comentario tiene caracteres no permitidos ...";
-                        }
-                    }
-                }
-
-                // Vehiculo y articulo
-                if (string.IsNullOrWhiteSpace(placa))
-                {
-                    return "Debe seleccionar un vehiculo valido ...";
-                }
-                if (articuloId <= 0)
-                {
-                    return "Debe seleccionar un articulo valido ...";
-                }
-
+                NotificacionMantenimiento actual = id > 0 ? repositorio.BuscarId(id) : null;
+                if (id > 0 && actual == null) return "No se encontró la notificación seleccionada.";
+                if (fecha.Year < 2000 || fecha > DateTime.Now.AddYears(5)) return "La fecha programada debe ser válida y no superar cinco años.";
+                if (!string.IsNullOrWhiteSpace(comentario) && (comentario != comentario.Trim() || comentario.Length > 200 || comentario.Any(char.IsControl)))
+                    return "La observación admite hasta 200 caracteres y no debe tener espacios sobrantes ni controles.";
+                string estadoNormalizado = NormalizarEstado(estado);
+                if (estadoNormalizado == null) return "El estado debe ser PENDIENTE, ENVIADA, COMPLETADA o CANCELADA.";
+                if (string.IsNullOrWhiteSpace(placa) || articuloId <= 0) return "Selecciona un vehículo y un artículo o servicio.";
                 Vehiculo vehiculo = vehiculoRepositorio.BuscarPlaca(placa);
-
-                if (vehiculo == null)
-                {
-                    return "El vehiculo seleccionado no existe ...";
-                }
-
+                if (vehiculo == null) return "El vehículo seleccionado ya no existe.";
                 Articulo articulo = articuloRepositorio.BuscarId(articuloId);
+                if (articulo == null) return "El artículo seleccionado ya no existe.";
+                bool duplicado = repositorio.Consultar().Any(n => n.NotificacionID != id && n.Vehiculo.Placa == vehiculo.Placa &&
+                    n.Articulo.ArticuloId == articuloId && n.Fecha.Date == fecha.Date);
+                if (duplicado) return "Ya existe una notificación para ese vehículo y artículo en esa fecha.";
 
-                if (articulo == null)
+                var notificacion = new NotificacionMantenimiento
                 {
-                    return "El articulo seleccionado no existe ...";
-                }
-
-                // Duplicados
-                foreach (var existente in repositorio.Consultar())
+                    NotificacionID = id,
+                    Fecha = fecha,
+                    Comentario = string.IsNullOrWhiteSpace(comentario) ? null : comentario.Trim(),
+                    Estado = estadoNormalizado,
+                    Vehiculo = vehiculo,
+                    Articulo = articulo
+                };
+                if (actual == null)
                 {
-                    if (existente.Vehiculo.Placa == placa && existente.Articulo.ArticuloId == articuloId && existente.Fecha.Date == fecha.Date)
-                    {
-                        return "Ya existe una notificacion de ese articulo para ese vehiculo en esa fecha ...";
-                    }
+                    repositorio.Guardar(notificacion);
+                    return "Se registró la notificación número " + notificacion.NotificacionID + ".";
                 }
-
-                NotificacionMantenimiento notificacion = new NotificacionMantenimiento();
-                notificacion.Fecha = fecha;
-                notificacion.Comentario = comentario;
-                notificacion.Vehiculo = vehiculo;
-                notificacion.Articulo = articulo;
-
-                repositorio.Guardar(notificacion);
-
-                return $"se registro la notificacion numero {notificacion.NotificacionID} desde la logica ...";
+                repositorio.Modificar(notificacion);
+                return "La notificación se modificó correctamente.";
             }
-            catch (Exception ex)
+            catch (Exception ex) { return "No se pudo guardar la notificación: " + ex.Message; }
+        }
+
+        public string CambiarEstado(int notificacionId, string estado)
+        {
+            try
             {
-                return $"ocurrio un error al guardar: {ex.Message}";
+                NotificacionMantenimiento notificacion = repositorio.BuscarId(notificacionId);
+                if (notificacion == null) return "No se encontró la notificación.";
+                string normalizado = NormalizarEstado(estado);
+                if (normalizado == null) return "Selecciona un estado válido.";
+                notificacion.Estado = normalizado;
+                repositorio.Modificar(notificacion);
+                return "El estado de la notificación se actualizó.";
             }
+            catch (Exception ex) { return "No se pudo actualizar el estado: " + ex.Message; }
+        }
+
+        private static string NormalizarEstado(string estado)
+        {
+            string[] estados = { "PENDIENTE", "ENVIADA", "COMPLETADA", "CANCELADA" };
+            return estados.FirstOrDefault(e => string.Equals(e, estado == null ? null : estado.Trim(), StringComparison.OrdinalIgnoreCase));
         }
 
         public NotificacionMantenimiento BuscarId(int notificacionId)

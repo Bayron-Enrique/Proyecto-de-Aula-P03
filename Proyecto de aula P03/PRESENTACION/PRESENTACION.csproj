@@ -147,11 +147,20 @@
     <Compile Include="FrmAgenda.Designer.cs">
       <DependentUpon>FrmAgenda.cs</DependentUpon>
     </Compile>
+    <Compile Include="FrmMantenimiento.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="FrmArticulos.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="FrmArticulos.Designer.cs">
       <DependentUpon>FrmArticulos.cs</DependentUpon>
+    </Compile>
+    <Compile Include="FrmProveedores.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FrmProveedores.Designer.cs">
+      <DependentUpon>FrmProveedores.cs</DependentUpon>
     </Compile>
     <Compile Include="FrmClientes.cs">
       <SubType>Form</SubType>

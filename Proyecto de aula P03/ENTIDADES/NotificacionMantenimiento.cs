@@ -11,6 +11,7 @@ namespace ENTIDADES
         public int NotificacionID { get; set; }
         public DateTime Fecha { get; set; }
         public string Comentario { get; set; }
+        public string Estado { get; set; }
         public Vehiculo Vehiculo { get; set; }
         public Articulo Articulo { get; set; }
 

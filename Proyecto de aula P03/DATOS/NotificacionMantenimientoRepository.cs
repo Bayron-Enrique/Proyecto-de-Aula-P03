@@ -7,7 +7,7 @@ namespace DATOS
 {
     public class NotificacionMantenimientoRepository : ManejadorConexion, IRepository<NotificacionMantenimiento>
     {
-        private const string SelectSql = @"SELECT N.NOTIFICACIONID, N.FECHA, N.COMENTARIO,
+        private const string SelectSql = @"SELECT N.NOTIFICACIONID, N.FECHA, N.COMENTARIO, N.ESTADO,
                                           N.VEHICULO_PLACA, N.ARTICULO_ARTICULOID,
                                           A.NOMBRE AS ARTICULO_NOMBRE, A.CANTIDAD, A.DESCRIPCION, A.DURACION,
                                           A.PROVEEDOR_NIT, T.NOMBRE AS TIPO_ARTICULO
@@ -24,8 +24,8 @@ namespace DATOS
                 using (OracleCommand secuencia = new OracleCommand("SELECT TALLER.SEQ_NOTIFICACIONID.NEXTVAL FROM DUAL", con))
                     notificacion.NotificacionID = Convert.ToInt32(secuencia.ExecuteScalar());
                 const string sql = @"INSERT INTO TALLER.NOTIFICACION_MANTENIMIENTO
-                                     (NOTIFICACIONID, FECHA, COMENTARIO, VEHICULO_PLACA, ARTICULO_ARTICULOID)
-                                     VALUES (:notificacionId, :fecha, :comentario, :placa, :articuloId)";
+                                     (NOTIFICACIONID, FECHA, COMENTARIO, ESTADO, VEHICULO_PLACA, ARTICULO_ARTICULOID)
+                                     VALUES (:notificacionId, :fecha, :comentario, :estado, :placa, :articuloId)";
                 using (OracleCommand cmd = new OracleCommand(sql, con))
                 {
                     AgregarParametros(cmd, notificacion);
@@ -74,6 +74,7 @@ namespace DATOS
         public void Modificar(NotificacionMantenimiento notificacion)
         {
             const string sql = @"UPDATE TALLER.NOTIFICACION_MANTENIMIENTO SET FECHA = :fecha, COMENTARIO = :comentario,
+                                 ESTADO = :estado,
                                  VEHICULO_PLACA = :placa, ARTICULO_ARTICULOID = :articuloId
                                  WHERE NOTIFICACIONID = :notificacionId";
             using (OracleConnection con = ObtenerConexion())
@@ -91,6 +92,7 @@ namespace DATOS
             cmd.BindByName = true;
             cmd.Parameters.Add("fecha", notificacion.Fecha);
             cmd.Parameters.Add("comentario", string.IsNullOrEmpty(notificacion.Comentario) ? (object)DBNull.Value : notificacion.Comentario);
+            cmd.Parameters.Add("estado", notificacion.Estado);
             cmd.Parameters.Add("placa", notificacion.Vehiculo.Placa);
             cmd.Parameters.Add("articuloId", notificacion.Articulo.ArticuloId);
         }
@@ -122,6 +124,7 @@ namespace DATOS
                 NotificacionID = Convert.ToInt32(reader["NOTIFICACIONID"]),
                 Fecha = Convert.ToDateTime(reader["FECHA"]),
                 Comentario = reader["COMENTARIO"] == DBNull.Value ? string.Empty : reader["COMENTARIO"].ToString(),
+                Estado = reader["ESTADO"].ToString(),
                 Vehiculo = new Vehiculo { Placa = reader["VEHICULO_PLACA"].ToString().Trim() },
                 Articulo = articulo
             };

@@ -27,11 +27,16 @@ namespace DATOS
 
         private const string SelectAgenda = @"SELECT A.AGENDAID, A.FECHA, A.COMENTARIO, A.VEHICULO_PLACA,
                                       A.EMPLEADO_CEDULA, A.ESTADO, A.ARTICULO_ARTICULOID,
-                                      P.NOMBRES, P.APELLIDOS,
-                                      AR.NOMBRE AS NOMBRE_ARTICULO
+                                      VP.NOMBRES AS CLIENTE_NOMBRES, VP.APELLIDOS AS CLIENTE_APELLIDOS,
+                                      EP.NOMBRES AS EMPLEADO_NOMBRES, EP.APELLIDOS AS EMPLEADO_APELLIDOS,
+                                      C.CARGOID, C.NOMBRECARGO, AR.NOMBRE AS NOMBRE_ARTICULO, AR.DURACION AS DURACION_SERVICIO
                                       FROM TALLER.AGENDA A
+                                      JOIN TALLER.VEHICULO V ON V.PLACA = A.VEHICULO_PLACA
+                                      JOIN TALLER.CLIENTE CL ON CL.CEDULA = V.CLIENTE_CEDULA
+                                      JOIN TALLER.PERSONA VP ON VP.CEDULA = CL.CEDULA
                                       JOIN TALLER.EMPLEADO E ON E.CEDULA = A.EMPLEADO_CEDULA
-                                      JOIN TALLER.PERSONA P ON P.CEDULA = E.CEDULA
+                                      JOIN TALLER.PERSONA EP ON EP.CEDULA = E.CEDULA
+                                      JOIN TALLER.CARGO C ON C.CARGOID = E.CARGO_CARGOID
                                       LEFT JOIN TALLER.ARTICULO AR ON AR.ARTICULOID = A.ARTICULO_ARTICULOID";
 
         public void Guardar(Agenda agenda)
@@ -101,18 +106,32 @@ namespace DATOS
                 Comentario = reader["COMENTARIO"] != DBNull.Value ? reader["COMENTARIO"].ToString() : string.Empty,
                 Estado = reader["ESTADO"].ToString(),
 
-                Vehiculo = new Vehiculo { Placa = reader["VEHICULO_PLACA"].ToString().Trim() },
+                Vehiculo = new Vehiculo
+                {
+                    Placa = reader["VEHICULO_PLACA"].ToString().Trim(),
+                    Cliente = new Cliente
+                    {
+                        Nombre = reader["CLIENTE_NOMBRES"].ToString(),
+                        Apellido = reader["CLIENTE_APELLIDOS"].ToString()
+                    }
+                },
                 Empleado = new Empleado
                 {
                     Cedula = reader["EMPLEADO_CEDULA"].ToString().Trim(),
-                    Nombre = reader["NOMBRES"].ToString(),
-                    Apellido = reader["APELLIDOS"].ToString()
+                    Nombre = reader["EMPLEADO_NOMBRES"].ToString(),
+                    Apellido = reader["EMPLEADO_APELLIDOS"].ToString(),
+                    Cargo = new Cargo
+                    {
+                        CargoId = Convert.ToInt32(reader["CARGOID"]),
+                        NombreCargo = reader["NOMBRECARGO"].ToString()
+                    }
                 },
                 ArticuloServicio = reader["ARTICULO_ARTICULOID"] != DBNull.Value
                     ? new Servicio
                     {
                         ArticuloId = Convert.ToInt32(reader["ARTICULO_ARTICULOID"]),
-                        Nombre = reader["NOMBRE_ARTICULO"].ToString()
+                        Nombre = reader["NOMBRE_ARTICULO"].ToString(),
+                        Duracion = reader["DURACION_SERVICIO"] == DBNull.Value ? 0 : Convert.ToInt32(reader["DURACION_SERVICIO"])
                     }
                     : null
             };
