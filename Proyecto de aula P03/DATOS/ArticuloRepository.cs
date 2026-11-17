@@ -2,192 +2,156 @@ using ENTIDADES;
 using Oracle.ManagedDataAccess.Client;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DATOS
 {
     public class ArticuloRepository : ManejadorConexion, IRepository<Articulo>
     {
+        private const string SelectSql = @"SELECT A.ARTICULOID, A.NOMBRE, A.PRECIO, A.PORCENTAJEIVA,
+                                                 A.CANTIDAD, A.DESCRIPCION, A.DURACION, A.PROVEEDOR_NIT,
+                                                 T.NOMBRE AS TIPO_ARTICULO, P.RAZONSOCIAL AS PROVEEDOR_NOMBRE
+                                          FROM TALLER.ARTICULO A
+                                          JOIN TALLER.TIPO_ARTICULO T ON T.TIPO_ARTICULO_ID = A.TIPO_ARTICULO_ID
+                                          LEFT JOIN TALLER.PROVEEDOR P ON P.NIT = A.PROVEEDOR_NIT";
+
         public void Guardar(Articulo articulo)
         {
+            const string sql = @"INSERT INTO TALLER.ARTICULO
+                                 (ARTICULOID, NOMBRE, PRECIO, PORCENTAJEIVA, CANTIDAD, DESCRIPCION,
+                                  DURACION, PROVEEDOR_NIT, TIPO_ARTICULO_ID)
+                                 VALUES (:articuloId, :nombre, :precio, :iva, :cantidad, :descripcion,
+                                         :duracion, :nitProveedor,
+                                         (SELECT TIPO_ARTICULO_ID FROM TALLER.TIPO_ARTICULO WHERE UPPER(NOMBRE) = UPPER(:tipo)))";
             using (OracleConnection con = ObtenerConexion())
             {
-                string sql = @"INSERT INTO TALLER.ARTICULO
-                                 (ARTICULOID, NOMBRE, PRECIO, PORCENTAJEIVA, CANTIDAD, DESCRIPCION, DURACION, PROVEEDOR_NIT, TIPO_ARTICULO_ID)
-                                 VALUES (TALLER.SEQ_ARTICULOID.NEXTVAL, :nombre, :precioventa, :porcentajeiva, :cantidad, :descripcion, :duracion, :proveedorNit,
-                                         (SELECT TIPO_ARTICULO_ID FROM TALLER.TIPO_ARTICULO WHERE UPPER(NOMBRE) = UPPER(:tipoArticulo)))";
-
+                con.Open();
+                using (OracleCommand secuencia = new OracleCommand("SELECT TALLER.SEQ_ARTICULOID.NEXTVAL FROM DUAL", con))
+                    articulo.ArticuloId = Convert.ToInt32(secuencia.ExecuteScalar());
                 using (OracleCommand cmd = new OracleCommand(sql, con))
                 {
-                    AgregarParams(cmd, articulo);
-                    con.Open();
+                    cmd.BindByName = true;
+                    AgregarParametros(cmd, articulo);
+                    cmd.Parameters.Add("articuloId", articulo.ArticuloId);
                     cmd.ExecuteNonQuery();
                 }
             }
         }
 
-        private void AgregarParams(OracleCommand cmd, Articulo articulo)
-        {
-            cmd.BindByName = true;
-
-            cmd.Parameters.Add(new OracleParameter("nombre", articulo.Nombre));
-            cmd.Parameters.Add(new OracleParameter("precioventa", articulo.PrecioVenta));
-            cmd.Parameters.Add(new OracleParameter("porcentajeiva", articulo.PorcentajeIVA));
-
-            if (articulo is Repuesto repuesto)
-            {
-                cmd.Parameters.Add(new OracleParameter("cantidad", repuesto.Cantidad));
-                cmd.Parameters.Add(new OracleParameter("proveedorNit", repuesto.Proveedor != null ? (object)repuesto.Proveedor.Nit : DBNull.Value));
-                cmd.Parameters.Add(new OracleParameter("descripcion", DBNull.Value));
-                cmd.Parameters.Add(new OracleParameter("duracion", 0));
-            }
-            else if (articulo is Servicio servicio)
-            {
-                cmd.Parameters.Add(new OracleParameter("duracion", servicio.Duracion));
-                cmd.Parameters.Add(new OracleParameter("descripcion", string.IsNullOrEmpty(servicio.Descripcion) ? (object)DBNull.Value : servicio.Descripcion));
-                cmd.Parameters.Add(new OracleParameter("cantidad", 0));
-                cmd.Parameters.Add(new OracleParameter("proveedorNit", DBNull.Value));
-            }
-            else
-            {
-                cmd.Parameters.Add(new OracleParameter("cantidad", 0));
-                cmd.Parameters.Add(new OracleParameter("descripcion", DBNull.Value));
-                cmd.Parameters.Add(new OracleParameter("duracion", 0));
-                cmd.Parameters.Add(new OracleParameter("proveedorNit", DBNull.Value));
-            }
-
-            cmd.Parameters.Add(new OracleParameter("tipoArticulo", articulo is Repuesto ? "Repuesto" : "Servicio"));
-        }
-
         public List<Articulo> Consultar()
         {
-            List<Articulo> articulos = new List<Articulo>();
+            var articulos = new List<Articulo>();
             using (OracleConnection con = ObtenerConexion())
+            using (OracleCommand cmd = new OracleCommand(SelectSql + " ORDER BY A.NOMBRE", con))
             {
-                string sql = @"SELECT A.ARTICULOID, A.NOMBRE, A.PRECIO, A.PORCENTAJEIVA, A.CANTIDAD,
-                                      A.DESCRIPCION, A.DURACION, A.PROVEEDOR_NIT, A.TIPO_ARTICULO_ID,
-                                      T.NOMBRE AS TIPO_ARTICULO
-                               FROM TALLER.ARTICULO A
-                               JOIN TALLER.TIPO_ARTICULO T ON T.TIPO_ARTICULO_ID = A.TIPO_ARTICULO_ID";
-
-                using (OracleCommand cmd = new OracleCommand(sql, con))
-                {
-                    con.Open();
-                    using (OracleDataReader reader = cmd.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            articulos.Add(Mapear(reader));
-                        }
-                    }
-                }
+                con.Open();
+                using (OracleDataReader reader = cmd.ExecuteReader())
+                    while (reader.Read()) articulos.Add(Mapear(reader));
             }
             return articulos;
-        }
-
-        private Articulo Mapear(OracleDataReader reader)
-        {
-            string tipoArticulo = reader["TIPO_ARTICULO"].ToString();
-            int id = Convert.ToInt32(reader["ARTICULOID"]);
-            string nombre = reader["NOMBRE"].ToString();
-            decimal precio = Convert.ToDecimal(reader["PRECIO"]);
-            decimal iva = Convert.ToDecimal(reader["PORCENTAJEIVA"]);
-
-            if (string.Equals(tipoArticulo, "Repuesto", StringComparison.OrdinalIgnoreCase))
-            {
-                return new Repuesto
-                {
-                    ArticuloId = id,
-                    Nombre = nombre,
-                    PrecioVenta = precio,
-                    PorcentajeIVA = iva,
-                    Cantidad = Convert.ToInt32(reader["CANTIDAD"]),
-                    Proveedor = reader["PROVEEDOR_NIT"] != DBNull.Value ? new Proveedor { Nit = reader["PROVEEDOR_NIT"].ToString() } : null
-                };
-            }
-            if (string.Equals(tipoArticulo, "Servicio", StringComparison.OrdinalIgnoreCase))
-            {
-                return new Servicio
-                {
-                    ArticuloId = id,
-                    Nombre = nombre,
-                    PrecioVenta = precio,
-                    PorcentajeIVA = iva,
-                    Duracion = Convert.ToInt32(reader["DURACION"]),
-                    Descripcion = reader["DESCRIPCION"] != DBNull.Value ? reader["DESCRIPCION"].ToString() : string.Empty
-                };
-            }
-            throw new InvalidOperationException("El tipo de artículo guardado en Oracle no es Repuesto ni Servicio: " + tipoArticulo);
         }
 
         public Articulo BuscarId(int articuloId)
         {
             using (OracleConnection con = ObtenerConexion())
+            using (OracleCommand cmd = new OracleCommand(SelectSql + " WHERE A.ARTICULOID = :articuloId", con))
             {
-                string sql = @"SELECT A.ARTICULOID, A.NOMBRE, A.PRECIO, A.PORCENTAJEIVA,
-                                      A.CANTIDAD, A.DESCRIPCION, A.DURACION, A.PROVEEDOR_NIT,
-                                      A.TIPO_ARTICULO_ID, T.NOMBRE AS TIPO_ARTICULO
-                               FROM TALLER.ARTICULO A
-                               JOIN TALLER.TIPO_ARTICULO T ON T.TIPO_ARTICULO_ID = A.TIPO_ARTICULO_ID
-                               WHERE A.ARTICULOID = :articuloId";
-
-                using (OracleCommand cmd = new OracleCommand(sql, con))
-                {
-                    cmd.Parameters.Add(new OracleParameter("articuloId", articuloId));
-                    con.Open();
-                    using (OracleDataReader reader = cmd.ExecuteReader())
-                    {
-                        if (reader.Read())
-                        {
-                            return Mapear(reader);
-                        }
-                    }
-                }
+                cmd.BindByName = true;
+                cmd.Parameters.Add("articuloId", articuloId);
+                con.Open();
+                using (OracleDataReader reader = cmd.ExecuteReader())
+                    return reader.Read() ? Mapear(reader) : null;
             }
+        }
 
-            return null;
+        public void Modificar(Articulo articulo)
+        {
+            const string sql = @"UPDATE TALLER.ARTICULO SET NOMBRE = :nombre, PRECIO = :precio,
+                                 PORCENTAJEIVA = :iva, CANTIDAD = :cantidad, DESCRIPCION = :descripcion,
+                                 DURACION = :duracion, PROVEEDOR_NIT = :nitProveedor,
+                                 TIPO_ARTICULO_ID = (SELECT TIPO_ARTICULO_ID FROM TALLER.TIPO_ARTICULO WHERE UPPER(NOMBRE) = UPPER(:tipo))
+                                 WHERE ARTICULOID = :articuloId";
+            using (OracleConnection con = ObtenerConexion())
+            using (OracleCommand cmd = new OracleCommand(sql, con))
+            {
+                cmd.BindByName = true;
+                AgregarParametros(cmd, articulo);
+                cmd.Parameters.Add("articuloId", articulo.ArticuloId);
+                con.Open();
+                cmd.ExecuteNonQuery();
+            }
         }
 
         public void Eliminar(int articuloId)
         {
             using (OracleConnection con = ObtenerConexion())
+            using (OracleCommand cmd = new OracleCommand("DELETE FROM TALLER.ARTICULO WHERE ARTICULOID = :articuloId", con))
             {
-                string sql = @"DELETE FROM TALLER.ARTICULO WHERE ARTICULOID = :articuloId";
-
-                using (OracleCommand cmd = new OracleCommand(sql, con))
-                {
-                    cmd.Parameters.Add(new OracleParameter("articuloId", articuloId));
-                    con.Open();
-                    cmd.ExecuteNonQuery();
-                }
+                cmd.Parameters.Add("articuloId", articuloId);
+                con.Open();
+                cmd.ExecuteNonQuery();
             }
         }
-        public void Modificar(Articulo articulo)
+
+        private static void AgregarParametros(OracleCommand cmd, Articulo articulo)
         {
-            using (OracleConnection con = ObtenerConexion())
+            cmd.BindByName = true;
+            cmd.Parameters.Add("nombre", articulo.Nombre);
+            cmd.Parameters.Add("precio", articulo.PrecioVenta);
+            cmd.Parameters.Add("iva", articulo.PorcentajeIVA);
+            if (articulo is Repuesto repuesto)
             {
-                string sql = @"UPDATE TALLER.ARTICULO SET
-                 NOMBRE = :nombre, 
-                 PRECIO = :precioventa, 
-                 PORCENTAJEIVA = :porcentajeiva, 
-                 CANTIDAD = :cantidad, 
-                 DESCRIPCION = :descripcion, 
-                 DURACION = :duracion, 
-                 PROVEEDOR_NIT = :proveedorNit, 
-                 TIPO_ARTICULO_ID = (SELECT TIPO_ARTICULO_ID FROM TALLER.TIPO_ARTICULO WHERE UPPER(NOMBRE) = UPPER(:tipoArticulo))
-               WHERE ARTICULOID = :articuloId";
-
-                using (OracleCommand cmd = new OracleCommand(sql, con))
-                {
-                    AgregarParams(cmd, articulo);
-                    cmd.Parameters.Add(new OracleParameter("articuloId", articulo.ArticuloId));
-
-                    con.Open();
-                    cmd.ExecuteNonQuery();
-                }
+                if (repuesto.Proveedor == null || string.IsNullOrWhiteSpace(repuesto.Proveedor.Nit))
+                    throw new ArgumentException("El repuesto debe estar asociado a un proveedor.");
+                cmd.Parameters.Add("cantidad", repuesto.Cantidad);
+                cmd.Parameters.Add("descripcion", DBNull.Value);
+                cmd.Parameters.Add("duracion", DBNull.Value);
+                cmd.Parameters.Add("nitProveedor", repuesto.Proveedor.Nit);
+                cmd.Parameters.Add("tipo", "Repuesto");
             }
+            else if (articulo is Servicio servicio)
+            {
+                cmd.Parameters.Add("cantidad", DBNull.Value);
+                cmd.Parameters.Add("descripcion", (object)servicio.Descripcion ?? DBNull.Value);
+                cmd.Parameters.Add("duracion", servicio.Duracion);
+                cmd.Parameters.Add("nitProveedor", DBNull.Value);
+                cmd.Parameters.Add("tipo", "Servicio");
+            }
+            else
+            {
+                throw new ArgumentException("El artículo debe ser un Repuesto o un Servicio.");
+            }
+        }
+
+        private static Articulo Mapear(OracleDataReader reader)
+        {
+            string tipo = reader["TIPO_ARTICULO"].ToString();
+            int id = Convert.ToInt32(reader["ARTICULOID"]);
+            string nombre = reader["NOMBRE"].ToString();
+            decimal precio = Convert.ToDecimal(reader["PRECIO"]);
+            decimal iva = Convert.ToDecimal(reader["PORCENTAJEIVA"]);
+            if (string.Equals(tipo, "Repuesto", StringComparison.OrdinalIgnoreCase))
+            {
+                return new Repuesto
+                {
+                    ArticuloId = id, Nombre = nombre, PrecioVenta = precio, PorcentajeIVA = iva,
+                    Cantidad = reader["CANTIDAD"] == DBNull.Value ? 0 : Convert.ToInt32(reader["CANTIDAD"]),
+                    Proveedor = reader["PROVEEDOR_NIT"] == DBNull.Value ? null : new Proveedor
+                    {
+                        Nit = reader["PROVEEDOR_NIT"].ToString(),
+                        RazonSocial = reader["PROVEEDOR_NOMBRE"] == DBNull.Value ? null : reader["PROVEEDOR_NOMBRE"].ToString()
+                    }
+                };
+            }
+            if (string.Equals(tipo, "Servicio", StringComparison.OrdinalIgnoreCase))
+            {
+                return new Servicio
+                {
+                    ArticuloId = id, Nombre = nombre, PrecioVenta = precio, PorcentajeIVA = iva,
+                    Duracion = reader["DURACION"] == DBNull.Value ? 0 : Convert.ToInt32(reader["DURACION"]),
+                    Descripcion = reader["DESCRIPCION"] == DBNull.Value ? null : reader["DESCRIPCION"].ToString()
+                };
+            }
+            throw new InvalidOperationException("El tipo de artículo guardado en Oracle no es Repuesto ni Servicio: " + tipo);
         }
     }
 }
