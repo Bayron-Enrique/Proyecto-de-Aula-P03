@@ -1,4 +1,4 @@
-﻿using DATOS;
+using DATOS;
 using ENTIDADES;
 using System;
 using System.Collections.Generic;
@@ -27,7 +27,7 @@ namespace LOGICA
         }
 
         public string Guardar(string cedula, string primerNombre, string segundoNombre, string primerApellido,
-            string segundoApellido, string sexo, string telefono, string direccion, string correoElectronico, int cargoId)
+            string segundoApellido, string sexo, string telefono, string direccion, string correoElectronico, int cargoId, bool activo = true)
         {
             try
             {
@@ -52,148 +52,8 @@ namespace LOGICA
                     return "La cedula no puede empezar por cero ...";
                 }
 
-                // Nombres
-                if (string.IsNullOrWhiteSpace(primerNombre))
-                {
-                    return "Los nombres son obligatorios y no pueden estar vacios ni tener solo espacios ...";
-                }
-                if (primerNombre != primerNombre.Trim())
-                {
-                    return "Los nombres no pueden empezar ni terminar con espacios ...";
-                }
-                if (primerNombre.Contains("  "))
-                {
-                    return "Los nombres no pueden tener espacios seguidos ...";
-                }
-                if (primerNombre.Length < 2 || primerNombre.Length > 100)
-                {
-                    return "Los nombres deben tener entre 2 y 100 caracteres ...";
-                }
-                foreach (char c in primerNombre)
-                {
-                    if (!char.IsLetter(c) && c != ' ')
-                    {
-                        return $"Los nombres tienen el caracter '{c}' que no esta permitido, solo letras ...";
-                    }
-                }
-
-                // Apellidos
-                if (string.IsNullOrWhiteSpace(primerApellido))
-                {
-                    return "Los apellidos son obligatorios y no pueden estar vacios ni tener solo espacios ...";
-                }
-                if (primerApellido != primerApellido.Trim())
-                {
-                    return "Los apellidos no pueden empezar ni terminar con espacios ...";
-                }
-                if (primerApellido.Contains("  "))
-                {
-                    return "Los apellidos no pueden tener espacios seguidos ...";
-                }
-                if (primerApellido.Length < 2 || primerApellido.Length > 100)
-                {
-                    return "Los apellidos deben tener entre 2 y 100 caracteres ...";
-                }
-                foreach (char c in primerApellido)
-                {
-                    if (!char.IsLetter(c) && c != ' ')
-                    {
-                        return $"Los apellidos tienen el caracter '{c}' que no esta permitido, solo letras ...";
-                    }
-                }
-
-                string errorSegundoNombre = ValidarNombreOpcional(segundoNombre, "segundo nombre");
-                if (errorSegundoNombre != null) return errorSegundoNombre;
-                string errorSegundoApellido = ValidarNombreOpcional(segundoApellido, "segundo apellido");
-                if (errorSegundoApellido != null) return errorSegundoApellido;
-
-                // Sexo
-                if (sexo != "M" && sexo != "F")
-                {
-                    return "El sexo debe ser M o F (en mayuscula) ...";
-                }
-
-                // Telefono (opcional)
-                if (!string.IsNullOrEmpty(telefono))
-                {
-                    foreach (char c in telefono)
-                    {
-                        if (c < '0' || c > '9')
-                        {
-                            return "El telefono solo puede tener numeros, sin espacios ni signos ...";
-                        }
-                    }
-                    if (telefono.Length != 7 && telefono.Length != 10)
-                    {
-                        return "El telefono debe tener 7 digitos (fijo) o 10 digitos (celular) ...";
-                    }
-                    if (telefono.Length == 10 && !telefono.StartsWith("3") && !telefono.StartsWith("60"))
-                    {
-                        return "El telefono de 10 digitos debe empezar por 3 (celular) o por 60 (fijo) ...";
-                    }
-                }
-
-                // Direccion (opcional)
-                if (!string.IsNullOrEmpty(direccion))
-                {
-                    if (string.IsNullOrWhiteSpace(direccion))
-                    {
-                        return "La direccion no puede tener solo espacios ...";
-                    }
-                    if (direccion != direccion.Trim())
-                    {
-                        return "La direccion no puede empezar ni terminar con espacios ...";
-                    }
-                    if (direccion.Contains("  "))
-                    {
-                        return "La direccion no puede tener espacios seguidos ...";
-                    }
-                    if (direccion.Length < 5 || direccion.Length > 150)
-                    {
-                        return "La direccion debe tener entre 5 y 150 caracteres ...";
-                    }
-                    foreach (char c in direccion)
-                    {
-                        if (char.IsControl(c))
-                        {
-                            return "La direccion tiene caracteres no permitidos ...";
-                        }
-                    }
-                }
-
-                // Correo (opcional)
-                if (!string.IsNullOrEmpty(correoElectronico))
-                {
-                    if (correoElectronico.Length > 100)
-                    {
-                        return "El correo no puede pasar de 100 caracteres ...";
-                    }
-                    if (correoElectronico.Contains(" "))
-                    {
-                        return "El correo no puede tener espacios ...";
-                    }
-                    int arroba = correoElectronico.IndexOf('@');
-                    if (arroba <= 0 || arroba != correoElectronico.LastIndexOf('@'))
-                    {
-                        return "El correo debe tener una sola @ y texto antes de ella ...";
-                    }
-                    foreach (char c in correoElectronico)
-                    {
-                        if (!(c < 128 && char.IsLetterOrDigit(c)) && "@._-+".IndexOf(c) < 0)
-                        {
-                            return $"El correo tiene el caracter '{c}' que no esta permitido ...";
-                        }
-                    }
-                    string dominio = correoElectronico.Substring(arroba + 1);
-                    if (correoElectronico.Contains("..") || correoElectronico.StartsWith(".") || !dominio.Contains(".") || dominio.StartsWith(".") || dominio.StartsWith("-") || dominio.EndsWith("."))
-                    {
-                        return "El correo no es valido, revisa los puntos y el dominio (ejemplo: nombre@gmail.com) ...";
-                    }
-                    if (dominio.Length - dominio.LastIndexOf('.') - 1 < 2)
-                    {
-                        return "La terminacion del correo no es valida (ejemplo: .com) ...";
-                    }
-                }
+                string errorPersona = ValidarDatosPersona(primerNombre, segundoNombre, primerApellido, segundoApellido, sexo, telefono, direccion, correoElectronico);
+                if (errorPersona != null) return errorPersona;
 
                 // Duplicados y cargo
                 if (BuscarCedula(cedula) != null)
@@ -214,7 +74,7 @@ namespace LOGICA
                 }
 
                 Empleado empleado = new Empleado(cedula, primerNombre, segundoNombre, primerApellido, segundoApellido,
-                    sexo, telefono, direccion, correoElectronico, cargo);
+                    sexo, telefono, direccion, correoElectronico, cargo) { Activo = activo };
                 repositorio.Guardar(empleado);
 
                 return $"se registro el empleado con cedula {cedula} desde la logica ...";
@@ -239,7 +99,7 @@ namespace LOGICA
         }
 
         public string Modificar(string cedula, string primerNombre, string segundoNombre, string primerApellido,
-            string segundoApellido, string sexo, string telefono, string direccion, string correoElectronico, int cargoId)
+            string segundoApellido, string sexo, string telefono, string direccion, string correoElectronico, int cargoId, bool? activo = null)
         {
             try
             {
@@ -274,6 +134,7 @@ namespace LOGICA
                 empleado.Direccion = direccion;
                 empleado.CorreoElectronico = correoElectronico;
                 empleado.Cargo = cargo;
+                if (activo.HasValue) empleado.Activo = activo.Value;
 
                 repositorio.Modificar(empleado);
                 return "El empleado se modifico correctamente ...";
@@ -287,35 +148,147 @@ namespace LOGICA
         private static string ValidarDatosPersona(string primerNombre, string segundoNombre, string primerApellido, string segundoApellido, string sexo,
             string telefono, string direccion, string correoElectronico)
         {
-            if (string.IsNullOrWhiteSpace(primerNombre) || primerNombre != primerNombre.Trim() || primerNombre.Contains("  ") || primerNombre.Length < 2 || primerNombre.Length > 100)
-                return "El primer nombre debe tener entre 2 y 100 caracteres y no tener espacios sobrantes ...";
-            string nombreError = ValidarNombreOpcional(segundoNombre, "segundo nombre"); if (nombreError != null) return nombreError;
-            if (string.IsNullOrWhiteSpace(primerApellido) || primerApellido != primerApellido.Trim() || primerApellido.Contains("  ") || primerApellido.Length < 2 || primerApellido.Length > 100)
-                return "El primer apellido debe tener entre 2 y 100 caracteres y no tener espacios sobrantes ...";
-            nombreError = ValidarNombreOpcional(segundoApellido, "segundo apellido"); if (nombreError != null) return nombreError;
+            // Nombres
+            if (string.IsNullOrWhiteSpace(primerNombre))
+            {
+                return "Los nombres son obligatorios y no pueden estar vacios ni tener solo espacios ...";
+            }
+            if (primerNombre != primerNombre.Trim())
+            {
+                return "Los nombres no pueden empezar ni terminar con espacios ...";
+            }
+            if (primerNombre.Contains("  "))
+            {
+                return "Los nombres no pueden tener espacios seguidos ...";
+            }
+            if (primerNombre.Length < 2 || primerNombre.Length > 100)
+            {
+                return "Los nombres deben tener entre 2 y 100 caracteres ...";
+            }
+            foreach (char c in primerNombre)
+            {
+                if (!char.IsLetter(c) && c != ' ')
+                {
+                    return $"Los nombres tienen el caracter '{c}' que no esta permitido, solo letras ...";
+                }
+            }
 
-            if (sexo != "M" && sexo != "F") return "El sexo debe ser M o F (en mayuscula) ...";
+            // Apellidos
+            if (string.IsNullOrWhiteSpace(primerApellido))
+            {
+                return "Los apellidos son obligatorios y no pueden estar vacios ni tener solo espacios ...";
+            }
+            if (primerApellido != primerApellido.Trim())
+            {
+                return "Los apellidos no pueden empezar ni terminar con espacios ...";
+            }
+            if (primerApellido.Contains("  "))
+            {
+                return "Los apellidos no pueden tener espacios seguidos ...";
+            }
+            if (primerApellido.Length < 2 || primerApellido.Length > 100)
+            {
+                return "Los apellidos deben tener entre 2 y 100 caracteres ...";
+            }
+            foreach (char c in primerApellido)
+            {
+                if (!char.IsLetter(c) && c != ' ')
+                {
+                    return $"Los apellidos tienen el caracter '{c}' que no esta permitido, solo letras ...";
+                }
+            }
 
+            string errorSegundoNombre = ValidarNombreOpcional(segundoNombre, "segundo nombre");
+            if (errorSegundoNombre != null) return errorSegundoNombre;
+            string errorSegundoApellido = ValidarNombreOpcional(segundoApellido, "segundo apellido");
+            if (errorSegundoApellido != null) return errorSegundoApellido;
+
+            // Sexo
+            if (sexo != "M" && sexo != "F")
+            {
+                return "El sexo debe ser M o F (en mayuscula) ...";
+            }
+
+            // Telefono (opcional)
             if (!string.IsNullOrEmpty(telefono))
             {
                 foreach (char c in telefono)
-                    if (c < '0' || c > '9') return "El telefono solo puede contener numeros ...";
+                {
+                    if (c < '0' || c > '9')
+                    {
+                        return "El telefono solo puede tener numeros, sin espacios ni signos ...";
+                    }
+                }
                 if (telefono.Length != 7 && telefono.Length != 10)
+                {
                     return "El telefono debe tener 7 digitos (fijo) o 10 digitos (celular) ...";
+                }
                 if (telefono.Length == 10 && !telefono.StartsWith("3") && !telefono.StartsWith("60"))
-                    return "El telefono de 10 digitos debe empezar por 3 o por 60 ...";
+                {
+                    return "El telefono de 10 digitos debe empezar por 3 (celular) o por 60 (fijo) ...";
+                }
             }
 
-            if (!string.IsNullOrEmpty(direccion) &&
-                (string.IsNullOrWhiteSpace(direccion) || direccion != direccion.Trim() || direccion.Contains("  ") || direccion.Length < 5 || direccion.Length > 150))
-                return "La direccion debe tener entre 5 y 150 caracteres y no tener espacios sobrantes ...";
+            // Direccion (opcional)
+            if (!string.IsNullOrEmpty(direccion))
+            {
+                if (string.IsNullOrWhiteSpace(direccion))
+                {
+                    return "La direccion no puede tener solo espacios ...";
+                }
+                if (direccion != direccion.Trim())
+                {
+                    return "La direccion no puede empezar ni terminar con espacios ...";
+                }
+                if (direccion.Contains("  "))
+                {
+                    return "La direccion no puede tener espacios seguidos ...";
+                }
+                if (direccion.Length < 5 || direccion.Length > 150)
+                {
+                    return "La direccion debe tener entre 5 y 150 caracteres ...";
+                }
+                foreach (char c in direccion)
+                {
+                    if (char.IsControl(c))
+                    {
+                        return "La direccion tiene caracteres no permitidos ...";
+                    }
+                }
+            }
 
+            // Correo (opcional)
             if (!string.IsNullOrEmpty(correoElectronico))
             {
+                if (correoElectronico.Length > 100)
+                {
+                    return "El correo no puede pasar de 100 caracteres ...";
+                }
+                if (correoElectronico.Contains(" "))
+                {
+                    return "El correo no puede tener espacios ...";
+                }
                 int arroba = correoElectronico.IndexOf('@');
-                if (correoElectronico.Length > 100 || correoElectronico.Contains(" ") || arroba <= 0 ||
-                    arroba != correoElectronico.LastIndexOf('@') || !correoElectronico.Substring(arroba + 1).Contains("."))
-                    return "El correo electronico no tiene un formato valido ...";
+                if (arroba <= 0 || arroba != correoElectronico.LastIndexOf('@'))
+                {
+                    return "El correo debe tener una sola @ y texto antes de ella ...";
+                }
+                foreach (char c in correoElectronico)
+                {
+                    if (!(c < 128 && char.IsLetterOrDigit(c)) && "@._-+".IndexOf(c) < 0)
+                    {
+                        return $"El correo tiene el caracter '{c}' que no esta permitido ...";
+                    }
+                }
+                string dominio = correoElectronico.Substring(arroba + 1);
+                if (correoElectronico.Contains("..") || correoElectronico.StartsWith(".") || !dominio.Contains(".") || dominio.StartsWith(".") || dominio.StartsWith("-") || dominio.EndsWith("."))
+                {
+                    return "El correo no es valido, revisa los puntos y el dominio (ejemplo: nombre@gmail.com) ...";
+                }
+                if (dominio.Length - dominio.LastIndexOf('.') - 1 < 2)
+                {
+                    return "La terminacion del correo no es valida (ejemplo: .com) ...";
+                }
             }
 
             return null;
@@ -355,11 +328,14 @@ namespace LOGICA
 
         public Empleado Autenticar(string cedula, string clave)
         {
+            SesionActual.Cerrar();
             if (string.IsNullOrWhiteSpace(cedula) || string.IsNullOrEmpty(clave)) return null;
             Empleado empleado = repositorio.BuscarCedula(cedula.Trim());
-            if (empleado == null) return null;
+            if (empleado == null || !empleado.Activo) return null;
             string hash = repositorio.ObtenerClaveHash(empleado.Cedula);
-            return !string.IsNullOrEmpty(hash) && PasswordHasher.Verificar(clave, hash) ? empleado : null;
+            if (string.IsNullOrEmpty(hash) || !PasswordHasher.Verificar(clave, hash)) return null;
+            SesionActual.Iniciar(empleado);
+            return empleado;
         }
 
         public string ConfigurarClaveInicial(string cedula, string claveTemporal, string nuevaClave)
@@ -370,12 +346,45 @@ namespace LOGICA
                     return "La clave temporal inicial debe ser la cédula del empleado.";
                 if (string.IsNullOrEmpty(nuevaClave) || nuevaClave.Length < 8 || nuevaClave.Length > 100 || nuevaClave.Any(char.IsControl))
                     return "La contraseña nueva debe tener entre 8 y 100 caracteres válidos.";
-                if (repositorio.BuscarCedula(cedula) == null) return "No se encontró el empleado.";
+                Empleado inicial = repositorio.BuscarCedula(cedula);
+                if (inicial == null || !inicial.Activo) return "El empleado no existe o está inactivo.";
                 if (!string.IsNullOrEmpty(repositorio.ObtenerClaveHash(cedula))) return "El empleado ya tiene una contraseña configurada.";
                 repositorio.GuardarClaveHash(cedula, PasswordHasher.Crear(nuevaClave));
                 return null;
             }
             catch (Exception ex) { return "No se pudo configurar la contraseña: " + ex.Message; }
+        }
+
+        public Empleado AutenticarRespaldo(string usuario, string clave)
+        {
+            SesionActual.Cerrar();
+            if (!string.Equals(usuario, "admin", StringComparison.OrdinalIgnoreCase) || clave != "admin123" || repositorio.Contar() != 0)
+                return null;
+            var respaldo = new Empleado { Nombre = "Administrador", Apellido = "de respaldo", Cargo = new Cargo { NombreCargo = "Administrador" } };
+            SesionActual.Iniciar(respaldo, true);
+            return respaldo;
+        }
+
+        public string CambiarORestablecerClave(string cedula, string nuevaClave)
+        {
+            try
+            {
+                Empleado sesion = SesionActual.Empleado;
+                if (sesion == null) return "Debes iniciar sesión para cambiar una contraseña.";
+                Empleado actor = SesionActual.EsRespaldo ? sesion : repositorio.BuscarCedula(sesion.Cedula);
+                bool administrador = actor != null && actor.Activo && actor.Cargo != null &&
+                    string.Equals((actor.Cargo.NombreCargo ?? "").Trim(), "Administrador", StringComparison.OrdinalIgnoreCase);
+                bool propia = actor != null && actor.Activo && !string.IsNullOrWhiteSpace(actor.Cedula) &&
+                    string.Equals(actor.Cedula.Trim(), (cedula ?? "").Trim(), StringComparison.Ordinal);
+                if (!administrador && !propia) return "Solo un administrador o el propio empleado puede cambiar esta contraseña.";
+                if (string.IsNullOrWhiteSpace(cedula) || repositorio.BuscarCedula(cedula.Trim()) == null)
+                    return "No se encontró el empleado para cambiar su clave.";
+                if (string.IsNullOrWhiteSpace(nuevaClave) || nuevaClave.Length < 8 || nuevaClave.Length > 100 || nuevaClave.Any(char.IsControl))
+                    return "La clave debe tener entre 8 y 100 caracteres válidos.";
+                repositorio.CambiarClaveHash(cedula.Trim(), PasswordHasher.Crear(nuevaClave));
+                return "La clave del empleado se restableció correctamente.";
+            }
+            catch (Exception ex) { return "No se pudo restablecer la clave: " + ex.Message; }
         }
 
         public string Eliminar(string cedula)

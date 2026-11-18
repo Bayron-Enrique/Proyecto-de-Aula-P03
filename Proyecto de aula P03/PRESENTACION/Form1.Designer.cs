@@ -1,4 +1,4 @@
-﻿namespace PRESENTACION
+namespace PRESENTACION
 {
     partial class Form1
     {
@@ -41,13 +41,7 @@
             this.button2 = new System.Windows.Forms.Button();
             this.menuContainer = new System.Windows.Forms.FlowLayoutPanel();
             this.pnAgenda = new System.Windows.Forms.Panel();
-            this.panel5 = new System.Windows.Forms.Panel();
-            this.button3 = new System.Windows.Forms.Button();
             this.btnAgenda = new System.Windows.Forms.Button();
-            this.panel9 = new System.Windows.Forms.Panel();
-            this.button8 = new System.Windows.Forms.Button();
-            this.panel10 = new System.Windows.Forms.Panel();
-            this.button7 = new System.Windows.Forms.Button();
             this.pnServicio = new System.Windows.Forms.Panel();
             this.btnServicio = new System.Windows.Forms.Button();
             this.pnVehiculos = new System.Windows.Forms.Panel();
@@ -56,7 +50,6 @@
             this.btnClientes = new System.Windows.Forms.Button();
             this.pnConfiguracion = new System.Windows.Forms.Panel();
             this.btnConfiguracion = new System.Windows.Forms.Button();
-            this.MenuTransition = new System.Windows.Forms.Timer(this.components);
             this.sidebarTransition = new System.Windows.Forms.Timer(this.components);
             this.object_ac738dae_ffba_4e5b_9b7a_00c5c4a0582e = new System.Windows.Forms.FlowLayoutPanel();
             this.object_867fe828_8306_477d_b57c_6ec9660e105d = new System.Windows.Forms.FlowLayoutPanel();
@@ -71,9 +64,6 @@
             this.PnPanel.SuspendLayout();
             this.menuContainer.SuspendLayout();
             this.pnAgenda.SuspendLayout();
-            this.panel5.SuspendLayout();
-            this.panel9.SuspendLayout();
-            this.panel10.SuspendLayout();
             this.pnServicio.SuspendLayout();
             this.pnVehiculos.SuspendLayout();
             this.pnClientes.SuspendLayout();
@@ -212,8 +202,6 @@
             // 
             this.menuContainer.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(23)))), ((int)(((byte)(24)))), ((int)(((byte)(29)))));
             this.menuContainer.Controls.Add(this.pnAgenda);
-            this.menuContainer.Controls.Add(this.panel9);
-            this.menuContainer.Controls.Add(this.panel10);
             this.menuContainer.Cursor = System.Windows.Forms.Cursors.Hand;
             this.menuContainer.Location = new System.Drawing.Point(3, 62);
             this.menuContainer.Name = "menuContainer";
@@ -222,39 +210,12 @@
             // 
             // pnAgenda
             // 
-            this.pnAgenda.Controls.Add(this.panel5);
             this.pnAgenda.Controls.Add(this.btnAgenda);
             this.pnAgenda.Location = new System.Drawing.Point(3, 3);
             this.pnAgenda.Name = "pnAgenda";
             this.pnAgenda.Size = new System.Drawing.Size(379, 53);
             this.pnAgenda.TabIndex = 4;
-            // 
-            // panel5
-            // 
-            this.panel5.Controls.Add(this.button3);
-            this.panel5.Location = new System.Drawing.Point(17, 63);
-            this.panel5.Name = "panel5";
-            this.panel5.Size = new System.Drawing.Size(328, 53);
-            this.panel5.TabIndex = 4;
-            // 
-            // button3
-            // 
-            this.button3.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(23)))), ((int)(((byte)(24)))), ((int)(((byte)(29)))));
-            this.button3.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.button3.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.button3.ForeColor = System.Drawing.Color.White;
-            this.button3.Image = ((System.Drawing.Image)(resources.GetObject("button3.Image")));
-            this.button3.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            this.button3.Location = new System.Drawing.Point(-14, -3);
-            this.button3.Name = "button3";
-            this.button3.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
-            this.button3.RightToLeft = System.Windows.Forms.RightToLeft.No;
-            this.button3.Size = new System.Drawing.Size(348, 65);
-            this.button3.TabIndex = 2;
-            this.button3.Text = "           Sub Menu 2";
-            this.button3.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            this.button3.UseVisualStyleBackColor = false;
-            // 
+            //
             // btnAgenda
             // 
             this.btnAgenda.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(23)))), ((int)(((byte)(24)))), ((int)(((byte)(29)))));
@@ -275,59 +236,7 @@
             this.btnAgenda.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.btnAgenda.UseVisualStyleBackColor = false;
             this.btnAgenda.Click += new System.EventHandler(this.Menu_Click);
-            // 
-            // panel9
-            // 
-            this.panel9.Controls.Add(this.button8);
-            this.panel9.Location = new System.Drawing.Point(3, 62);
-            this.panel9.Name = "panel9";
-            this.panel9.Size = new System.Drawing.Size(328, 53);
-            this.panel9.TabIndex = 4;
-            // 
-            // button8
-            // 
-            this.button8.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(23)))), ((int)(((byte)(24)))), ((int)(((byte)(29)))));
-            this.button8.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.button8.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.button8.ForeColor = System.Drawing.Color.White;
-            this.button8.Image = ((System.Drawing.Image)(resources.GetObject("button8.Image")));
-            this.button8.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            this.button8.Location = new System.Drawing.Point(-20, -14);
-            this.button8.Name = "button8";
-            this.button8.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
-            this.button8.RightToLeft = System.Windows.Forms.RightToLeft.No;
-            this.button8.Size = new System.Drawing.Size(399, 80);
-            this.button8.TabIndex = 2;
-            this.button8.Text = "           Sub Menu 1";
-            this.button8.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            this.button8.UseVisualStyleBackColor = false;
-            // 
-            // panel10
-            // 
-            this.panel10.Controls.Add(this.button7);
-            this.panel10.Location = new System.Drawing.Point(3, 121);
-            this.panel10.Name = "panel10";
-            this.panel10.Size = new System.Drawing.Size(328, 53);
-            this.panel10.TabIndex = 4;
-            // 
-            // button7
-            // 
-            this.button7.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(23)))), ((int)(((byte)(24)))), ((int)(((byte)(29)))));
-            this.button7.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.button7.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.button7.ForeColor = System.Drawing.Color.White;
-            this.button7.Image = ((System.Drawing.Image)(resources.GetObject("button7.Image")));
-            this.button7.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            this.button7.Location = new System.Drawing.Point(-20, -15);
-            this.button7.Name = "button7";
-            this.button7.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
-            this.button7.RightToLeft = System.Windows.Forms.RightToLeft.No;
-            this.button7.Size = new System.Drawing.Size(388, 80);
-            this.button7.TabIndex = 2;
-            this.button7.Text = "           Sub Menu 2";
-            this.button7.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            this.button7.UseVisualStyleBackColor = false;
-            // 
+            //
             // pnServicio
             // 
             this.pnServicio.Controls.Add(this.btnServicio);
@@ -442,12 +351,7 @@
             this.btnConfiguracion.Text = "           Configuracion";
             this.btnConfiguracion.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.btnConfiguracion.UseVisualStyleBackColor = false;
-            // 
-            // MenuTransition
-            // 
-            this.MenuTransition.Interval = 10;
-            this.MenuTransition.Tick += new System.EventHandler(this.MenuTransition_Tick);
-            // 
+            //
             // sidebarTransition
             // 
             this.sidebarTransition.Interval = 15;
@@ -550,9 +454,6 @@
             this.PnPanel.ResumeLayout(false);
             this.menuContainer.ResumeLayout(false);
             this.pnAgenda.ResumeLayout(false);
-            this.panel5.ResumeLayout(false);
-            this.panel9.ResumeLayout(false);
-            this.panel10.ResumeLayout(false);
             this.pnServicio.ResumeLayout(false);
             this.pnVehiculos.ResumeLayout(false);
             this.pnClientes.ResumeLayout(false);
@@ -576,13 +477,6 @@
         private System.Windows.Forms.Button btnAgenda;
         private System.Windows.Forms.Panel pnConfiguracion;
         private System.Windows.Forms.Button btnConfiguracion;
-        private System.Windows.Forms.Panel panel9;
-        private System.Windows.Forms.Button button8;
-        private System.Windows.Forms.Timer MenuTransition;
-        private System.Windows.Forms.Panel panel5;
-        private System.Windows.Forms.Button button3;
-        private System.Windows.Forms.Panel panel10;
-        private System.Windows.Forms.Button button7;
         private System.Windows.Forms.Timer sidebarTransition;
         private System.Windows.Forms.Button btnMinimizar;
         private System.Windows.Forms.Button btnMaximizar;

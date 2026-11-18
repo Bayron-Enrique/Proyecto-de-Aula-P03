@@ -59,7 +59,7 @@ namespace DATOS
             using (OracleCommand cmd = new OracleCommand(SelectVehiculos + " WHERE V.PLACA = :placa", con))
             {
                 cmd.BindByName = true;
-                cmd.Parameters.Add("placa", placa);
+                cmd.Parameters.Add("placa", OracleDbType.Char, 7).Value = placa;
                 con.Open();
                 using (OracleDataReader reader = cmd.ExecuteReader())
                     return reader.Read() ? Mapear(reader) : null;
@@ -86,7 +86,7 @@ namespace DATOS
             using (OracleConnection con = ObtenerConexion())
             using (OracleCommand cmd = new OracleCommand("DELETE FROM TALLER.VEHICULO WHERE PLACA = :placa", con))
             {
-                cmd.Parameters.Add("placa", vehiculo.Placa);
+                cmd.Parameters.Add("placa", OracleDbType.Char, 7).Value = vehiculo.Placa;
                 con.Open();
                 cmd.ExecuteNonQuery();
             }
@@ -121,10 +121,10 @@ namespace DATOS
         {
             if (vehiculo.Cliente == null || string.IsNullOrWhiteSpace(vehiculo.Cliente.Cedula))
                 throw new ArgumentException("Debe seleccionar un cliente válido para el vehículo.");
-            cmd.Parameters.Add("placa", vehiculo.Placa);
+            cmd.Parameters.Add("placa", OracleDbType.Char, 7).Value = vehiculo.Placa;
             cmd.Parameters.Add("modelo", vehiculo.Modelo);
             cmd.Parameters.Add("marca", (object)vehiculo.Marca ?? DBNull.Value);
-            cmd.Parameters.Add("clienteCedula", vehiculo.Cliente.Cedula);
+            cmd.Parameters.Add("clienteCedula", OracleDbType.Char, 10).Value = vehiculo.Cliente.Cedula;
             cmd.Parameters.Add("tipoVehiculo", vehiculo.TipoVehiculo);
             cmd.Parameters.Add("color", (object)vehiculo.Color ?? DBNull.Value);
             cmd.Parameters.Add("linea", (object)vehiculo.Linea ?? DBNull.Value);

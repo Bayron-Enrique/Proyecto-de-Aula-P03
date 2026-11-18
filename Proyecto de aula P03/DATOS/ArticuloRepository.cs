@@ -76,18 +76,58 @@ namespace DATOS
         public void Modificar(Articulo articulo)
         {
             const string sql = @"UPDATE TALLER.ARTICULO SET NOMBRE = :nombre, PRECIO = :precio,
-                                 PORCENTAJEIVA = :iva, CANTIDAD = :cantidad, DESCRIPCION = :descripcion,
-                                 DURACION = :duracion, PROVEEDOR_NIT = :nitProveedor,
-                                 TIPO_ARTICULO_ID = (SELECT TIPO_ARTICULO_ID FROM TALLER.TIPO_ARTICULO WHERE UPPER(NOMBRE) = UPPER(:tipo))
-                                 WHERE ARTICULOID = :articuloId";
-            using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand(sql, con))
+                PORCENTAJEIVA = :iva, CANTIDAD = :cantidad, DESCRIPCION = :descripcion,
+                DURACION = :duracion, PROVEEDOR_NIT = :nitProveedor,
+                TIPO_ARTICULO_ID = (SELECT TIPO_ARTICULO_ID FROM TALLER.TIPO_ARTICULO WHERE UPPER(NOMBRE) = UPPER(:tipo))
+                WHERE ARTICULOID = :articuloId";
+            using (var con = ObtenerConexion())
             {
-                cmd.BindByName = true;
-                AgregarParametros(cmd, articulo);
-                cmd.Parameters.Add("articuloId", articulo.ArticuloId);
                 con.Open();
-                cmd.ExecuteNonQuery();
+                using (var tx = con.BeginTransaction())
+                {
+                    try
+                    {
+                        string tipo;
+                        using (var bloquear = new OracleCommand(@"SELECT T.NOMBRE FROM TALLER.ARTICULO A
+                            JOIN TALLER.TIPO_ARTICULO T ON T.TIPO_ARTICULO_ID = A.TIPO_ARTICULO_ID
+                            WHERE A.ARTICULOID = :id FOR UPDATE OF A.TIPO_ARTICULO_ID", con))
+                        {
+                            bloquear.Transaction = tx;
+                            bloquear.Parameters.Add("id", articulo.ArticuloId);
+                            object valor = bloquear.ExecuteScalar();
+                            if (valor == null) throw new InvalidOperationException("El artículo ya no existe.");
+                            tipo = Convert.ToString(valor);
+                        }
+                        bool mismoTipo = string.Equals(tipo, articulo is Repuesto ? "Repuesto" : "Servicio", StringComparison.OrdinalIgnoreCase);
+                        using (var movimientos = new OracleCommand("SELECT COUNT(*) FROM TALLER.DETALLE_FACTURA WHERE ARTICULO_ARTICULOID = :id", con))
+                        {
+                            movimientos.Transaction = tx;
+                            movimientos.Parameters.Add("id", articulo.ArticuloId);
+                            if (!mismoTipo && Convert.ToInt32(movimientos.ExecuteScalar()) > 0)
+                                throw new InvalidOperationException("No se puede cambiar el tipo de un artículo con movimientos de facturación.");
+                        }
+                        using (var cmd = new OracleCommand(sql, con))
+                        {
+                            cmd.Transaction = tx;
+                            AgregarParametros(cmd, articulo);
+                            cmd.Parameters.Add("articuloId", articulo.ArticuloId);
+                            if (cmd.ExecuteNonQuery() != 1) throw new InvalidOperationException("El artículo ya no existe.");
+                        }
+                        tx.Commit();
+                    }
+                    catch { tx.Rollback(); throw; }
+                }
+            }
+        }
+
+        public bool TieneMovimientos(int articuloId)
+        {
+            using (var con = ObtenerConexion())
+            using (var cmd = new OracleCommand("SELECT COUNT(*) FROM TALLER.DETALLE_FACTURA WHERE ARTICULO_ARTICULOID = :id", con))
+            {
+                cmd.Parameters.Add("id", articuloId);
+                con.Open();
+                return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
             }
         }
 

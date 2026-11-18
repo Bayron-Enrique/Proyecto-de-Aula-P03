@@ -38,12 +38,15 @@ namespace ENTIDADES
 
             foreach (var detalle in Detalles)
             {
-                SubTotal += detalle.ValorUnitario * detalle.Cantidad;
-                Descuento += detalle.Descuento;
+                SubTotal += detalle.Subtotal;
+                Descuento += Math.Round(detalle.Descuento, 2, MidpointRounding.AwayFromZero);
                 Iva += detalle.ValorIVA;
             }
 
-            Total = SubTotal - Descuento + Iva;
+            SubTotal = Math.Round(SubTotal, 2, MidpointRounding.AwayFromZero);
+            Descuento = Math.Round(Descuento, 2, MidpointRounding.AwayFromZero);
+            Iva = Math.Round(Iva, 2, MidpointRounding.AwayFromZero);
+            Total = Math.Round(SubTotal - Descuento + Iva, 2, MidpointRounding.AwayFromZero);
         }
 
         public override string ToString()

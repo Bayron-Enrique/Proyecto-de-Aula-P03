@@ -1,4 +1,4 @@
-﻿using ENTIDADES;
+using ENTIDADES;
 using Oracle.ManagedDataAccess.Client;
 using System;
 using System.Collections.Generic;
@@ -27,8 +27,8 @@ namespace DATOS
             using (OracleCommand cmd = new OracleCommand(sql, con))
             {
                 cmd.BindByName = true;
-                cmd.Parameters.Add("empleadoCedula", cedulaEmpleado);
-                cmd.Parameters.Add("fecha", fecha);
+                cmd.Parameters.Add("empleadoCedula", OracleDbType.Char, 10).Value = cedulaEmpleado;
+                cmd.Parameters.Add("fecha", OracleDbType.Date).Value = fecha;
                 con.Open();
                 object resultado = cmd.ExecuteScalar();
                 return resultado != null && resultado != DBNull.Value && Convert.ToInt32(resultado) == 1;
@@ -37,7 +37,7 @@ namespace DATOS
 
         private const string SelectAgenda = @"SELECT A.AGENDAID, A.FECHA, A.COMENTARIO, A.VEHICULO_PLACA,
                                       A.EMPLEADO_CEDULA, A.ESTADO, A.ARTICULO_ARTICULOID,
-                                      VP.PRIMER_NOMBRE AS CLIENTE_PRIMER_NOMBRE, VP.SEGUNDO_NOMBRE AS CLIENTE_SEGUNDO_NOMBRE,
+                                      CL.CEDULA AS CLIENTE_CEDULA, VP.PRIMER_NOMBRE AS CLIENTE_PRIMER_NOMBRE, VP.SEGUNDO_NOMBRE AS CLIENTE_SEGUNDO_NOMBRE,
                                       VP.PRIMER_APELLIDO AS CLIENTE_PRIMER_APELLIDO, VP.SEGUNDO_APELLIDO AS CLIENTE_SEGUNDO_APELLIDO,
                                       EP.PRIMER_NOMBRE AS EMPLEADO_PRIMER_NOMBRE, EP.SEGUNDO_NOMBRE AS EMPLEADO_SEGUNDO_NOMBRE,
                                       EP.PRIMER_APELLIDO AS EMPLEADO_PRIMER_APELLIDO, EP.SEGUNDO_APELLIDO AS EMPLEADO_SEGUNDO_APELLIDO,
@@ -53,30 +53,16 @@ namespace DATOS
 
         public void Guardar(Agenda agenda)
         {
-            using (OracleConnection con = ObtenerConexion())
-            {
-                con.Open();
-                using (OracleCommand secuencia = new OracleCommand("SELECT TALLER.SEQ_AGENDAID.NEXTVAL FROM DUAL", con))
-                    agenda.AgendaID = Convert.ToInt32(secuencia.ExecuteScalar());
-                string sql = @"INSERT INTO TALLER.AGENDA
-                                 (AGENDAID, FECHA, COMENTARIO, VEHICULO_PLACA, EMPLEADO_CEDULA, ESTADO, ARTICULO_ARTICULOID)
-                                 VALUES (:agendaId, :fecha, :comentario, :vehiculoPlaca, :empleadoCedula, :estado, :articuloId)";
-                using (OracleCommand cmd = new OracleCommand(sql, con))
-                {
-                    AgregarParams(cmd, agenda);
-                    cmd.Parameters.Add("agendaId", agenda.AgendaID);
-                    cmd.ExecuteNonQuery();
-                }
-            }
+            Persistir(agenda, true);
         }
         private void AgregarParams(OracleCommand cmd, Agenda agenda)
         {
             cmd.BindByName = true;
 
-            cmd.Parameters.Add(new OracleParameter("fecha", agenda.Fecha));
+            cmd.Parameters.Add("fecha", OracleDbType.Date).Value = agenda.Fecha;
             cmd.Parameters.Add(new OracleParameter("comentario", string.IsNullOrEmpty(agenda.Comentario) ? (object)DBNull.Value : agenda.Comentario));
-            cmd.Parameters.Add(new OracleParameter("vehiculoPlaca", agenda.Vehiculo.Placa));
-            cmd.Parameters.Add(new OracleParameter("empleadoCedula", agenda.Empleado.Cedula));
+            cmd.Parameters.Add("vehiculoPlaca", OracleDbType.Char, 7).Value = agenda.Vehiculo.Placa;
+            cmd.Parameters.Add("empleadoCedula", OracleDbType.Char, 10).Value = agenda.Empleado.Cedula;
             cmd.Parameters.Add(new OracleParameter("estado", agenda.Estado));
 
             if (agenda.ArticuloServicio != null)
@@ -114,7 +100,7 @@ namespace DATOS
             return new Agenda
             {
                 AgendaID = Convert.ToInt32(reader["AGENDAID"]),
-                Fecha = Convert.ToDateTime(reader["FECHA"]),
+                Fecha = reader["FECHA"] == DBNull.Value ? DateTime.MinValue : Convert.ToDateTime(reader["FECHA"]),
                 Comentario = reader["COMENTARIO"] != DBNull.Value ? reader["COMENTARIO"].ToString() : string.Empty,
                 Estado = reader["ESTADO"].ToString(),
 
@@ -123,6 +109,7 @@ namespace DATOS
                     Placa = reader["VEHICULO_PLACA"].ToString().Trim(),
                     Cliente = new Cliente
                     {
+                        Cedula = reader["CLIENTE_CEDULA"].ToString().Trim(),
                         PrimerNombre = reader["CLIENTE_PRIMER_NOMBRE"].ToString(),
                         SegundoNombre = reader["CLIENTE_SEGUNDO_NOMBRE"] == DBNull.Value ? null : reader["CLIENTE_SEGUNDO_NOMBRE"].ToString(),
                         PrimerApellido = reader["CLIENTE_PRIMER_APELLIDO"].ToString(),
@@ -155,26 +142,7 @@ namespace DATOS
 
         public void Modificar(Agenda agenda)
         {
-            using (OracleConnection con = ObtenerConexion())
-            {
-                string sql = @"UPDATE TALLER.AGENDA SET
-                         FECHA = :fecha, 
-                         COMENTARIO = :comentario, 
-                         VEHICULO_PLACA = :vehiculoPlaca, 
-                         EMPLEADO_CEDULA = :empleadoCedula, 
-                         ESTADO = :estado, 
-                         ARTICULO_ARTICULOID = :articuloId 
-                       WHERE AGENDAID = :agendaId";
-
-                using (OracleCommand cmd = new OracleCommand(sql, con))
-                {
-                    AgregarParams(cmd, agenda);
-                    cmd.Parameters.Add(new OracleParameter("agendaId", agenda.AgendaID));
-
-                    con.Open();
-                    cmd.ExecuteNonQuery();
-                }
-            }
+            Persistir(agenda, false);
         }
 
         public Agenda BuscarId(int agendaId)
@@ -211,6 +179,124 @@ namespace DATOS
                     cmd.Parameters.Add(new OracleParameter("agendaId", agenda.AgendaID));
                     con.Open();
                     cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        public void CambiarEstado(int agendaId, string estado)
+        {
+            Persistir(new Agenda { AgendaID = agendaId, Estado = estado }, false, true);
+        }
+
+        private void Persistir(Agenda agenda, bool nueva, bool soloEstado = false)
+        {
+            if (agenda == null || (!soloEstado && (agenda.Vehiculo == null || agenda.Empleado == null || agenda.ArticuloServicio == null)))
+                throw new ArgumentException("La cita requiere vehículo, empleado y servicio.");
+            agenda.Fecha = new DateTime(agenda.Fecha.Year, agenda.Fecha.Month, agenda.Fecha.Day, agenda.Fecha.Hour, agenda.Fecha.Minute, 0);
+            using (OracleConnection con = ObtenerConexion())
+            {
+                con.Open();
+                using (OracleTransaction tx = con.BeginTransaction())
+                {
+                    try
+                    {
+                        // Todas las altas, ediciones y reactivaciones se serializan antes de validar.
+                        using (var bloqueo = new OracleCommand("LOCK TABLE TALLER.AGENDA IN SHARE ROW EXCLUSIVE MODE", con))
+                        {
+                            bloqueo.Transaction = tx;
+                            bloqueo.ExecuteNonQuery();
+                        }
+                        if (soloEstado)
+                        {
+                            string estado = agenda.Estado;
+                            using (var consultar = new OracleCommand(SelectAgenda + " WHERE A.AGENDAID = :id", con))
+                            {
+                                consultar.Transaction = tx;
+                                consultar.Parameters.Add("id", agenda.AgendaID);
+                                using (var reader = consultar.ExecuteReader())
+                                {
+                                    if (!reader.Read()) throw new InvalidOperationException("La cita ya no existe.");
+                                    agenda = Mapear(reader);
+                                }
+                            }
+                            agenda.Estado = estado;
+                        }
+                        if (agenda.Estado != "PENDIENTE" && agenda.Estado != "EN PROCESO" &&
+                            agenda.Estado != "COMPLETADA" && agenda.Estado != "CANCELADA")
+                            throw new ArgumentException("Estado de cita inválido.");
+                        int duracion = 1;
+                        if (agenda.Estado != "CANCELADA" && (agenda.Fecha == DateTime.MinValue || agenda.ArticuloServicio == null))
+                            throw new InvalidOperationException("La cita necesita una fecha y un servicio válidos antes de activarla.");
+                        if (agenda.Estado != "CANCELADA")
+                        using (var servicio = new OracleCommand(@"SELECT A.DURACION FROM TALLER.ARTICULO A
+                            JOIN TALLER.TIPO_ARTICULO T ON T.TIPO_ARTICULO_ID = A.TIPO_ARTICULO_ID
+                            WHERE A.ARTICULOID = :id AND UPPER(T.NOMBRE) = 'SERVICIO'", con))
+                        {
+                            servicio.Transaction = tx;
+                            servicio.Parameters.Add("id", agenda.ArticuloServicio.ArticuloId);
+                            object valor = servicio.ExecuteScalar();
+                            if (valor == null || valor == DBNull.Value || Convert.ToInt32(valor) < 1)
+                                throw new InvalidOperationException("El servicio no existe o no tiene una duración válida.");
+                            duracion = Convert.ToInt32(valor);
+                        }
+                        if (agenda.Estado != "CANCELADA")
+                        {
+                            using (var empleado = new OracleCommand("SELECT ACTIVO FROM TALLER.EMPLEADO WHERE CEDULA = :cedula", con))
+                            {
+                                empleado.Transaction = tx;
+                                empleado.Parameters.Add("cedula", OracleDbType.Char, 10).Value = agenda.Empleado.Cedula;
+                                if (Convert.ToString(empleado.ExecuteScalar()).Trim() != "S")
+                                    throw new InvalidOperationException("El empleado no existe o está inactivo.");
+                            }
+                            const string cruces = @"SELECT COUNT(*) FROM TALLER.AGENDA A
+                                LEFT JOIN TALLER.ARTICULO S ON S.ARTICULOID = A.ARTICULO_ARTICULOID
+                                WHERE A.AGENDAID <> :id AND UPPER(TRIM(A.ESTADO)) <> 'CANCELADA'
+                                  AND (A.EMPLEADO_CEDULA = :cedula OR A.VEHICULO_PLACA = :placa)
+                                  AND (A.FECHA IS NULL OR (A.FECHA < :fin
+                                       AND :inicio < A.FECHA + GREATEST(NVL(S.DURACION, 1), 1) / 1440))";
+                            using (var validar = new OracleCommand(cruces, con))
+                            {
+                                validar.Transaction = tx;
+                                validar.BindByName = true;
+                                validar.Parameters.Add("id", nueva ? 0 : agenda.AgendaID);
+                                validar.Parameters.Add("cedula", OracleDbType.Char, 10).Value = agenda.Empleado.Cedula;
+                                validar.Parameters.Add("placa", OracleDbType.Char, 7).Value = agenda.Vehiculo.Placa;
+                                validar.Parameters.Add("inicio", OracleDbType.Date).Value = agenda.Fecha;
+                                validar.Parameters.Add("fin", OracleDbType.Date).Value = agenda.Fecha.AddMinutes(duracion);
+                                if (Convert.ToInt32(validar.ExecuteScalar()) > 0)
+                                    throw new InvalidOperationException("El empleado o el vehículo ya tiene una cita que se cruza con ese horario.");
+                            }
+                        }
+                        if (nueva)
+                        {
+                            using (var secuencia = new OracleCommand("SELECT TALLER.SEQ_AGENDAID.NEXTVAL FROM DUAL", con))
+                            {
+                                secuencia.Transaction = tx;
+                                agenda.AgendaID = Convert.ToInt32(secuencia.ExecuteScalar());
+                            }
+                        }
+                        string sql = soloEstado
+                            ? "UPDATE TALLER.AGENDA SET ESTADO = :estado WHERE AGENDAID = :agendaId"
+                            : nueva
+                            ? @"INSERT INTO TALLER.AGENDA (AGENDAID, FECHA, COMENTARIO, VEHICULO_PLACA, EMPLEADO_CEDULA, ESTADO, ARTICULO_ARTICULOID)
+                                VALUES (:agendaId, :fecha, :comentario, :vehiculoPlaca, :empleadoCedula, :estado, :articuloId)"
+                            : @"UPDATE TALLER.AGENDA SET FECHA = :fecha, COMENTARIO = :comentario, VEHICULO_PLACA = :vehiculoPlaca,
+                                EMPLEADO_CEDULA = :empleadoCedula, ESTADO = :estado, ARTICULO_ARTICULOID = :articuloId WHERE AGENDAID = :agendaId";
+                        using (var cmd = new OracleCommand(sql, con))
+                        {
+                            cmd.Transaction = tx;
+                            if (soloEstado)
+                            {
+                                cmd.BindByName = true;
+                                cmd.Parameters.Add("estado", agenda.Estado);
+                            }
+                            else AgregarParams(cmd, agenda);
+                            cmd.Parameters.Add("agendaId", agenda.AgendaID);
+                            if (cmd.ExecuteNonQuery() != 1) throw new InvalidOperationException("La cita ya no existe.");
+                        }
+                        tx.Commit();
+                    }
+                    catch { tx.Rollback(); throw; }
                 }
             }
         }

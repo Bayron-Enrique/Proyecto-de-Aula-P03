@@ -1,4 +1,4 @@
-﻿
+
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -61,7 +61,9 @@ namespace PRESENTACION
                 int cantidadEmpleados = empleadoService.TotalEmpleados();
                 if (cantidadEmpleados == 0 && usuario.Equals("admin", StringComparison.OrdinalIgnoreCase) && clave == "admin123")
                 {
-                    AbrirPrincipal(new Empleado { Nombre = "Administrador", Apellido = "de respaldo", Cargo = new Cargo { NombreCargo = "Administrador" } });
+                    Empleado respaldo = empleadoService.AutenticarRespaldo(usuario, clave);
+                    if (respaldo != null) AbrirPrincipal(respaldo);
+                    else MessageBox.Show(this, "El acceso de respaldo ya no está disponible.", "Acceso denegado", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
                 if (cantidadEmpleados == 0)
@@ -74,6 +76,11 @@ namespace PRESENTACION
                 if (empleado == null)
                 {
                     MessageBox.Show(this, "No existe un empleado con esa cédula.", "Acceso denegado", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+                if (!empleado.Activo)
+                {
+                    MessageBox.Show(this, "El empleado está inactivo.", "Acceso denegado", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
                 if (!empleadoService.TieneClaveConfigurada(usuario))
@@ -117,6 +124,7 @@ namespace PRESENTACION
             var formularioPrincipal = new Form1(empleado);
             formularioPrincipal.FormClosed += (s, args) =>
             {
+                SesionActual.Cerrar();
                 txtPassword.Clear();
                 Show();
                 Activate();

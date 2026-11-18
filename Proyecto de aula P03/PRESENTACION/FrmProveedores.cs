@@ -26,6 +26,7 @@ namespace PRESENTACION
             servicio = new ProveedorService(new ProveedorRepository());
             errores = new ErrorProvider(components) { ContainerControl = this };
             ConstruirInterfaz();
+            EstiloUI.Aplicar(this);
             Load += (s, e) => CargarProveedores();
         }
 
@@ -74,6 +75,7 @@ namespace PRESENTACION
             txtBuscar = new TextBox { Location = new Point(220, 5), Width = 330, Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right };
             txtBuscar.TextChanged += (s, e) => AplicarFiltro();
             panelBuscar.Controls.Add(txtBuscar);
+            EstiloUI.AjustarBusqueda(txtBuscar);
             Controls.Add(panelBuscar);
 
             grid = new DataGridView
@@ -86,7 +88,7 @@ namespace PRESENTACION
             grid.Columns.Add(Columna("NIT", "Nit"));
             grid.Columns.Add(Columna("Razón social", "RazonSocial"));
             grid.Columns.Add(Columna("Teléfono", "Telefono"));
-            grid.SelectionChanged += Grid_SelectionChanged;
+            grid.CellClick += (s, e) => Grid_SelectionChanged(s, EventArgs.Empty);
             Controls.Add(grid);
 
             Controls.SetChildIndex(titulo, 0);
@@ -123,8 +125,8 @@ namespace PRESENTACION
 
         private void Guardar_Click(object sender, EventArgs e)
         {
-            bool valido = validacion.ValidarCampoVacioEspecifico(txtNit, errores) &
-                          validacion.ValidarCampoVacioEspecifico(txtRazonSocial, errores);
+            bool valido = !validacion.ValidarCampoVacioEspecifico(txtNit, errores) &
+                          !validacion.ValidarCampoVacioEspecifico(txtRazonSocial, errores);
             if (!valido)
             {
                 MessageBox.Show(this, "Completa el NIT y la razón social.", "Validación", MessageBoxButtons.OK, MessageBoxIcon.Warning);

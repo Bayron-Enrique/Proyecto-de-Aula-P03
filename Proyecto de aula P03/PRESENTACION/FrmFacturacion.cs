@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -57,6 +57,7 @@ namespace PRESENTACION
             facturaService = new FacturaService(new FacturaRepository(), clienteRepo, empleadoRepo, articuloRepo);
             errores = new ErrorProvider(components) { ContainerControl = this };
             ConstruirInterfaz();
+            EstiloUI.Aplicar(this);
             Load += (s, e) => CargarDatos();
         }
 
@@ -79,10 +80,11 @@ namespace PRESENTACION
             cabecera.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110)); cabecera.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
             cabecera.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110)); cabecera.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
             for (int i = 0; i < 4; i++) cabecera.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
-            cmbTipo = CrearCombo(); cmbTipo.Items.AddRange(new object[] { "VENTA", "COTIZACION" }); cmbTipo.SelectedIndex = 0;
+            cmbTipo = CrearCombo(); cmbTipo.Items.AddRange(new object[] { "VENTA", "COTIZACION" }); cmbTipo.SelectedIndex = 0; cmbTipo.SelectedIndexChanged += (s, e) => FiltrarAgendasVehiculo();
             cmbCliente = CrearCombo(); cmbCliente.SelectedIndexChanged += (s, e) => FiltrarVehiculosCliente();
             cmbEmpleado = CrearCombo(); cmbVehiculo = CrearCombo(); cmbVehiculo.SelectedIndexChanged += (s, e) => FiltrarAgendasVehiculo();
-            cmbAgenda = CrearCombo(); cmbEstadoPago = CrearCombo(); cmbEstadoPago.Items.AddRange(new object[] { "Pendiente", "Pagada", "Anulada" }); cmbEstadoPago.SelectedItem = "Pendiente";
+            cmbAgenda = CrearCombo(); cmbEstadoPago = CrearCombo(); cmbEstadoPago.Items.AddRange(new object[] { "Pendiente", "Pagada" }); cmbEstadoPago.SelectedItem = "Pendiente";
+            cmbAgenda.SelectionChangeCommitted += SeleccionarVehiculoDeCita;
             dtpFecha = new DateTimePicker { Dock = DockStyle.Fill, Format = DateTimePickerFormat.Custom, CustomFormat = "dd/MM/yyyy HH:mm", ShowUpDown = true, Value = DateTime.Now };
             chkDomicilio = new CheckBox { Text = "Domicilio", AutoSize = true, Anchor = AnchorStyles.Left, Checked = false };
             chkDomicilio.CheckedChanged += (s, e) => { txtDireccion.Enabled = chkDomicilio.Checked; if (!chkDomicilio.Checked) txtDireccion.Clear(); };
@@ -98,10 +100,10 @@ namespace PRESENTACION
             var obsPanel = new Panel { Dock = DockStyle.Top, Height = 42, Padding = new Padding(14, 4, 14, 2) };
             obsPanel.Controls.Add(new Label { Text = "Observaciones:", AutoSize = true, Location = new Point(14, 10) });
             txtObservaciones.Location = new Point(120, 5); txtObservaciones.Width = 600; txtObservaciones.Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right;
-            obsPanel.Controls.Add(txtObservaciones); tab.Controls.Add(obsPanel);
+            obsPanel.Controls.Add(txtObservaciones); EstiloUI.AjustarBusqueda(txtObservaciones); tab.Controls.Add(obsPanel);
 
-            var accionesDetalle = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 44, Padding = new Padding(10, 4, 0, 3), BackColor = Color.White };
-            cmbArticulo = CrearCombo(); cmbArticulo.Width = 330;
+            var accionesDetalle = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, MinimumSize = new Size(0, 44), Padding = new Padding(10, 4, 0, 3), BackColor = Color.White };
+            cmbArticulo = CrearCombo(); cmbArticulo.Dock = DockStyle.None; cmbArticulo.Width = 260;
             nudCantidad = new NumericUpDown { Minimum = 1, Maximum = 1000000, Value = 1, Width = 90, DecimalPlaces = 0, ThousandsSeparator = true };
             nudDescuento = new NumericUpDown { Minimum = 0, Maximum = 99999999.99M, Value = 0, Width = 130, DecimalPlaces = 2, ThousandsSeparator = true };
             var btnAgregar = CrearBoton("Agregar ítem", 118); var btnQuitar = CrearBoton("Quitar ítem", 108);
@@ -119,11 +121,19 @@ namespace PRESENTACION
             gridCarrito.Columns.Add(Columna("Subtotal", "Subtotal")); gridCarrito.Columns.Add(Columna("IVA", "Iva")); gridCarrito.Columns.Add(Columna("Total", "Total"));
             tab.Controls.Add(gridCarrito);
 
-            var pie = new Panel { Dock = DockStyle.Bottom, Height = 76, BackColor = Color.White, Padding = new Padding(14, 5, 14, 5) };
+            var pie = new TableLayoutPanel { Dock = DockStyle.Bottom, Height = 96, BackColor = Color.White, Padding = new Padding(10, 4, 10, 4), ColumnCount = 4, RowCount = 2 };
+            for (int i = 0; i < 4; i++) pie.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
+            pie.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
+            pie.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             lblSubtotal = CrearEtiquetaTotal("Subtotal: —", 0); lblIva = CrearEtiquetaTotal("IVA: —", 190);
             lblDescuento = CrearEtiquetaTotal("Descuento: —", 340); lblTotal = CrearEtiquetaTotal("Total: —", 520);
-            var btnGuardar = CrearBoton("Guardar documento", 180); btnGuardar.Anchor = AnchorStyles.Top | AnchorStyles.Right; btnGuardar.Location = new Point(Width - 230, 19);
-            btnGuardar.Click += GuardarDocumento_Click; pie.Controls.AddRange(new Control[] { lblSubtotal, lblIva, lblDescuento, lblTotal, btnGuardar });
+            var totales = new[] { lblSubtotal, lblIva, lblDescuento, lblTotal };
+            for (int i = 0; i < totales.Length; i++) { totales[i].AutoSize = false; totales[i].Dock = DockStyle.Fill; totales[i].TextAlign = ContentAlignment.MiddleLeft; pie.Controls.Add(totales[i], i, 0); }
+            var btnGuardar = CrearBoton("Guardar documento", 180); btnGuardar.Dock = DockStyle.Fill; btnGuardar.BackColor = Color.FromArgb(25, 125, 85);
+            var btnNuevo = CrearBoton("Limpiar / Nuevo", 160); btnNuevo.Dock = DockStyle.Fill;
+            btnNuevo.Click += (s, e) => NuevoDocumento();
+            btnGuardar.Click += GuardarDocumento_Click;
+            pie.Controls.Add(btnNuevo, 2, 1); pie.Controls.Add(btnGuardar, 3, 1);
             tab.Controls.Add(pie);
             tab.Controls.SetChildIndex(encabezado, 0); tab.Controls.SetChildIndex(cabecera, 1); tab.Controls.SetChildIndex(obsPanel, 2);
             tab.Controls.SetChildIndex(accionesDetalle, 3); tab.Controls.SetChildIndex(pie, 4); tab.Controls.SetChildIndex(gridCarrito, 5);
@@ -133,15 +143,16 @@ namespace PRESENTACION
         {
             var barra = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 44, Padding = new Padding(12, 4, 0, 3), BackColor = Color.White };
             var btnActualizar = CrearBoton("Actualizar", 110); var btnConvertir = CrearBoton("Convertir cotización en venta", 240);
-            btnActualizar.Click += (s, e) => CargarHistorial(); btnConvertir.Click += Convertir_Click;
-            barra.Controls.Add(btnActualizar); barra.Controls.Add(btnConvertir); tab.Controls.Add(barra);
+            var btnAnular = CrearBoton("Anular documento", 160);
+            btnActualizar.Click += (s, e) => CargarHistorial(); btnConvertir.Click += Convertir_Click; btnAnular.Click += Anular_Click;
+            barra.Controls.Add(btnActualizar); barra.Controls.Add(btnConvertir); barra.Controls.Add(btnAnular); tab.Controls.Add(barra);
             gridHistorial = CrearGrid();
             gridHistorial.Columns.Add(Columna("ID", "Id")); gridHistorial.Columns.Add(Columna("Tipo", "Tipo"));
             gridHistorial.Columns.Add(Columna("Fecha", "Fecha")); gridHistorial.Columns.Add(Columna("Cliente", "Cliente"));
             gridHistorial.Columns.Add(Columna("Empleado", "Empleado")); gridHistorial.Columns.Add(Columna("Vehículo", "Vehiculo"));
             gridHistorial.Columns.Add(Columna("Subtotal", "Subtotal")); gridHistorial.Columns.Add(Columna("IVA", "Iva"));
             gridHistorial.Columns.Add(Columna("Descuento", "Descuento")); gridHistorial.Columns.Add(Columna("Total", "Total"));
-            gridHistorial.Columns.Add(Columna("Pago", "EstadoPago")); gridHistorial.SelectionChanged += Historial_SelectionChanged;
+            gridHistorial.Columns.Add(Columna("Pago", "EstadoPago")); gridHistorial.CellClick += (s, e) => Historial_SelectionChanged(s, EventArgs.Empty);
             tab.Controls.Add(gridHistorial);
             gridDetalles = CrearGrid();
             gridDetalles.Columns.Add(Columna("Artículo", "Articulo")); gridDetalles.Columns.Add(Columna("Cantidad", "Cantidad"));
@@ -162,19 +173,17 @@ namespace PRESENTACION
                 etapa = "consultar clientes";
                 clientes = clienteService.Consultar();
                 etapa = "consultar empleados";
-                empleados = empleadoService.Consultar();
+                empleados = empleadoService.Consultar().Where(e => e.Activo).ToList();
                 etapa = "consultar vehículos";
                 vehiculos = vehiculoService.Consultar();
-                etapa = "consultar artículos y servicios";
-                articulos = articuloService.Consultar();
-                etapa = "consultar agenda";
-                agendas = agendaService.Consultar();
                 etapa = "enlazar clientes";
                 EnlazarCombo(cmbCliente, clientes.Select(c => new Opcion(c.Cedula, (c.Nombre + " " + c.Apellido).Trim() + " — " + c.Cedula)).ToList(), "Texto", "Valor");
                 etapa = "enlazar empleados";
                 EnlazarCombo(cmbEmpleado, empleados.Select(e => new Opcion(e.Cedula, (e.Nombre + " " + e.Apellido).Trim() + " — " + (e.Cargo == null ? "" : e.Cargo.NombreCargo))).ToList(), "Texto", "Valor");
-                etapa = "enlazar artículos y servicios";
-                EnlazarCombo(cmbArticulo, articulos.Select(a => new OpcionArticulo(a)).ToList(), "Texto", "Id");
+                PreseleccionarEmpleado();
+                if (empleados.Count == 0) errores.SetError(cmbEmpleado, "Registra un empleado en Empleados y cargos para emitir documentos.");
+                etapa = "cargar artículos y citas";
+                CargarArticulosYCitas();
                 etapa = "enlazar vehículos";
                 FiltrarVehiculosCliente();
                 etapa = "cargar historial de documentos";
@@ -197,6 +206,38 @@ namespace PRESENTACION
             }
         }
 
+        private void PreseleccionarEmpleado()
+        {
+            Empleado actual = (MdiParent as Form1)?.UsuarioActual;
+            if (actual != null && !string.IsNullOrWhiteSpace(actual.Cedula) && empleados.Any(e => e.Cedula == actual.Cedula))
+                cmbEmpleado.SelectedValue = actual.Cedula;
+            else cmbEmpleado.SelectedIndex = empleados.Count > 0 ? 0 : -1;
+        }
+
+        private void CargarArticulosYCitas()
+        {
+            object articuloAnterior = cmbArticulo.SelectedValue;
+            object citaAnterior = cmbAgenda.SelectedValue;
+            articulos = articuloService.Consultar();
+            agendas = agendaService.Consultar();
+            EnlazarCombo(cmbArticulo, articulos.Select(a => new OpcionArticulo(a)).ToList(), "Texto", "Id");
+            if (articuloAnterior is int id && articulos.Any(a => a.ArticuloId == id))
+                cmbArticulo.SelectedValue = id;
+            FiltrarAgendasVehiculo();
+            if (citaAnterior is int cita && cmbAgenda.Items.Cast<Opcion>().Any(o => Equals(o.Valor, cita)))
+                cmbAgenda.SelectedValue = cita;
+        }
+
+        private void NuevoDocumento()
+        {
+            carrito.Clear(); ActualizarCarrito(); errores.Clear();
+            txtObservaciones.Clear(); txtDireccion.Clear(); chkDomicilio.Checked = false;
+            cmbTipo.SelectedIndex = 0; cmbEstadoPago.SelectedItem = "Pendiente"; dtpFecha.Value = DateTime.Now;
+            nudCantidad.Value = 1; nudDescuento.Value = 0;
+            cmbCliente.SelectedIndex = clientes.Count > 0 ? 0 : -1;
+            FiltrarVehiculosCliente(); PreseleccionarEmpleado();
+        }
+
         private void FiltrarVehiculosCliente()
         {
             if (cmbVehiculo == null || cmbCliente == null) return;
@@ -211,13 +252,32 @@ namespace PRESENTACION
         private void FiltrarAgendasVehiculo()
         {
             if (cmbAgenda == null) return;
-            string placa = cmbVehiculo == null || cmbVehiculo.SelectedValue == null ? "" : cmbVehiculo.SelectedValue.ToString();
-            IEnumerable<Agenda> lista = agendas;
-            if (!string.IsNullOrEmpty(placa)) lista = lista.Where(a => a.Vehiculo.Placa == placa);
+            string placa = cmbVehiculo.SelectedValue as string;
+            string cedula = cmbCliente.SelectedValue as string;
             var opciones = new List<Opcion> { new Opcion(0, "Sin cita") };
-            opciones.AddRange(lista.Where(a => !string.Equals(a.Estado, "CANCELADA", StringComparison.OrdinalIgnoreCase))
-                .Select(a => new Opcion(a.AgendaID, a.Fecha.ToString("g") + " — " + a.Vehiculo.Placa + " — " + a.Estado)));
+            if (cmbTipo.Text == "VENTA" && !string.IsNullOrWhiteSpace(cedula))
+            {
+                var lista = agendas.Where(a => a.Vehiculo?.Cliente?.Cedula == cedula);
+                if (string.IsNullOrEmpty(placa))
+                    lista = lista.Where(a => string.Equals(a.Estado, "PENDIENTE", StringComparison.OrdinalIgnoreCase));
+                else
+                    lista = lista.Where(a => a.Vehiculo.Placa == placa &&
+                        !string.Equals(a.Estado, "CANCELADA", StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(a.Estado, "COMPLETADA", StringComparison.OrdinalIgnoreCase));
+                opciones.AddRange(lista.Select(a => new Opcion(a.AgendaID, a.Fecha.ToString("g") + " — " + a.Vehiculo.Placa + " — " + a.Estado)));
+            }
             EnlazarCombo(cmbAgenda, opciones, "Texto", "Valor"); cmbAgenda.SelectedIndex = 0;
+        }
+
+        private void SeleccionarVehiculoDeCita(object sender, EventArgs e)
+        {
+            if (!string.IsNullOrEmpty(cmbVehiculo.SelectedValue as string) ||
+                !(cmbAgenda.SelectedValue is int id) || id == 0) return;
+            Agenda cita = agendas.FirstOrDefault(a => a.AgendaID == id);
+            if (cita?.Vehiculo == null) return;
+            cmbVehiculo.SelectedValue = cita.Vehiculo.Placa;
+            // Cambiar la placa vuelve a enlazar la lista de citas.
+            cmbAgenda.SelectedValue = id;
         }
 
         private static void EnlazarCombo<T>(ComboBox combo, List<T> opciones, string miembroTexto, string miembroValor)
@@ -235,19 +295,37 @@ namespace PRESENTACION
 
         private void AgregarItem_Click(object sender, EventArgs e)
         {
-            if (!validacion.ValidarCampoVacioEspecificoCombo(cmbArticulo, errores))
+            if (validacion.ValidarCampoVacioEspecificoCombo(cmbArticulo, errores))
             {
                 MessageBox.Show(this, "Selecciona un artículo o servicio.", "Validación", MessageBoxButtons.OK, MessageBoxIcon.Warning); return;
             }
             OpcionArticulo opcion = cmbArticulo.SelectedItem as OpcionArticulo;
             if (opcion == null) return;
+            DetalleFactura linea = carrito.FirstOrDefault(d => d.Articulo.ArticuloId == opcion.Id);
+            int cantidad = (int)nudCantidad.Value;
+            long acumulada = (long)(linea?.Cantidad ?? 0) + cantidad;
+            if (acumulada > int.MaxValue)
+            {
+                MessageBox.Show(this, "La cantidad acumulada supera el máximo permitido.", "Validación", MessageBoxButtons.OK, MessageBoxIcon.Warning); return;
+            }
+            if (cmbTipo.Text == "VENTA" && opcion.Articulo is Repuesto repuesto && acumulada > repuesto.Cantidad)
+            {
+                MessageBox.Show(this, $"Stock insuficiente para {repuesto.Nombre}. Cantidad acumulada: {acumulada}. Disponibles: {repuesto.Cantidad}.",
+                    "Inventario", MessageBoxButtons.OK, MessageBoxIcon.Warning); return;
+            }
             decimal descuento = nudDescuento.Value;
             decimal subtotal = opcion.Articulo.PrecioVenta * (int)nudCantidad.Value;
             if (descuento > subtotal)
             {
                 MessageBox.Show(this, "El descuento no puede superar el subtotal de la línea.", "Validación", MessageBoxButtons.OK, MessageBoxIcon.Warning); return;
             }
-            carrito.Add(new DetalleFactura((int)nudCantidad.Value, opcion.Articulo) { Descuento = descuento });
+            if (linea == null)
+                carrito.Add(new DetalleFactura(cantidad, opcion.Articulo) { Descuento = descuento });
+            else
+            {
+                linea.Cantidad = (int)acumulada;
+                linea.Descuento += descuento;
+            }
             ActualizarCarrito(); nudDescuento.Value = 0; nudCantidad.Value = 1;
         }
 
@@ -270,9 +348,9 @@ namespace PRESENTACION
 
         private void GuardarDocumento_Click(object sender, EventArgs e)
         {
-            bool valido = validacion.ValidarCampoVacioEspecificoCombo(cmbTipo, errores) & validacion.ValidarCampoVacioEspecificoCombo(cmbCliente, errores) &
-                validacion.ValidarCampoVacioEspecificoCombo(cmbEmpleado, errores) & validacion.ValidarCampoVacioEspecificoDataPiker(dtpFecha, errores);
-            if (chkDomicilio.Checked) valido &= validacion.ValidarCampoVacioEspecifico(txtDireccion, errores);
+            bool valido = !validacion.ValidarCampoVacioEspecificoCombo(cmbTipo, errores) & !validacion.ValidarCampoVacioEspecificoCombo(cmbCliente, errores) &
+                !validacion.ValidarCampoVacioEspecificoCombo(cmbEmpleado, errores) & !validacion.ValidarCampoVacioEspecificoDataPiker(dtpFecha, errores);
+            if (chkDomicilio.Checked) valido &= !validacion.ValidarCampoVacioEspecifico(txtDireccion, errores);
             if (!valido) { MessageBox.Show(this, "Completa los datos obligatorios del documento.", "Validación", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
             var factura = new Factura
             {
@@ -288,15 +366,18 @@ namespace PRESENTACION
             string resultado = facturaService.GuardarDocumento(factura);
             bool correcto = resultado.StartsWith("Se registró el documento", StringComparison.OrdinalIgnoreCase);
             MessageBox.Show(this, resultado, correcto ? "Documento" : "No se pudo guardar", MessageBoxButtons.OK, correcto ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
-            if (correcto) { carrito.Clear(); ActualizarCarrito(); txtObservaciones.Clear(); txtDireccion.Clear(); chkDomicilio.Checked = false; CargarHistorial(); }
+            if (correcto) { carrito.Clear(); ActualizarCarrito(); txtObservaciones.Clear(); txtDireccion.Clear(); chkDomicilio.Checked = false; CargarHistorial(true); }
         }
 
-        private void CargarHistorial()
+        private void CargarHistorial(bool actualizarOpciones = false)
         {
+            gridDetalles.DataSource = null;
+            lblDetalleDocumento.Text = "Selecciona un documento para consultar sus líneas.";
             try
             {
                 facturas = facturaService.Consultar();
                 gridHistorial.DataSource = facturas.OrderByDescending(f => f.Fecha).Select(FacturaFila.Crear).ToList();
+                if (actualizarOpciones) CargarArticulosYCitas();
             }
             catch (Exception ex) { MessageBox.Show(this, "No se pudo consultar el historial. " + ex.Message, "Error de consulta", MessageBoxButtons.OK, MessageBoxIcon.Error); }
         }
@@ -320,7 +401,20 @@ namespace PRESENTACION
             string mensaje = facturaService.ConvertirCotizacionEnVenta(factura.FacturaID);
             bool correcto = mensaje.StartsWith("La cotización se convirtió", StringComparison.OrdinalIgnoreCase);
             MessageBox.Show(this, mensaje, "Conversión", MessageBoxButtons.OK, correcto ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
-            if (correcto) CargarHistorial();
+            if (correcto) CargarHistorial(true);
+        }
+
+        private void Anular_Click(object sender, EventArgs e)
+        {
+            if (gridHistorial.SelectedRows.Count == 0) return;
+            Factura factura = (gridHistorial.SelectedRows[0].DataBoundItem as FacturaFila)?.Original;
+            if (factura == null) return;
+            if (MessageBox.Show(this, "¿Anular el documento " + factura.FacturaID + "? Si es una venta se devolverán sus repuestos al inventario.",
+                "Confirmar anulación", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
+            string mensaje = facturaService.AnularDocumento(factura.FacturaID);
+            bool correcto = mensaje.StartsWith("Documento anulado", StringComparison.OrdinalIgnoreCase);
+            MessageBox.Show(this, mensaje, "Facturación", MessageBoxButtons.OK, correcto ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+            if (correcto) CargarHistorial(true);
         }
 
         private static ComboBox CrearCombo() { return new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList }; }

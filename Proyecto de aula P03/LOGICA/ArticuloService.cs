@@ -46,6 +46,8 @@ namespace LOGICA
             {
                 Articulo actual = repositorio.BuscarId(articuloId);
                 if (actual == null) return "No se encontró el artículo para modificar.";
+                if ((actual is Repuesto) != string.Equals(tipoArticulo, "Repuesto", StringComparison.OrdinalIgnoreCase) && repositorio.TieneMovimientos(articuloId))
+                    return "No se puede cambiar el tipo de un artículo con movimientos de facturación.";
                 string error = Validar(nombre, precio, porcentajeIVA, tipoArticulo, cantidad, descripcion, duracion, nitProveedor);
                 if (error != null) return error;
 

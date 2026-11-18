@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -52,6 +52,7 @@ namespace PRESENTACION
             mantenimientoService = new NotificacionMantenimientoService(notificacionRepo, vehiculoRepo, articuloRepo);
             errores = new ErrorProvider(components) { ContainerControl = this };
             ConstruirInterfaz();
+            EstiloUI.Aplicar(this);
             Load += (s, e) => CargarTodo();
         }
 
@@ -122,7 +123,7 @@ namespace PRESENTACION
             grid.Columns.Add(Columna("Servicio", "Servicio"));
             grid.Columns.Add(Columna("Estado", "Estado"));
             grid.Columns.Add(Columna("Observación", "Comentario"));
-            grid.SelectionChanged += Grid_SelectionChanged;
+            grid.CellClick += (s, e) => Grid_SelectionChanged(s, EventArgs.Empty);
             Controls.Add(grid);
             Controls.SetChildIndex(titulo, 0); Controls.SetChildIndex(campos, 1); Controls.SetChildIndex(acciones, 2); Controls.SetChildIndex(filtros, 3); Controls.SetChildIndex(grid, 4);
         }
@@ -132,12 +133,13 @@ namespace PRESENTACION
             try
             {
                 vehiculos = new VehiculoRepository().Consultar();
-                empleados = empleadoService.Consultar();
+                empleados = empleadoService.Consultar().Where(e => e.Activo).ToList();
                 servicios = articuloService.Consultar().OfType<Servicio>().ToList();
                 cmbVehiculo.DataSource = vehiculos.Select(v => new OpcionVehiculo(v)).ToList();
                 cmbVehiculo.DisplayMember = "Texto"; cmbVehiculo.ValueMember = "Placa";
-                cmbEmpleado.DataSource = empleados.Select(e => new OpcionEmpleado(e)).ToList();
                 cmbEmpleado.DisplayMember = "Texto"; cmbEmpleado.ValueMember = "Cedula";
+                cmbEmpleado.DataSource = empleados.Select(e => new OpcionEmpleado(e)).ToList();
+                cmbEmpleado.SelectedIndex = empleados.Count > 0 ? 0 : -1;
                 cmbServicio.DataSource = servicios.Select(s => new OpcionServicio(s)).ToList();
                 cmbServicio.DisplayMember = "Texto"; cmbServicio.ValueMember = "Id";
                 agendas = agendaService.Consultar();
@@ -153,15 +155,16 @@ namespace PRESENTACION
             if (dtpFiltroFecha != null && dtpFiltroFecha.Checked) lista = lista.Where(a => a.Fecha.Date == dtpFiltroFecha.Value.Date);
             if (cmbFiltroEstado != null && cmbFiltroEstado.SelectedIndex > 0) lista = lista.Where(a => string.Equals(a.Estado, cmbFiltroEstado.Text, StringComparison.OrdinalIgnoreCase));
             grid.DataSource = lista.Select(AgendaFila.Crear).ToList();
+            LimpiarFormulario();
         }
 
         private void Guardar_Click(object sender, EventArgs e)
         {
-            bool valido = validacion.ValidarCampoVacioEspecificoCombo(cmbVehiculo, errores) &
-                validacion.ValidarCampoVacioEspecificoCombo(cmbEmpleado, errores) &
-                validacion.ValidarCampoVacioEspecificoCombo(cmbServicio, errores) &
-                validacion.ValidarCampoVacioEspecificoCombo(cmbEstado, errores) &
-                validacion.ValidarCampoVacioEspecificoDataPiker(dtpFecha, errores);
+            bool valido = !validacion.ValidarCampoVacioEspecificoCombo(cmbVehiculo, errores) &
+                !validacion.ValidarCampoVacioEspecificoCombo(cmbEmpleado, errores) &
+                !validacion.ValidarCampoVacioEspecificoCombo(cmbServicio, errores) &
+                !validacion.ValidarCampoVacioEspecificoCombo(cmbEstado, errores) &
+                !validacion.ValidarCampoVacioEspecificoDataPiker(dtpFecha, errores);
             if (!valido) { MessageBox.Show(this, "Completa los datos requeridos para la cita.", "Validación", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
             int servicioId = cmbServicio.SelectedValue == null ? 0 : Convert.ToInt32(cmbServicio.SelectedValue);
             string mensaje = editando
@@ -189,7 +192,7 @@ namespace PRESENTACION
             Agenda agenda = (grid.SelectedRows[0].DataBoundItem as AgendaFila)?.Original;
             if (agenda == null) return;
             editando = true; agendaSeleccionada = agenda.AgendaID;
-            dtpFecha.Value = agenda.Fecha;
+            dtpFecha.Value = agenda.Fecha < dtpFecha.MinDate ? dtpFecha.MinDate : agenda.Fecha > dtpFecha.MaxDate ? dtpFecha.MaxDate : agenda.Fecha;
             txtComentario.Text = agenda.Comentario;
             cmbEstado.SelectedItem = agenda.Estado;
             cmbVehiculo.SelectedValue = agenda.Vehiculo.Placa;

@@ -35,6 +35,7 @@ namespace PRESENTACION
             articuloService = new ArticuloService(new ArticuloRepository(), proveedorRepository);
             errores = new ErrorProvider(components) { ContainerControl = this };
             ConstruirInterfaz();
+            EstiloUI.Aplicar(this);
             Load += (s, e) => CargarTodo();
         }
 
@@ -121,6 +122,13 @@ namespace PRESENTACION
             cmbFiltroTipo.SelectedIndex = 0;
             cmbFiltroTipo.SelectedIndexChanged += (s, e) => AplicarFiltro();
             filtros.Controls.Add(cmbFiltroTipo);
+            cmbFiltroTipo.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            filtros.SizeChanged += (s, e) =>
+            {
+                cmbFiltroTipo.Left = Math.Max(200, filtros.ClientSize.Width - 168);
+                filtros.Controls.OfType<Label>().First(l => l.Text == "Tipo:").Left = cmbFiltroTipo.Left - 42;
+                txtBuscar.Width = Math.Max(50, cmbFiltroTipo.Left - txtBuscar.Left - 58);
+            };
             Controls.Add(filtros);
 
             grid = new DataGridView
@@ -134,13 +142,13 @@ namespace PRESENTACION
             grid.Columns.Add(Columna("Nombre", "Nombre"));
             grid.Columns.Add(Columna("Tipo", "Tipo"));
             grid.Columns.Add(Columna("Precio", "Precio"));
-            grid.Columns.Add(Columna("IVA", "Iva"));
+            grid.Columns.Add(Columna("IVA %", "PorcentajeIVA"));
             grid.Columns.Add(Columna("Stock", "Stock"));
             grid.Columns.Add(Columna("Duración", "Duracion"));
             grid.Columns.Add(Columna("Proveedor", "Proveedor"));
             grid.Columns.Add(Columna("Descripción", "Descripcion"));
             grid.CellFormatting += Grid_CellFormatting;
-            grid.SelectionChanged += Grid_SelectionChanged;
+            grid.CellClick += (s, e) => Grid_SelectionChanged(s, EventArgs.Empty);
             Controls.Add(grid);
 
             Controls.SetChildIndex(titulo, 0);
@@ -233,8 +241,12 @@ namespace PRESENTACION
                 return;
             }
             int cantidad = 0, duracion = 0;
-            if (cmbTipo.Text == "Repuesto") int.TryParse(txtStock.Text, out cantidad);
-            else int.TryParse(txtDuracion.Text, out duracion);
+            bool entero = cmbTipo.Text == "Repuesto" ? int.TryParse(txtStock.Text, out cantidad) : int.TryParse(txtDuracion.Text, out duracion);
+            if (!entero)
+            {
+                MessageBox.Show(this, "La cantidad y la duración deben ser números enteros dentro del rango permitido.", "Validación", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
             double iva = Convert.ToDouble(cmbIva.Text, CultureInfo.InvariantCulture);
             string nit = cmbTipo.Text == "Repuesto" && cmbProveedor.SelectedValue != null ? cmbProveedor.SelectedValue.ToString() : null;
             string descripcion = cmbTipo.Text == "Servicio" ? TextoOpcional(txtDescripcion) : null;
@@ -254,20 +266,20 @@ namespace PRESENTACION
         private bool ValidarFormulario()
         {
             bool valido = true;
-            valido &= validacion.ValidarCampoVacioEspecifico(txtNombre, errores);
-            valido &= validacion.ValidarCampoVacioEspecifico(txtPrecio, errores);
-            valido &= validacion.ValidarCampoVacioEspecificoCombo(cmbTipo, errores);
-            valido &= validacion.ValidarCampoVacioEspecificoCombo(cmbIva, errores);
+            valido &= !validacion.ValidarCampoVacioEspecifico(txtNombre, errores);
+            valido &= !validacion.ValidarCampoVacioEspecifico(txtPrecio, errores);
+            valido &= !validacion.ValidarCampoVacioEspecificoCombo(cmbTipo, errores);
+            valido &= !validacion.ValidarCampoVacioEspecificoCombo(cmbIva, errores);
             if (!validacion.ValidarCampoNumero(txtPrecio, errores)) valido = false;
             if (cmbTipo.Text == "Repuesto")
             {
-                valido &= validacion.ValidarCampoVacioEspecifico(txtStock, errores);
-                valido &= validacion.ValidarCampoVacioEspecificoCombo(cmbProveedor, errores);
+                valido &= !validacion.ValidarCampoVacioEspecifico(txtStock, errores);
+                valido &= !validacion.ValidarCampoVacioEspecificoCombo(cmbProveedor, errores);
                 if (!validacion.ValidarCampoNumero(txtStock, errores)) valido = false;
             }
             else if (cmbTipo.Text == "Servicio")
             {
-                valido &= validacion.ValidarCampoVacioEspecifico(txtDuracion, errores);
+                valido &= !validacion.ValidarCampoVacioEspecifico(txtDuracion, errores);
                 if (!validacion.ValidarCampoNumero(txtDuracion, errores)) valido = false;
             }
             if (!valido) MessageBox.Show(this, "Completa los campos obligatorios y verifica sus valores.", "Validación", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -298,6 +310,7 @@ namespace PRESENTACION
             if (articulo == null) return;
             editando = true;
             articuloIdSeleccionado = articulo.ArticuloId;
+            cmbTipo.Enabled = false;
             txtNombre.Text = articulo.Nombre;
             txtPrecio.Text = articulo.PrecioVenta.ToString("0.00", CultureInfo.CurrentCulture);
             cmbIva.SelectedItem = articulo.PorcentajeIVA.ToString("0.##", CultureInfo.InvariantCulture);
@@ -336,6 +349,7 @@ namespace PRESENTACION
         {
             editando = false;
             articuloIdSeleccionado = 0;
+            cmbTipo.Enabled = true;
             txtNombre.Clear(); txtPrecio.Clear(); txtStock.Clear(); txtDuracion.Clear(); txtDescripcion.Clear();
             cmbTipo.SelectedItem = "Repuesto";
             cmbIva.SelectedItem = "19";
@@ -399,7 +413,7 @@ namespace PRESENTACION
             public string Nombre { get; set; }
             public string Tipo { get; set; }
             public decimal Precio { get; set; }
-            public string Iva { get; set; }
+            public decimal PorcentajeIVA { get; set; }
             public object Stock { get; set; }
             public int StockValue { get; set; }
             public object Duracion { get; set; }
@@ -412,7 +426,7 @@ namespace PRESENTACION
                 var fila = new ArticuloFila
                 {
                     ArticuloId = articulo.ArticuloId, Nombre = articulo.Nombre, Tipo = TipoDe(articulo),
-                    Precio = articulo.PrecioVenta, Iva = articulo.PorcentajeIVA.ToString("0.##", CultureInfo.InvariantCulture),
+                    Precio = articulo.PrecioVenta, PorcentajeIVA = articulo.PorcentajeIVA,
                     Original = articulo
                 };
                 if (articulo is Repuesto repuesto)

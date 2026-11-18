@@ -32,6 +32,7 @@ namespace PRESENTACION
             servicio = new NotificacionMantenimientoService(new NotificacionMantenimientoRepository(), vehiculoRepo, articuloRepo);
             errores = new ErrorProvider { ContainerControl = this };
             ConstruirInterfaz();
+            EstiloUI.Aplicar(this);
             Load += (s, e) => CargarDatos();
         }
 
@@ -62,8 +63,10 @@ namespace PRESENTACION
             var acciones = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 42, Padding = new Padding(12, 3, 0, 3), BackColor = Color.White };
             btnGuardar = CrearBoton("Guardar");
             var btnNuevo = CrearBoton("Nuevo"); var btnEliminar = CrearBoton("Eliminar"); var btnEstado = CrearBoton("Actualizar estado");
+            var btnEnviar = CrearBoton("Enviar recordatorio");
             btnGuardar.Click += Guardar_Click; btnNuevo.Click += (s, e) => LimpiarFormulario(); btnEliminar.Click += Eliminar_Click; btnEstado.Click += ActualizarEstado_Click;
-            acciones.Controls.AddRange(new Control[] { btnGuardar, btnNuevo, btnEliminar, btnEstado });
+            btnEnviar.Click += EnviarRecordatorio_Click;
+            acciones.Controls.AddRange(new Control[] { btnGuardar, btnNuevo, btnEliminar, btnEstado, btnEnviar });
             Controls.Add(acciones);
 
             var filtro = new Panel { Dock = DockStyle.Top, Height = 42, Padding = new Padding(16, 5, 16, 3) };
@@ -75,7 +78,7 @@ namespace PRESENTACION
             grid = new DataGridView { Dock = DockStyle.Fill, ReadOnly = true, AllowUserToAddRows = false, AutoGenerateColumns = false, MultiSelect = false, SelectionMode = DataGridViewSelectionMode.FullRowSelect, RowHeadersVisible = false, BackgroundColor = Color.White, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill };
             grid.Columns.Add(Columna("ID", "Id")); grid.Columns.Add(Columna("Fecha programada", "Fecha")); grid.Columns.Add(Columna("Placa", "Placa"));
             grid.Columns.Add(Columna("Artículo / servicio", "Articulo")); grid.Columns.Add(Columna("Estado", "Estado")); grid.Columns.Add(Columna("Observación", "Comentario"));
-            grid.SelectionChanged += Grid_SelectionChanged; Controls.Add(grid);
+            grid.CellClick += (s, e) => Grid_SelectionChanged(s, EventArgs.Empty); Controls.Add(grid);
             Controls.SetChildIndex(titulo, 0); Controls.SetChildIndex(campos, 1); Controls.SetChildIndex(acciones, 2); Controls.SetChildIndex(filtro, 3); Controls.SetChildIndex(grid, 4);
         }
 
@@ -99,13 +102,14 @@ namespace PRESENTACION
             IEnumerable<NotificacionMantenimiento> filas = notificaciones;
             if (placa.Length > 0) filas = filas.Where(n => n.Vehiculo.Placa.IndexOf(placa, StringComparison.OrdinalIgnoreCase) >= 0);
             grid.DataSource = filas.Select(NotificacionFila.Crear).ToList();
+            LimpiarFormulario();
         }
 
         private void Guardar_Click(object sender, EventArgs e)
         {
-            bool valido = validacion.ValidarCampoVacioEspecificoCombo(cmbVehiculo, errores) &
-                validacion.ValidarCampoVacioEspecificoCombo(cmbArticulo, errores) & validacion.ValidarCampoVacioEspecificoCombo(cmbEstado, errores) &
-                validacion.ValidarCampoVacioEspecificoDataPiker(dtpFecha, errores);
+            bool valido = !validacion.ValidarCampoVacioEspecificoCombo(cmbVehiculo, errores) &
+                !validacion.ValidarCampoVacioEspecificoCombo(cmbArticulo, errores) & !validacion.ValidarCampoVacioEspecificoCombo(cmbEstado, errores) &
+                !validacion.ValidarCampoVacioEspecificoDataPiker(dtpFecha, errores);
             if (!valido) { MessageBox.Show(this, "Selecciona vehículo, artículo, fecha y estado.", "Validación", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
             string mensaje = editando
                 ? servicio.Modificar(idSeleccionado, dtpFecha.Value, txtComentario.Text, cmbEstado.Text, cmbVehiculo.SelectedValue.ToString(), Convert.ToInt32(cmbArticulo.SelectedValue))
@@ -120,6 +124,15 @@ namespace PRESENTACION
             if (idSeleccionado <= 0) { MessageBox.Show(this, "Selecciona una notificación.", "Mantenimiento", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
             string mensaje = servicio.CambiarEstado(idSeleccionado, cmbEstado.Text);
             bool correcto = mensaje.StartsWith("El estado", StringComparison.OrdinalIgnoreCase);
+            MessageBox.Show(this, mensaje, "Mantenimiento", MessageBoxButtons.OK, correcto ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+            if (correcto) { CargarDatos(); LimpiarFormulario(); }
+        }
+
+        private void EnviarRecordatorio_Click(object sender, EventArgs e)
+        {
+            if (idSeleccionado <= 0) { MessageBox.Show(this, "Selecciona una notificación.", "Mantenimiento", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+            string mensaje = servicio.EnviarRecordatorioCorreo(idSeleccionado);
+            bool correcto = mensaje.StartsWith("Recordatorio enviado", StringComparison.OrdinalIgnoreCase);
             MessageBox.Show(this, mensaje, "Mantenimiento", MessageBoxButtons.OK, correcto ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
             if (correcto) { CargarDatos(); LimpiarFormulario(); }
         }
@@ -139,7 +152,7 @@ namespace PRESENTACION
             if (grid.SelectedRows.Count == 0) return;
             NotificacionMantenimiento n = (grid.SelectedRows[0].DataBoundItem as NotificacionFila)?.Original;
             if (n == null) return;
-            editando = true; idSeleccionado = n.NotificacionID; dtpFecha.Value = n.Fecha; txtComentario.Text = n.Comentario;
+            editando = true; idSeleccionado = n.NotificacionID; dtpFecha.Value = n.Fecha < dtpFecha.MinDate ? dtpFecha.MinDate : n.Fecha > dtpFecha.MaxDate ? dtpFecha.MaxDate : n.Fecha; txtComentario.Text = n.Comentario;
             cmbEstado.SelectedItem = n.Estado; cmbVehiculo.SelectedValue = n.Vehiculo.Placa; cmbArticulo.SelectedValue = n.Articulo.ArticuloId; btnGuardar.Text = "Actualizar";
         }
 

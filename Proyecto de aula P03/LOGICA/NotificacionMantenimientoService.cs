@@ -1,4 +1,4 @@
-﻿using DATOS;
+using DATOS;
 using ENTIDADES;
 using System;
 using System.Collections.Generic;
@@ -91,6 +91,24 @@ namespace LOGICA
             catch (Exception ex) { return "No se pudo actualizar el estado: " + ex.Message; }
         }
 
+        public string EnviarRecordatorioCorreo(int notificacionId)
+        {
+            try
+            {
+                NotificacionMantenimiento notificacion = repositorio.BuscarId(notificacionId);
+                if (notificacion == null) return "No se encontró la notificación.";
+                if (string.Equals(notificacion.Estado, "ENVIADA", StringComparison.OrdinalIgnoreCase))
+                    return "El recordatorio de esta notificación ya fue enviado.";
+                string mensaje;
+                if (!new Email().EnviarRecordatorioMantenimiento(notificacion, out mensaje))
+                    return "No se pudo enviar el recordatorio: " + mensaje;
+                notificacion.Estado = "ENVIADA";
+                repositorio.Modificar(notificacion);
+                return "Recordatorio enviado y notificación marcada como ENVIADA.";
+            }
+            catch (Exception ex) { return "No se pudo enviar el recordatorio: " + ex.Message; }
+        }
+
         private static string NormalizarEstado(string estado)
         {
             string[] estados = { "PENDIENTE", "ENVIADA", "COMPLETADA", "CANCELADA" };
@@ -120,7 +138,7 @@ namespace LOGICA
 
                 repositorio.Eliminar(notificacion);
 
-                return "La notificacion se elimino correctamente ...";
+                return "La notificación se eliminó correctamente.";
             }
             catch (Exception ex)
             {

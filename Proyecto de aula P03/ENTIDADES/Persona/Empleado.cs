@@ -28,6 +28,7 @@ namespace ENTIDADES
         }
 
         public Cargo Cargo { get; set; }
+        public bool Activo { get; set; } = true;
         public Empleado()
         {
 

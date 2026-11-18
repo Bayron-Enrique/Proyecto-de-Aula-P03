@@ -27,6 +27,7 @@ namespace PRESENTACION
             servicio = new ClienteService(new ClienteRepository());
             errores = new ErrorProvider(components) { ContainerControl = this };
             ConstruirInterfaz();
+            EstiloUI.Aplicar(this);
             Load += (s, e) => CargarClientes();
         }
 
@@ -98,6 +99,7 @@ namespace PRESENTACION
             txtBuscar.Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right;
             txtBuscar.TextChanged += (s, e) => AplicarBusqueda();
             buscar.Controls.Add(txtBuscar);
+            EstiloUI.AjustarBusqueda(txtBuscar);
             Controls.Add(buscar);
 
             grid = new DataGridView
@@ -116,7 +118,7 @@ namespace PRESENTACION
             grid.Columns.Add(Columna("Teléfono", "Telefono"));
             grid.Columns.Add(Columna("Correo", "CorreoElectronico"));
             grid.Columns.Add(Columna("Dirección", "Direccion"));
-            grid.SelectionChanged += Grid_SelectionChanged;
+            grid.CellClick += (s, e) => Grid_SelectionChanged(s, EventArgs.Empty);
             Controls.Add(grid);
             grid.BringToFront();
             buscar.BringToFront();

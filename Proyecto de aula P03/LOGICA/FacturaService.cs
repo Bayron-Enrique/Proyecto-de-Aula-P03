@@ -1,4 +1,4 @@
-﻿
+
 using DATOS;
 using ENTIDADES;
 using System;
@@ -59,6 +59,13 @@ namespace LOGICA
                 if (factura.TipoDocumento != "VENTA" && factura.TipoDocumento != "COTIZACION") return "Selecciona VENTA o COTIZACION.";
                 if (factura.Cliente == null || string.IsNullOrWhiteSpace(factura.Cliente.Cedula)) return "Selecciona un cliente.";
                 if (factura.Empleado == null || string.IsNullOrWhiteSpace(factura.Empleado.Cedula)) return "Selecciona el empleado que atiende.";
+                string estadoPago = (factura.EstadoPago ?? "Pendiente").Trim();
+                if (string.Equals(estadoPago, "Anulada", StringComparison.OrdinalIgnoreCase))
+                    return "No se puede crear un documento anulado. Usa Anular documento sobre una venta o cotización existente.";
+                if (!string.Equals(estadoPago, "Pendiente", StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(estadoPago, "Pagada", StringComparison.OrdinalIgnoreCase))
+                    return "El estado de pago debe ser Pendiente o Pagada.";
+                factura.EstadoPago = string.Equals(estadoPago, "Pagada", StringComparison.OrdinalIgnoreCase) ? "Pagada" : "Pendiente";
                 if (factura.Detalles == null || factura.Detalles.Count == 0) return "Agrega al menos un artículo al detalle.";
                 if (factura.Domicilio && string.IsNullOrWhiteSpace(factura.DireccionDomicilio)) return "Escribe la dirección de domicilio.";
                 if (factura.DireccionDomicilio != null && factura.DireccionDomicilio.Trim().Length > 150) return "La dirección admite hasta 150 caracteres.";
@@ -67,7 +74,7 @@ namespace LOGICA
                 Cliente cliente = clienteRepositorio.BuscarCedula(factura.Cliente.Cedula);
                 Empleado empleado = empleadoRepositorio.BuscarCedula(factura.Empleado.Cedula);
                 if (cliente == null) return "El cliente seleccionado ya no existe.";
-                if (empleado == null) return "El empleado seleccionado ya no existe.";
+                if (empleado == null || !empleado.Activo) return "El empleado seleccionado no existe o está inactivo.";
                 factura.Cliente = cliente;
                 factura.Empleado = empleado;
 
@@ -80,9 +87,12 @@ namespace LOGICA
                 }
                 if (factura.AgendaID.HasValue)
                 {
+                    if (factura.TipoDocumento != "VENTA") return "Una cotización no puede completar una cita. Asocia la cita al registrar una venta.";
+                    if (factura.Vehiculo == null) return "Selecciona el vehículo de la cita.";
                     Agenda agenda = agendaRepositorio.BuscarId(factura.AgendaID.Value);
                     if (agenda == null) return "La cita seleccionada ya no existe.";
-                    if (factura.Vehiculo != null && agenda.Vehiculo.Placa != factura.Vehiculo.Placa) return "La cita no corresponde al vehículo seleccionado.";
+                    if (agenda.Vehiculo == null || agenda.Vehiculo.Cliente == null || agenda.Vehiculo.Cliente.Cedula != cliente.Cedula || agenda.Vehiculo.Placa != factura.Vehiculo.Placa) return "La cita no corresponde al cliente y vehículo seleccionados.";
+                    if (string.Equals(agenda.Estado, "CANCELADA", StringComparison.OrdinalIgnoreCase)) return "No se puede facturar una cita cancelada.";
                 }
 
                 foreach (DetalleFactura detalle in factura.Detalles)
@@ -129,273 +139,17 @@ namespace LOGICA
             return repositorio.ObtenerTotalVentas();
         }
 
-        // GUARDAR FACTURA O COTIZACION
-        public string Guardar(
-            DateTime fecha,
-            decimal descuento,
-            string observaciones,
-            string estadoPago,
-            string cedulaCliente,
-            string cedulaEmpleado,
-            string tipoDocumento = "VENTA")
+        public string AnularDocumento(int facturaId)
         {
             try
             {
-                // Validaciones de fecha
-                if (fecha.Year < 2000)
-                {
-                    return "La fecha de la factura no es valida ...";
-                }
-
-                if (fecha > DateTime.Now)
-                {
-                    return "La fecha de la factura no puede ser futura ...";
-                }
-
-                // Validaciones de descuento
-                if (descuento < 0)
-                {
-                    return "El descuento no puede ser negativo ...";
-                }
-
-                if (descuento > 99999999.99m)
-                {
-                    return "El descuento es demasiado alto ...";
-                }
-
-                if (Math.Round(descuento, 2) != descuento)
-                {
-                    return "El descuento solo puede tener 2 decimales ...";
-                }
-
-                // Validaciones de observaciones
-                if (!string.IsNullOrEmpty(observaciones))
-                {
-                    if (string.IsNullOrWhiteSpace(observaciones))
-                    {
-                        return "Las observaciones no pueden tener solo espacios ...";
-                    }
-
-                    if (observaciones != observaciones.Trim() ||
-                        observaciones.Contains("  "))
-                    {
-                        return "Las observaciones no pueden tener espacios al inicio, al final ni seguidos ...";
-                    }
-
-                    if (observaciones.Length < 3 ||
-                        observaciones.Length > 200)
-                    {
-                        return "Las observaciones deben tener entre 3 y 200 caracteres ...";
-                    }
-
-                    foreach (char c in observaciones)
-                    {
-                        if (char.IsControl(c))
-                        {
-                            return "Las observaciones tienen caracteres no permitidos ...";
-                        }
-                    }
-                }
-
-                // Validacion del estado de pago
-                if (estadoPago != "Pendiente" &&
-                    estadoPago != "Pagada" &&
-                    estadoPago != "Anulada")
-                {
-                    return "El estado de pago debe ser Pendiente, Pagada o Anulada ...";
-                }
-
-                // Validacion del tipo de documento
-                if (string.IsNullOrWhiteSpace(tipoDocumento))
-                {
-                    return "Debe seleccionar un tipo de documento ...";
-                }
-
-                tipoDocumento = tipoDocumento.Trim().ToUpperInvariant();
-
-                if (tipoDocumento != "VENTA" &&
-                    tipoDocumento != "COTIZACION")
-                {
-                    return "El tipo de documento debe ser VENTA o COTIZACION ...";
-                }
-
-                // Validaciones de cliente y empleado
-                if (string.IsNullOrWhiteSpace(cedulaCliente))
-                {
-                    return "Debe seleccionar un cliente valido ...";
-                }
-
-                if (string.IsNullOrWhiteSpace(cedulaEmpleado))
-                {
-                    return "Debe seleccionar un empleado valido ...";
-                }
-
-                Cliente cliente =
-                    clienteRepositorio.BuscarCedula(cedulaCliente);
-
-                if (cliente == null)
-                {
-                    return "El cliente seleccionado no existe ...";
-                }
-
-                Empleado empleado =
-                    empleadoRepositorio.BuscarCedula(cedulaEmpleado);
-
-                if (empleado == null)
-                {
-                    return "El empleado seleccionado no existe ...";
-                }
-
-                // Obtener el ID directamente desde Oracle
-                int facturaId =
-                    repositorio.ObtenerSiguienteFacturaId();
-
-                // Crear factura o cotizacion
-                Factura factura = new Factura
-                {
-                    FacturaID = facturaId,
-                    Fecha = fecha,
-                    Descuento = descuento,
-                    Observaciones = observaciones,
-                    EstadoPago = estadoPago,
-                    TipoDocumento = tipoDocumento,
-                    Cliente = cliente,
-                    Empleado = empleado,
-
-                    // Valores iniciales antes de agregar detalles
-                    SubTotal = 0,
-                    Iva = 0,
-                    Total = 0
-                };
-
-                // Persistir en Oracle
-                repositorio.Guardar(factura);
-
-                return $"Se registro el documento {tipoDocumento} numero {facturaId} correctamente ...";
+                if (facturaId <= 0) return "Selecciona un documento válido.";
+                repositorio.AnularDocumento(facturaId);
+                return "Documento anulado; si era una venta, el stock de repuestos fue devuelto al inventario.";
             }
-            catch (Exception ex)
-            {
-                return $"Ocurrio un error al guardar: {ex.Message}";
-            }
+            catch (Exception ex) { return "No se pudo anular el documento: " + ex.Message; }
         }
 
-        // AGREGAR DETALLE A FACTURA O COTIZACION
-        public string AgregarDetalle(
-            int facturaId,
-            int articuloId,
-            int cantidad)
-        {
-            try
-            {
-                Factura factura = BuscarId(facturaId);
-
-                if (factura == null)
-                {
-                    return "No se encontro la factura ...";
-                }
-
-                if (factura.EstadoPago == "Pagada" ||
-                    factura.EstadoPago == "Anulada")
-                {
-                    return $"No se pueden agregar articulos a una factura {factura.EstadoPago.ToLower()} ...";
-                }
-
-                if (articuloId <= 0)
-                {
-                    return "Debe seleccionar un articulo valido ...";
-                }
-
-                Articulo articulo =
-                    articuloRepositorio.BuscarId(articuloId);
-
-                if (articulo == null)
-                {
-                    return "El articulo seleccionado no existe ...";
-                }
-
-                if (cantidad < 1 || cantidad > 1000000)
-                {
-                    return "La cantidad debe estar entre 1 y 1000000 ...";
-                }
-
-                bool esVenta = string.Equals(
-                    factura.TipoDocumento,
-                    "VENTA",
-                    StringComparison.OrdinalIgnoreCase);
-
-                bool esCotizacion = string.Equals(
-                    factura.TipoDocumento,
-                    "COTIZACION",
-                    StringComparison.OrdinalIgnoreCase);
-
-                if (!esVenta && !esCotizacion)
-                {
-                    return "La factura tiene un tipo de documento invalido ...";
-                }
-
-                // Validar existencias solo para repuestos vendidos
-                Repuesto repuesto = articulo as Repuesto;
-
-                if (esVenta && repuesto != null)
-                {
-                    if (cantidad > repuesto.Cantidad)
-                    {
-                        return $"No hay existencias suficientes, solo quedan {repuesto.Cantidad} ...";
-                    }
-                }
-
-                // Obtener los detalles que ya existen en Oracle
-                factura.Detalles =
-                    detalleRepositorio.ConsultarPorFactura(facturaId);
-
-                // Evitar articulos duplicados
-                foreach (DetalleFactura existente in factura.Detalles)
-                {
-                    if (existente.Articulo != null &&
-                        existente.Articulo.ArticuloId == articuloId)
-                    {
-                        return "Ese articulo ya esta en la factura ...";
-                    }
-                }
-
-                // Crear detalle utilizando el constructor existente
-                DetalleFactura detalle =
-                    new DetalleFactura(cantidad, articulo);
-
-                detalle.FacturaID = facturaId;
-
-                // Agregar a la factura en memoria para calcular
-                factura.Detalles.Add(detalle);
-
-                // Recalcular subtotal, IVA y total
-                factura.CalcularTotales();
-
-                if (factura.Total < 0)
-                {
-                    return "El descuento no puede superar el valor de la factura ...";
-                }
-
-                // Guardar el nuevo detalle en Oracle
-                detalleRepositorio.Guardar(detalle);
-
-                // Actualizar los totales de la factura
-                repositorio.Modificar(factura);
-
-                // Descontar inventario solamente en ventas
-                if (esVenta && repuesto != null)
-                {
-                    repuesto.Cantidad -= cantidad;
-
-                    articuloRepositorio.Modificar(repuesto);
-                }
-
-                return $"Se agrego el detalle a la factura {facturaId} correctamente ...";
-            }
-            catch (Exception ex)
-            {
-                return $"Ocurrio un error al agregar el detalle: {ex.Message}";
-            }
-        }
 
         // BUSCAR FACTURA POR ID
         public Factura BuscarId(int facturaId)
@@ -404,9 +158,7 @@ namespace LOGICA
 
             if (factura != null)
             {
-                factura.Detalles =
-                    detalleRepositorio.ConsultarPorFactura(facturaId);
-                CompletarRelaciones(factura);
+                factura.Detalles = detalleRepositorio.ConsultarPorFactura(facturaId);
             }
 
             return factura;
@@ -419,42 +171,17 @@ namespace LOGICA
 
             foreach (Factura factura in facturas)
             {
-                factura.Detalles =
-                    detalleRepositorio.ConsultarPorFactura(
-                        factura.FacturaID);
-                CompletarRelaciones(factura);
+                factura.Detalles = detalleRepositorio.ConsultarPorFactura(factura.FacturaID);
             }
 
             return facturas;
         }
 
-        private void CompletarRelaciones(Factura factura)
-        {
-            if (factura.Cliente != null) factura.Cliente = clienteRepositorio.BuscarCedula(factura.Cliente.Cedula);
-            if (factura.Empleado != null) factura.Empleado = empleadoRepositorio.BuscarCedula(factura.Empleado.Cedula);
-            factura.Vehiculo = repositorio.ConsultarDetallesVehiculo(factura.FacturaID).Select(d => d.Vehiculo).FirstOrDefault();
-        }
-
         // ELIMINAR FACTURA
+        [Obsolete("Usa AnularDocumento: los documentos contables no se borran físicamente.")]
         public string Eliminar(int facturaId)
         {
-            try
-            {
-                Factura factura = BuscarId(facturaId);
-
-                if (factura == null)
-                {
-                    return "No se encontro la factura ...";
-                }
-
-                repositorio.Eliminar(facturaId);
-
-                return "La factura se elimino correctamente ...";
-            }
-            catch (Exception ex)
-            {
-                return $"Ocurrio un error al eliminar: {ex.Message}";
-            }
+            return AnularDocumento(facturaId);
         }
     }
 }

@@ -35,22 +35,22 @@ namespace ENTIDADES
 
         public decimal Subtotal
         {
-            get { return ValorUnitario * Cantidad; }
+            get { return Math.Round(ValorUnitario * Cantidad, 2, MidpointRounding.AwayFromZero); }
         }
 
         public decimal SubtotalNeto
         {
-            get { return Subtotal - Descuento; }
+            get { return Math.Round(Subtotal - Descuento, 2, MidpointRounding.AwayFromZero); }
         }
 
         public decimal ValorIVA
         {
-            get { return SubtotalNeto * (PorcentajeIVA / 100); }
+            get { return Math.Round(SubtotalNeto * (PorcentajeIVA / 100), 2, MidpointRounding.AwayFromZero); }
         }
 
         public decimal Total
         {
-            get { return SubtotalNeto + ValorIVA; }
+            get { return Math.Round(SubtotalNeto + ValorIVA, 2, MidpointRounding.AwayFromZero); }
         }
 
         public override string ToString()

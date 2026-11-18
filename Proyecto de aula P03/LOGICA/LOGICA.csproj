@@ -133,6 +133,7 @@
     <Compile Include="CargoService.cs" />
     <Compile Include="ClienteService.cs" />
     <Compile Include="EmpleadoService.cs" />
+    <Compile Include="SesionActual.cs" />
     <Compile Include="Email.cs" />
     <Compile Include="FacturaService.cs" />
     <Compile Include="NotificacionMantenimientoService.cs" />

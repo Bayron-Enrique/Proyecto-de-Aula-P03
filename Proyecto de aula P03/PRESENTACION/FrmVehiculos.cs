@@ -47,6 +47,7 @@ namespace PRESENTACION
             soatService = new SoatService(new SoatRepository(), new VehiculoRepository());
             errores = new ErrorProvider(components) { ContainerControl = this };
             ConstruirInterfaz();
+            EstiloUI.Aplicar(this);
             Load += (s, e) => CargarTodo();
         }
 
@@ -119,6 +120,7 @@ namespace PRESENTACION
             txtBuscarVehiculo = new TextBox { Location = new Point(190, 5), Width = 300, Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right };
             txtBuscarVehiculo.TextChanged += (s, e) => MostrarVehiculos();
             busqueda.Controls.Add(txtBuscarVehiculo);
+            EstiloUI.AjustarBusqueda(txtBuscarVehiculo);
             tabVehiculos.Controls.Add(busqueda);
 
             gridVehiculos = CrearGrid();
@@ -130,7 +132,7 @@ namespace PRESENTACION
             gridVehiculos.Columns.Add(Columna("Color", "Color"));
             gridVehiculos.Columns.Add(Columna("Propietario", "Propietario"));
             gridVehiculos.Columns.Add(Columna("Cédula", "CedulaPropietario"));
-            gridVehiculos.SelectionChanged += GridVehiculos_SelectionChanged;
+            gridVehiculos.CellClick += (s, e) => GridVehiculos_SelectionChanged(s, EventArgs.Empty);
             tabVehiculos.Controls.Add(gridVehiculos);
 
             tabVehiculos.Controls.SetChildIndex(encabezado, 0);
@@ -182,11 +184,12 @@ namespace PRESENTACION
             gridSoat.Columns.Add(Columna("ID", "SoatId"));
             gridSoat.Columns.Add(Columna("Número SOAT", "NumeroSoat"));
             gridSoat.Columns.Add(Columna("Placa", "Placa"));
+            gridSoat.Columns.Add(Columna("Marca / línea", "Vehiculo"));
+            gridSoat.Columns.Add(Columna("Propietario", "Propietario"));
             gridSoat.Columns.Add(Columna("Fecha inicio", "FechaInicio"));
             gridSoat.Columns.Add(Columna("Fecha fin", "FechaFin"));
             gridSoat.Columns.Add(Columna("Estado", "Estado"));
-            gridSoat.CellFormatting += GridSoat_CellFormatting;
-            gridSoat.SelectionChanged += GridSoat_SelectionChanged;
+            gridSoat.CellClick += (s, e) => GridSoat_SelectionChanged(s, EventArgs.Empty);
             tabSoat.Controls.Add(gridSoat);
 
             tabSoat.Controls.SetChildIndex(encabezado, 0);
@@ -263,8 +266,10 @@ namespace PRESENTACION
             gridSoat.DataSource = lista.Select(s => new SoatFila
             {
                 SoatId = s.SoatId, NumeroSoat = s.NumeroSoat, Placa = s.Vehiculo == null ? string.Empty : s.Vehiculo.Placa,
+                Vehiculo = s.Vehiculo == null ? string.Empty : (s.Vehiculo.Marca + " " + s.Vehiculo.Linea).Trim(),
+                Propietario = s.Vehiculo == null || s.Vehiculo.Cliente == null ? string.Empty : s.Vehiculo.Cliente.NombreCompleto,
                 FechaInicio = s.FechaInicio.ToString("dd/MM/yyyy"), FechaFin = s.FechaFin.ToString("dd/MM/yyyy"),
-                Estado = s.FechaFin.Date >= DateTime.Now.Date ? "VIGENTE" : "VENCIDO", Original = s
+                Estado = s.FechaInicio.Date > DateTime.Today ? "PENDIENTE VIGENCIA" : s.FechaFin.Date < DateTime.Today ? "VENCIDO" : s.FechaFin.Date <= DateTime.Today.AddDays(30) ? "POR VENCER" : "VIGENTE", Original = s
             }).ToList();
         }
 
@@ -293,10 +298,10 @@ namespace PRESENTACION
         private bool ValidarVehiculo()
         {
             bool valido = true;
-            valido &= validacion.ValidarCampoVacioEspecifico(txtPlaca, errores);
-            valido &= validacion.ValidarCampoVacioEspecifico(txtModelo, errores);
-            valido &= validacion.ValidarCampoVacioEspecificoCombo(cmbTipoVehiculo, errores);
-            valido &= validacion.ValidarCampoVacioEspecificoCombo(cmbPropietario, errores);
+            valido &= !validacion.ValidarCampoVacioEspecifico(txtPlaca, errores);
+            valido &= !validacion.ValidarCampoVacioEspecifico(txtModelo, errores);
+            valido &= !validacion.ValidarCampoVacioEspecificoCombo(cmbTipoVehiculo, errores);
+            valido &= !validacion.ValidarCampoVacioEspecificoCombo(cmbPropietario, errores);
             if (!validacion.ValidarCampoNumero(txtModelo, errores)) valido = false;
             if (!valido) MessageBox.Show(this, "Completa los campos obligatorios y revisa el modelo.", "Validación", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return valido;
@@ -346,10 +351,10 @@ namespace PRESENTACION
 
         private void GuardarSoat_Click(object sender, EventArgs e)
         {
-            bool valido = validacion.ValidarCampoVacioEspecifico(txtNumeroSoat, errores) &
-                          validacion.ValidarCampoVacioEspecificoCombo(cmbPlacaSoat, errores) &
-                          validacion.ValidarCampoVacioEspecificoDataPiker(dtpFechaInicio, errores) &
-                          validacion.ValidarCampoVacioEspecificoDataPiker(dtpFechaFin, errores);
+            bool valido = !validacion.ValidarCampoVacioEspecifico(txtNumeroSoat, errores) &
+                          !validacion.ValidarCampoVacioEspecificoCombo(cmbPlacaSoat, errores) &
+                          !validacion.ValidarCampoVacioEspecificoDataPiker(dtpFechaInicio, errores) &
+                          !validacion.ValidarCampoVacioEspecificoDataPiker(dtpFechaFin, errores);
             if (!valido)
             {
                 MessageBox.Show(this, "Completa los datos de la póliza SOAT.", "Validación", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -389,14 +394,6 @@ namespace PRESENTACION
             dtpFechaFin.Value = soat.FechaFin < dtpFechaFin.MinDate ? dtpFechaFin.MinDate : soat.FechaFin;
             if (soat.Vehiculo != null) cmbPlacaSoat.SelectedValue = soat.Vehiculo.Placa;
             btnGuardarSoat.Text = "Actualizar";
-        }
-
-        private void GridSoat_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
-        {
-            if (gridSoat.Columns[e.ColumnIndex].Name != "Estado" || e.Value == null) return;
-            bool vigente = string.Equals(e.Value.ToString(), "VIGENTE", StringComparison.Ordinal);
-            e.CellStyle.ForeColor = vigente ? Color.FromArgb(20, 110, 55) : Color.FromArgb(160, 45, 45);
-            e.CellStyle.Font = new Font(gridSoat.Font, FontStyle.Bold);
         }
 
         private void LimpiarSoat()
@@ -509,6 +506,8 @@ namespace PRESENTACION
             public int SoatId { get; set; }
             public string NumeroSoat { get; set; }
             public string Placa { get; set; }
+            public string Vehiculo { get; set; }
+            public string Propietario { get; set; }
             public string FechaInicio { get; set; }
             public string FechaFin { get; set; }
             public string Estado { get; set; }

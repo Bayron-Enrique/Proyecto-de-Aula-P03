@@ -19,6 +19,7 @@ namespace PRESENTACION
         private List<Cargo> cargos = new List<Cargo>();
         private TextBox txtCedula, txtPrimerNombre, txtSegundoNombre, txtPrimerApellido, txtSegundoApellido, txtTelefono, txtCorreo, txtDireccion, txtBuscar, txtCargo;
         private ComboBox cmbSexo, cmbCargo;
+        private CheckBox chkActivo;
         private DataGridView gridEmpleados, gridCargos;
         private Button btnGuardarEmpleado, btnNuevoEmpleado;
         private bool editando;
@@ -31,6 +32,7 @@ namespace PRESENTACION
             empleadoService = new EmpleadoService(new EmpleadoRepository(), cargoRepository);
             errores = new ErrorProvider(components) { ContainerControl = this };
             ConstruirInterfaz();
+            EstiloUI.Aplicar(this);
             Load += (s, e) => CargarTodo();
         }
 
@@ -52,6 +54,12 @@ namespace PRESENTACION
                 Dock = DockStyle.Fill, FixedPanel = FixedPanel.Panel2,
                 BackColor = BackColor, BorderStyle = BorderStyle.None
             };
+            split.SizeChanged += (s, e) =>
+            {
+                int maximo = split.ClientSize.Width - split.SplitterWidth - split.Panel2MinSize;
+                if (maximo >= split.Panel1MinSize)
+                    split.SplitterDistance = Math.Max(split.Panel1MinSize, Math.Min(maximo, split.ClientSize.Width - 310 - split.SplitterWidth));
+            };
             Controls.Add(split);
             split.PerformLayout();
             int distanciaMaxima = split.ClientSize.Width - split.SplitterWidth - split.Panel2MinSize;
@@ -64,6 +72,7 @@ namespace PRESENTACION
             txtBuscar = new TextBox { Location = new Point(195, 5), Width = 300, Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right };
             txtBuscar.TextChanged += (s, e) => MostrarEmpleados();
             busqueda.Controls.Add(txtBuscar);
+            EstiloUI.AjustarBusqueda(txtBuscar);
             split.Panel1.Controls.Add(busqueda);
 
             var campos = new TableLayoutPanel
@@ -99,14 +108,20 @@ namespace PRESENTACION
             AgregarCampo(campos, 4, "Dirección", txtDireccion, 2);
             split.Panel1.Controls.Add(campos);
 
-            var acciones = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 44, Padding = new Padding(10, 3, 0, 3), BackColor = Color.White };
+            var acciones = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, MinimumSize = new Size(0, 44), Padding = new Padding(10, 3, 0, 3), BackColor = Color.White };
             btnGuardarEmpleado = CrearBoton("Guardar", Color.FromArgb(29, 111, 180));
             btnNuevoEmpleado = CrearBoton("Nuevo", Color.FromArgb(85, 95, 110));
             var btnEliminarEmpleado = CrearBoton("Eliminar", Color.FromArgb(173, 58, 58));
+            var btnClaveEmpleado = CrearBoton("Restablecer clave", Color.FromArgb(85, 95, 110));
+            Empleado usuario = SesionActual.Empleado;
+            btnClaveEmpleado.Visible = usuario?.Activo == true &&
+                string.Equals(usuario.Cargo?.NombreCargo?.Trim(), "Administrador", StringComparison.OrdinalIgnoreCase);
+            chkActivo = new CheckBox { Text = "Empleado activo", Checked = true, AutoSize = true, Anchor = AnchorStyles.Left };
             btnGuardarEmpleado.Click += GuardarEmpleado_Click;
             btnNuevoEmpleado.Click += (s, e) => LimpiarEmpleado();
             btnEliminarEmpleado.Click += EliminarEmpleado_Click;
-            acciones.Controls.AddRange(new Control[] { btnGuardarEmpleado, btnNuevoEmpleado, btnEliminarEmpleado });
+            btnClaveEmpleado.Click += RestablecerClaveEmpleado_Click;
+            acciones.Controls.AddRange(new Control[] { chkActivo, btnGuardarEmpleado, btnNuevoEmpleado, btnEliminarEmpleado, btnClaveEmpleado });
             split.Panel1.Controls.Add(acciones);
 
             gridEmpleados = CrearGrid();
@@ -119,7 +134,7 @@ namespace PRESENTACION
             gridEmpleados.Columns.Add(Columna("Teléfono", "Telefono"));
             gridEmpleados.Columns.Add(Columna("Correo", "CorreoElectronico"));
             gridEmpleados.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Cargo", Name = "Cargo", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
-            gridEmpleados.SelectionChanged += GridEmpleados_SelectionChanged;
+            gridEmpleados.CellClick += (s, e) => GridEmpleados_SelectionChanged(s, EventArgs.Empty);
             split.Panel1.Controls.Add(gridEmpleados);
 
             var panelCargo = split.Panel2;
@@ -132,11 +147,11 @@ namespace PRESENTACION
             panelCargo.Controls.Add(encabezadoCargo);
             txtCargo = new TextBox { Dock = DockStyle.Top, MaxLength = 100, Margin = new Padding(0, 5, 0, 5) };
             panelCargo.Controls.Add(txtCargo);
-            var accionesCargo = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 42, WrapContents = false };
-            var btnCrearCargo = CrearBoton("Crear", Color.FromArgb(29, 111, 180));
-            var btnEliminarCargo = CrearBoton("Eliminar", Color.FromArgb(173, 58, 58));
-            btnCrearCargo.Width = 88;
-            btnEliminarCargo.Width = 88;
+            var accionesCargo = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, MinimumSize = new Size(0, 44), Padding = new Padding(0, 4, 0, 4), WrapContents = true };
+            var btnCrearCargo = CrearBoton("Guardar cargo", Color.FromArgb(29, 111, 180));
+            var btnEliminarCargo = CrearBoton("Eliminar cargo", Color.FromArgb(173, 58, 58));
+            btnCrearCargo.Width = 120;
+            btnEliminarCargo.Width = 120;
             btnCrearCargo.Click += CrearCargo_Click;
             btnEliminarCargo.Click += EliminarCargo_Click;
             accionesCargo.Controls.AddRange(new Control[] { btnCrearCargo, btnEliminarCargo });
@@ -209,9 +224,9 @@ namespace PRESENTACION
             int cargoId = Convert.ToInt32(cmbCargo.SelectedValue);
             string resultado = editando
                 ? empleadoService.Modificar(txtCedula.Text.Trim(), txtPrimerNombre.Text.Trim(), TextoOpcional(txtSegundoNombre), txtPrimerApellido.Text.Trim(), TextoOpcional(txtSegundoApellido), cmbSexo.Text,
-                    TextoOpcional(txtTelefono), TextoOpcional(txtDireccion), TextoOpcional(txtCorreo), cargoId)
+                    TextoOpcional(txtTelefono), TextoOpcional(txtDireccion), TextoOpcional(txtCorreo), cargoId, chkActivo.Checked)
                 : empleadoService.Guardar(txtCedula.Text.Trim(), txtPrimerNombre.Text.Trim(), TextoOpcional(txtSegundoNombre), txtPrimerApellido.Text.Trim(), TextoOpcional(txtSegundoApellido), cmbSexo.Text,
-                    TextoOpcional(txtTelefono), TextoOpcional(txtDireccion), TextoOpcional(txtCorreo), cargoId);
+                    TextoOpcional(txtTelefono), TextoOpcional(txtDireccion), TextoOpcional(txtCorreo), cargoId, chkActivo.Checked);
             bool correcto = resultado.StartsWith("se registro el empleado", StringComparison.OrdinalIgnoreCase) ||
                             resultado.StartsWith("El empleado se modifico", StringComparison.OrdinalIgnoreCase);
             MessageBox.Show(this, resultado, correcto ? "Empleados" : "No se pudo guardar", MessageBoxButtons.OK,
@@ -242,6 +257,19 @@ namespace PRESENTACION
             if (correcto) { CargarTodo(); LimpiarEmpleado(); }
         }
 
+        private void RestablecerClaveEmpleado_Click(object sender, EventArgs e)
+        {
+            Empleado empleado = gridEmpleados.SelectedRows.Count == 0 ? null : gridEmpleados.SelectedRows[0].Tag as Empleado;
+            if (empleado == null) { MessageBox.Show(this, "Selecciona un empleado.", "Autenticación", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+            using (var dialogo = new DialogoNuevaClave())
+            {
+                if (dialogo.ShowDialog(this) != DialogResult.OK) return;
+                string mensaje = empleadoService.CambiarORestablecerClave(empleado.Cedula, dialogo.Clave);
+                bool correcto = mensaje.StartsWith("La clave del empleado", StringComparison.OrdinalIgnoreCase);
+                MessageBox.Show(this, mensaje, "Autenticación", MessageBoxButtons.OK, correcto ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+            }
+        }
+
         private void CrearCargo_Click(object sender, EventArgs e)
         {
             string resultado = cargoService.Guardar(txtCargo.Text.Trim());
@@ -268,6 +296,7 @@ namespace PRESENTACION
             Empleado empleado = gridEmpleados.SelectedRows.Count == 0 ? null : gridEmpleados.SelectedRows[0].Tag as Empleado;
             if (empleado == null) return;
             editando = true;
+            chkActivo.Checked = empleado.Activo;
             txtCedula.Text = empleado.Cedula;
             txtCedula.Enabled = false;
             txtPrimerNombre.Text = empleado.PrimerNombre;
@@ -285,6 +314,7 @@ namespace PRESENTACION
         private void LimpiarEmpleado()
         {
             editando = false;
+            chkActivo.Checked = true;
             txtCedula.Enabled = true;
             txtCedula.Clear(); txtPrimerNombre.Clear(); txtSegundoNombre.Clear(); txtPrimerApellido.Clear(); txtSegundoApellido.Clear(); txtTelefono.Clear(); txtCorreo.Clear(); txtDireccion.Clear();
             cmbSexo.SelectedIndex = -1;
@@ -330,6 +360,39 @@ namespace PRESENTACION
         private static string TextoOpcional(TextBox control)
         {
             return string.IsNullOrWhiteSpace(control.Text) ? null : control.Text.Trim();
+        }
+
+        private sealed class DialogoNuevaClave : Form
+        {
+            private readonly TextBox clave = new TextBox { UseSystemPasswordChar = true, Dock = DockStyle.Fill };
+            private readonly TextBox confirmar = new TextBox { UseSystemPasswordChar = true, Dock = DockStyle.Fill };
+            public string Clave { get { return clave.Text; } }
+
+            public DialogoNuevaClave()
+            {
+                Text = "Restablecer contraseña"; StartPosition = FormStartPosition.CenterParent;
+                FormBorderStyle = FormBorderStyle.FixedDialog; MinimizeBox = false; MaximizeBox = false;
+                ClientSize = new Size(370, 190);
+                var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(14), ColumnCount = 1, RowCount = 5 };
+                layout.Controls.Add(new Label { Text = "Nueva contraseña (8 a 100 caracteres):", AutoSize = true }, 0, 0);
+                layout.Controls.Add(clave, 0, 1);
+                layout.Controls.Add(new Label { Text = "Confirmar contraseña:", AutoSize = true }, 0, 2);
+                layout.Controls.Add(confirmar, 0, 3);
+                var botones = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft };
+                var aceptar = new Button { Text = "Guardar", Width = 90 };
+                var cancelar = new Button { Text = "Cancelar", DialogResult = DialogResult.Cancel, Width = 90 };
+                aceptar.Click += (s, e) =>
+                {
+                    if (clave.Text.Length < 8 || clave.Text.Length > 100 || clave.Text != confirmar.Text)
+                    {
+                        MessageBox.Show(this, "Las claves deben coincidir y tener entre 8 y 100 caracteres.", "Validación", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+                    DialogResult = DialogResult.OK;
+                };
+                botones.Controls.Add(aceptar); botones.Controls.Add(cancelar); layout.Controls.Add(botones, 0, 4);
+                Controls.Add(layout); AcceptButton = aceptar; CancelButton = cancelar;
+            }
         }
     }
 }

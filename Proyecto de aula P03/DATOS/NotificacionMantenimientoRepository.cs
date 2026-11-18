@@ -10,9 +10,14 @@ namespace DATOS
         private const string SelectSql = @"SELECT N.NOTIFICACIONID, N.FECHA, N.COMENTARIO, N.ESTADO,
                                           N.VEHICULO_PLACA, N.ARTICULO_ARTICULOID,
                                           A.NOMBRE AS ARTICULO_NOMBRE, A.CANTIDAD, A.DESCRIPCION, A.DURACION,
-                                          A.PROVEEDOR_NIT, T.NOMBRE AS TIPO_ARTICULO
+                                          A.PROVEEDOR_NIT, T.NOMBRE AS TIPO_ARTICULO,
+                                          V.MARCA AS VEHICULO_MARCA, V.LINEA AS VEHICULO_LINEA,
+                                          C.CEDULA AS CLIENTE_CEDULA, P.PRIMER_NOMBRE, P.SEGUNDO_NOMBRE,
+                                          P.PRIMER_APELLIDO, P.SEGUNDO_APELLIDO, P.CORREOELECTRONICO
                                           FROM TALLER.NOTIFICACION_MANTENIMIENTO N
                                           JOIN TALLER.VEHICULO V ON V.PLACA = N.VEHICULO_PLACA
+                                          JOIN TALLER.CLIENTE C ON C.CEDULA = V.CLIENTE_CEDULA
+                                          JOIN TALLER.PERSONA P ON P.CEDULA = C.CEDULA
                                           JOIN TALLER.ARTICULO A ON A.ARTICULOID = N.ARTICULO_ARTICULOID
                                           JOIN TALLER.TIPO_ARTICULO T ON T.TIPO_ARTICULO_ID = A.TIPO_ARTICULO_ID";
 
@@ -93,7 +98,7 @@ namespace DATOS
             cmd.Parameters.Add("fecha", notificacion.Fecha);
             cmd.Parameters.Add("comentario", string.IsNullOrEmpty(notificacion.Comentario) ? (object)DBNull.Value : notificacion.Comentario);
             cmd.Parameters.Add("estado", notificacion.Estado);
-            cmd.Parameters.Add("placa", notificacion.Vehiculo.Placa);
+            cmd.Parameters.Add("placa", OracleDbType.Char, 7).Value = notificacion.Vehiculo.Placa;
             cmd.Parameters.Add("articuloId", notificacion.Articulo.ArticuloId);
         }
 
@@ -122,10 +127,23 @@ namespace DATOS
             return new NotificacionMantenimiento
             {
                 NotificacionID = Convert.ToInt32(reader["NOTIFICACIONID"]),
-                Fecha = Convert.ToDateTime(reader["FECHA"]),
+                Fecha = reader["FECHA"] == DBNull.Value ? DateTime.MinValue : Convert.ToDateTime(reader["FECHA"]),
                 Comentario = reader["COMENTARIO"] == DBNull.Value ? string.Empty : reader["COMENTARIO"].ToString(),
                 Estado = reader["ESTADO"].ToString(),
-                Vehiculo = new Vehiculo { Placa = reader["VEHICULO_PLACA"].ToString().Trim() },
+                Vehiculo = new Vehiculo
+                {
+                    Placa = reader["VEHICULO_PLACA"].ToString().Trim(),
+                    Marca = reader["VEHICULO_MARCA"].ToString(), Linea = reader["VEHICULO_LINEA"].ToString(),
+                    Cliente = new Cliente
+                    {
+                        Cedula = reader["CLIENTE_CEDULA"].ToString().Trim(),
+                        PrimerNombre = reader["PRIMER_NOMBRE"].ToString(),
+                        SegundoNombre = reader["SEGUNDO_NOMBRE"] == DBNull.Value ? null : reader["SEGUNDO_NOMBRE"].ToString(),
+                        PrimerApellido = reader["PRIMER_APELLIDO"].ToString(),
+                        SegundoApellido = reader["SEGUNDO_APELLIDO"] == DBNull.Value ? null : reader["SEGUNDO_APELLIDO"].ToString(),
+                        CorreoElectronico = reader["CORREOELECTRONICO"] == DBNull.Value ? null : reader["CORREOELECTRONICO"].ToString()
+                    }
+                },
                 Articulo = articulo
             };
         }

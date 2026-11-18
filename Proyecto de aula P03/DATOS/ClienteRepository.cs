@@ -21,13 +21,13 @@ namespace DATOS
         {
             using (OracleConnection con = ObtenerConexion())
             {
-                string sql = @"INSERT INTO TALLER.PERSONA (CEDULA, PRIMER_NOMBRE, SEGUNDO_NOMBRE, PRIMER_APELLIDO, SEGUNDO_APELLIDO, SEXO, TELEFONO, DIRECCION, CORREOELECTRONICO)
-                               VALUES (:cedula, :primerNombre, :segundoNombre, :primerApellido, :segundoApellido, :sexo, :telefono, :direccion, :correo)";
+                string sql = SqlGuardarPersona;
                 con.Open();
                 using (OracleTransaction tx = con.BeginTransaction())
                 {
                     try
                     {
+                        BloquearIdentidades(con, tx);
                         using (OracleCommand cmd = new OracleCommand(sql,con))
                         {
                             cmd.Transaction = tx;
@@ -38,7 +38,7 @@ namespace DATOS
                         using (OracleCommand cmd = new OracleCommand("INSERT INTO TALLER.CLIENTE (CEDULA) VALUES (:cedula)", con))
                         {
                             cmd.Transaction = tx;
-                            cmd.Parameters.Add(new OracleParameter("cedula", cliente.Cedula));
+                            cmd.Parameters.Add("cedula", OracleDbType.Char, 10).Value = cliente.Cedula;
                             cmd.ExecuteNonQuery();
                         }
                         tx.Commit();
@@ -70,7 +70,7 @@ namespace DATOS
             using (OracleConnection con = ObtenerConexion())
             using (OracleCommand cmd = new OracleCommand(sql, con))
             {
-                cmd.Parameters.Add(new OracleParameter("cedula", cedula));
+                cmd.Parameters.Add("cedula", OracleDbType.Char, 10).Value = cedula;
                 con.Open();
                 using (OracleDataReader reader = cmd.ExecuteReader()) return reader.Read() ? Mapear(reader) : null;
             }
@@ -114,16 +114,17 @@ namespace DATOS
                 {
                     try
                     {
+                        BloquearIdentidades(con, tx);
                         using (OracleCommand cmd = new OracleCommand("DELETE FROM TALLER.CLIENTE WHERE CEDULA = :cedula", con))
                         {
                             cmd.Transaction = tx;
-                            cmd.Parameters.Add(new OracleParameter("cedula", cliente.Cedula));
+                            cmd.Parameters.Add("cedula", OracleDbType.Char, 10).Value = cliente.Cedula;
                             cmd.ExecuteNonQuery();
                         }
-                        using (OracleCommand cmd = new OracleCommand("DELETE FROM TALLER.PERSONA WHERE CEDULA = :cedula", con))
+                        using (OracleCommand cmd = new OracleCommand("DELETE FROM TALLER.PERSONA P WHERE P.CEDULA = :cedula AND NOT EXISTS (SELECT 1 FROM TALLER.CLIENTE C WHERE C.CEDULA = P.CEDULA) AND NOT EXISTS (SELECT 1 FROM TALLER.EMPLEADO E WHERE E.CEDULA = P.CEDULA)", con))
                         {
                             cmd.Transaction = tx;
-                            cmd.Parameters.Add(new OracleParameter("cedula", cliente.Cedula));
+                            cmd.Parameters.Add("cedula", OracleDbType.Char, 10).Value = cliente.Cedula;
                             cmd.ExecuteNonQuery();
                         }
                         tx.Commit();
@@ -151,7 +152,7 @@ namespace DATOS
 
         private void AgregarParametrosPersona(OracleCommand cmd, Cliente cliente)
         {
-            cmd.Parameters.Add(new OracleParameter("cedula", cliente.Cedula));
+            cmd.Parameters.Add("cedula", OracleDbType.Char, 10).Value = cliente.Cedula;
             cmd.Parameters.Add(new OracleParameter("primerNombre", cliente.PrimerNombre));
             cmd.Parameters.Add(new OracleParameter("segundoNombre", (object)cliente.SegundoNombre ?? DBNull.Value));
             cmd.Parameters.Add(new OracleParameter("primerApellido", cliente.PrimerApellido));

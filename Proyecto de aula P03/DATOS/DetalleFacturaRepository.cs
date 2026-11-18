@@ -1,4 +1,4 @@
-﻿
+
 using ENTIDADES;
 using Oracle.ManagedDataAccess.Client;
 using System;
