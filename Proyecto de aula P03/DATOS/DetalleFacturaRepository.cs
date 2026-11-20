@@ -95,6 +95,7 @@ namespace DATOS
                 using (OracleDataReader reader = comando.ExecuteReader())
                     while (reader.Read()) detalles.Add(Mapear(reader));
             }
+
             return detalles;
         }
 
@@ -116,7 +117,9 @@ namespace DATOS
 
         private DetalleFactura Mapear(OracleDataReader reader)
         {
-            int articuloId = Convert.ToInt32(reader["ARTICULO_ARTICULOID"]);
+            int articuloId = Convert.ToInt32(
+                reader["ARTICULO_ARTICULOID"]);
+
             string nombreArticulo = reader["NOMBRE_ARTICULO"].ToString();
             decimal precioVenta = Convert.ToDecimal(reader["VALORUNITARIO"]);
             decimal porcentajeIva = reader["PORCENTAJEIVA"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["PORCENTAJEIVA"]);
