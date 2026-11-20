@@ -1,7 +1,8 @@
-using DATOS;
+﻿using DATOS;
 using ENTIDADES;
 using LOGICA;
 using System;
+using System.ComponentModel;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
@@ -15,149 +16,44 @@ namespace PRESENTACION
         private readonly ArticuloService articuloService;
         private readonly ProveedorService proveedorService;
         private readonly Validacion validacion = new Validacion();
-        private readonly ErrorProvider errores;
         private List<Articulo> articulos = new List<Articulo>();
         private List<Proveedor> proveedores = new List<Proveedor>();
 
-        private TextBox txtNombre, txtPrecio, txtStock, txtDuracion, txtDescripcion, txtBuscar;
-        private ComboBox cmbTipo, cmbIva, cmbProveedor, cmbFiltroTipo;
-        private Label lblStock, lblDuracion, lblProveedor;
-        private DataGridView grid;
-        private Button btnGuardar;
         private bool editando;
         private int articuloIdSeleccionado;
 
         public FrmArticulos()
         {
             InitializeComponent();
+
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime) return;
+
             var proveedorRepository = new ProveedorRepository();
             proveedorService = new ProveedorService(proveedorRepository);
             articuloService = new ArticuloService(new ArticuloRepository(), proveedorRepository);
-            errores = new ErrorProvider(components) { ContainerControl = this };
-            ConstruirInterfaz();
-            EstiloUI.Aplicar(this);
+            ConfigurarInteraccion();
             Load += (s, e) => CargarTodo();
         }
 
-        private void ConstruirInterfaz()
+        private void ConfigurarInteraccion()
         {
-            Text = "Inventario de artículos";
-            BackColor = Color.FromArgb(245, 247, 250);
-            Font = new Font("Segoe UI", 9F);
-            var titulo = new Label
-            {
-                Text = "INVENTARIO / ARTÍCULOS", Dock = DockStyle.Top, Height = 42, Padding = new Padding(18, 8, 0, 0),
-                Font = new Font("Segoe UI", 16F, FontStyle.Bold), ForeColor = Color.FromArgb(35, 45, 60)
-            };
-            Controls.Add(titulo);
-
-            var campos = new TableLayoutPanel
-            {
-                Dock = DockStyle.Top, Height = 204, Padding = new Padding(18, 3, 18, 3),
-                ColumnCount = 4, RowCount = 5, BackColor = Color.White
-            };
-            campos.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 108));
-            campos.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            campos.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 108));
-            campos.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            for (int i = 0; i < 5; i++) campos.RowStyles.Add(new RowStyle(SizeType.Percent, 20F));
-
-            txtNombre = CrearTexto(100);
-            cmbTipo = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
-            cmbTipo.Items.AddRange(new object[] { "Repuesto", "Servicio" });
-            cmbTipo.SelectedIndexChanged += (s, e) => ConfigurarCamposTipo();
-            txtPrecio = CrearTexto(20);
-            cmbIva = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
-            cmbIva.Items.AddRange(new object[] { "0", "5", "19" });
+            cmbTipo.SelectedIndex = 0;
             cmbIva.SelectedItem = "19";
-            txtStock = CrearTexto(7);
-            txtStock.KeyPress += SoloDigitos_KeyPress;
-            txtDuracion = CrearTexto(5);
-            txtDuracion.KeyPress += SoloDigitos_KeyPress;
-            cmbProveedor = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
-            txtDescripcion = CrearTexto(200);
-            txtDescripcion.Multiline = true;
-            txtDescripcion.ScrollBars = ScrollBars.Vertical;
-            lblStock = new Label { Text = "Stock", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
-            lblDuracion = new Label { Text = "Duración (min)", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
-            lblProveedor = new Label { Text = "Proveedor", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
+            cmbFiltroTipo.SelectedIndex = 0;
+            ConfigurarCamposTipo();
 
-            AgregarCampo(campos, 0, "Nombre", txtNombre, 0);
-            AgregarCampo(campos, 0, "Tipo", cmbTipo, 2);
-            AgregarCampo(campos, 1, "Precio", txtPrecio, 0);
-            AgregarCampo(campos, 1, "IVA (%)", cmbIva, 2);
-            campos.Controls.Add(lblStock, 0, 2);
-            campos.Controls.Add(txtStock, 1, 2);
-            campos.Controls.Add(lblDuracion, 2, 2);
-            campos.Controls.Add(txtDuracion, 3, 2);
-            campos.Controls.Add(lblProveedor, 0, 3);
-            campos.Controls.Add(cmbProveedor, 1, 3);
-            campos.SetColumnSpan(cmbProveedor, 3);
-            campos.Controls.Add(new Label { Text = "Descripción", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft }, 0, 4);
-            campos.Controls.Add(txtDescripcion, 1, 4);
-            campos.SetColumnSpan(txtDescripcion, 3);
-            Controls.Add(campos);
-
-            var acciones = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 42, Padding = new Padding(12, 3, 0, 3), BackColor = Color.White };
-            btnGuardar = CrearBoton("Guardar", Color.FromArgb(29, 111, 180));
-            var btnNuevo = CrearBoton("Nuevo", Color.FromArgb(85, 95, 110));
-            var btnEliminar = CrearBoton("Eliminar", Color.FromArgb(173, 58, 58));
-            var btnProveedores = CrearBoton("Gestionar proveedores", Color.FromArgb(67, 100, 78));
-            btnProveedores.Width = 170;
             btnGuardar.Click += Guardar_Click;
             btnNuevo.Click += (s, e) => LimpiarFormulario();
             btnEliminar.Click += Eliminar_Click;
             btnProveedores.Click += GestionarProveedores_Click;
-            acciones.Controls.AddRange(new Control[] { btnGuardar, btnNuevo, btnEliminar, btnProveedores });
-            Controls.Add(acciones);
-
-            var filtros = new Panel { Dock = DockStyle.Top, Height = 42, Padding = new Padding(18, 4, 18, 4) };
-            filtros.Controls.Add(new Label { Text = "Buscar nombre:", AutoSize = true, Location = new Point(18, 11) });
-            txtBuscar = new TextBox { Location = new Point(120, 5), Width = 250, Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right };
+            cmbTipo.SelectedIndexChanged += (s, e) => ConfigurarCamposTipo();
             txtBuscar.TextChanged += (s, e) => AplicarFiltro();
-            filtros.Controls.Add(txtBuscar);
-            filtros.Controls.Add(new Label { Text = "Tipo:", AutoSize = true, Location = new Point(390, 11) });
-            cmbFiltroTipo = new ComboBox { Location = new Point(435, 5), Width = 150, DropDownStyle = ComboBoxStyle.DropDownList };
-            cmbFiltroTipo.Items.AddRange(new object[] { "Todos", "Repuesto", "Servicio" });
-            cmbFiltroTipo.SelectedIndex = 0;
             cmbFiltroTipo.SelectedIndexChanged += (s, e) => AplicarFiltro();
-            filtros.Controls.Add(cmbFiltroTipo);
-            cmbFiltroTipo.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            filtros.SizeChanged += (s, e) =>
-            {
-                cmbFiltroTipo.Left = Math.Max(200, filtros.ClientSize.Width - 168);
-                filtros.Controls.OfType<Label>().First(l => l.Text == "Tipo:").Left = cmbFiltroTipo.Left - 42;
-                txtBuscar.Width = Math.Max(50, cmbFiltroTipo.Left - txtBuscar.Left - 58);
-            };
-            Controls.Add(filtros);
-
-            grid = new DataGridView
-            {
-                Dock = DockStyle.Fill, ReadOnly = true, AllowUserToAddRows = false, AllowUserToDeleteRows = false,
-                AutoGenerateColumns = false, MultiSelect = false, SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-                BackgroundColor = Color.White, BorderStyle = BorderStyle.None, RowHeadersVisible = false,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
-            };
-            grid.Columns.Add(Columna("ID", "ArticuloId"));
-            grid.Columns.Add(Columna("Nombre", "Nombre"));
-            grid.Columns.Add(Columna("Tipo", "Tipo"));
-            grid.Columns.Add(Columna("Precio", "Precio"));
-            grid.Columns.Add(Columna("IVA %", "PorcentajeIVA"));
-            grid.Columns.Add(Columna("Stock", "Stock"));
-            grid.Columns.Add(Columna("Duración", "Duracion"));
-            grid.Columns.Add(Columna("Proveedor", "Proveedor"));
-            grid.Columns.Add(Columna("Descripción", "Descripcion"));
+            txtStock.KeyPress += SoloDigitos_KeyPress;
+            txtDuracion.KeyPress += SoloDigitos_KeyPress;
             grid.CellFormatting += Grid_CellFormatting;
             grid.CellClick += (s, e) => Grid_SelectionChanged(s, EventArgs.Empty);
-            Controls.Add(grid);
-
-            Controls.SetChildIndex(titulo, 0);
-            Controls.SetChildIndex(campos, 1);
-            Controls.SetChildIndex(acciones, 2);
-            Controls.SetChildIndex(filtros, 3);
-            Controls.SetChildIndex(grid, 4);
-            cmbTipo.SelectedIndex = 0;
-            ConfigurarCamposTipo();
+            EstiloUI.ConectarTabla(grid);
         }
 
         private void CargarTodo()
@@ -337,7 +233,7 @@ namespace PRESENTACION
             if (fila.Tipo == "Repuesto" && fila.StockValue <= 5)
             {
                 e.CellStyle.BackColor = Color.FromArgb(255, 242, 204);
-                if (grid.Columns[e.ColumnIndex].Name == "Stock")
+                if (grid.Columns[e.ColumnIndex].DataPropertyName == "Stock")
                 {
                     e.CellStyle.ForeColor = Color.FromArgb(150, 45, 25);
                     e.CellStyle.Font = new Font(grid.Font, FontStyle.Bold);
@@ -363,27 +259,6 @@ namespace PRESENTACION
         private static string TipoDe(Articulo articulo)
         {
             return articulo is Repuesto ? "Repuesto" : "Servicio";
-        }
-
-        private static TextBox CrearTexto(int maximo)
-        {
-            return new TextBox { Dock = DockStyle.Fill, MaxLength = maximo, Margin = new Padding(4, 6, 10, 4) };
-        }
-
-        private static void AgregarCampo(TableLayoutPanel panel, int fila, string titulo, Control control, int columna)
-        {
-            panel.Controls.Add(new Label { Text = titulo, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft }, columna, fila);
-            panel.Controls.Add(control, columna + 1, fila);
-        }
-
-        private static Button CrearBoton(string texto, Color color)
-        {
-            return new Button { Text = texto, Width = 104, Height = 32, FlatStyle = FlatStyle.Flat, ForeColor = Color.White, BackColor = color, Margin = new Padding(4), Cursor = Cursors.Hand };
-        }
-
-        private static DataGridViewTextBoxColumn Columna(string encabezado, string propiedad)
-        {
-            return new DataGridViewTextBoxColumn { HeaderText = encabezado, DataPropertyName = propiedad, Name = propiedad, SortMode = DataGridViewColumnSortMode.NotSortable };
         }
 
         private static void SoloDigitos_KeyPress(object sender, KeyPressEventArgs e)

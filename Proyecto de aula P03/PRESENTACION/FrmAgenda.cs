@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -22,22 +22,19 @@ namespace PRESENTACION
         private readonly EmpleadoService empleadoService;
         private readonly ArticuloService articuloService;
         private readonly Validacion validacion = new Validacion();
-        private readonly ErrorProvider errores;
         private List<Agenda> agendas = new List<Agenda>();
         private List<Vehiculo> vehiculos = new List<Vehiculo>();
         private List<Empleado> empleados = new List<Empleado>();
         private List<Servicio> servicios = new List<Servicio>();
-        private ComboBox cmbVehiculo, cmbEmpleado, cmbServicio, cmbEstado, cmbFiltroEstado;
-        private DateTimePicker dtpFecha, dtpFiltroFecha;
-        private TextBox txtComentario;
-        private DataGridView grid;
-        private Button btnGuardar;
         private bool editando;
         private int agendaSeleccionada;
 
         public FrmAgenda()
         {
             InitializeComponent();
+
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime) return;
+
             var clienteRepo = new ClienteRepository();
             var vehiculoRepo = new VehiculoRepository();
             var empleadoRepo = new EmpleadoRepository();
@@ -50,82 +47,31 @@ namespace PRESENTACION
             articuloService = new ArticuloService(articuloRepo, proveedorRepo);
             agendaService = new AgendaService(agendaRepo, clienteRepo, vehiculoRepo, empleadoRepo, articuloRepo);
             mantenimientoService = new NotificacionMantenimientoService(notificacionRepo, vehiculoRepo, articuloRepo);
-            errores = new ErrorProvider(components) { ContainerControl = this };
-            ConstruirInterfaz();
-            EstiloUI.Aplicar(this);
+            ConfigurarInteraccion();
             Load += (s, e) => CargarTodo();
         }
 
-        private void ConstruirInterfaz()
+        private void ConfigurarInteraccion()
         {
-            Text = "Agenda de citas";
-            ClientSize = new System.Drawing.Size(1120, 720);
-            MinimumSize = new System.Drawing.Size(900, 600);
-            BackColor = System.Drawing.Color.FromArgb(245, 247, 250);
-            Font = new System.Drawing.Font("Segoe UI", 9F);
-            var titulo = new Label { Text = "AGENDA DE CITAS", Dock = DockStyle.Top, Height = 42, Padding = new Padding(18, 8, 0, 0), Font = new System.Drawing.Font("Segoe UI", 16F, System.Drawing.FontStyle.Bold) };
-            Controls.Add(titulo);
-
-            var campos = new TableLayoutPanel { Dock = DockStyle.Top, Height = 152, Padding = new Padding(16, 4, 16, 4), ColumnCount = 4, RowCount = 3, BackColor = System.Drawing.Color.White };
-            campos.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100));
-            campos.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            campos.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100));
-            campos.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            for (int i = 0; i < 3; i++) campos.RowStyles.Add(new RowStyle(SizeType.Percent, 33.33F));
-            cmbVehiculo = Combo(); cmbEmpleado = Combo(); cmbServicio = Combo(); cmbEstado = Combo();
-            cmbEstado.Items.AddRange(new object[] { "PENDIENTE", "EN PROCESO", "COMPLETADA", "CANCELADA" });
+            dtpFecha.Value = DateTime.Now.AddHours(1);
             cmbEstado.SelectedIndex = 0;
-            dtpFecha = new DateTimePicker { Dock = DockStyle.Fill, Format = DateTimePickerFormat.Custom, CustomFormat = "dd/MM/yyyy HH:mm", ShowUpDown = true, Value = DateTime.Now.AddHours(1) };
-            txtComentario = new TextBox { Dock = DockStyle.Fill, MaxLength = 200 };
-            AgregarCampo(campos, 0, "Vehículo", cmbVehiculo, 0);
-            AgregarCampo(campos, 0, "Empleado", cmbEmpleado, 2);
-            AgregarCampo(campos, 1, "Servicio", cmbServicio, 0);
-            AgregarCampo(campos, 1, "Fecha y hora", dtpFecha, 2);
-            AgregarCampo(campos, 2, "Estado", cmbEstado, 0);
-            AgregarCampo(campos, 2, "Observación", txtComentario, 2);
-            Controls.Add(campos);
+            cmbFiltroEstado.SelectedIndex = 0;
 
-            var acciones = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 42, Padding = new Padding(12, 3, 0, 3), BackColor = System.Drawing.Color.White };
-            btnGuardar = Boton("Guardar cita");
-            var btnNuevo = Boton("Nuevo");
-            var btnEstado = Boton("Cambiar estado");
-            var btnCancelar = Boton("Cancelar cita");
-            var btnMantenimiento = Boton("Notificaciones de mantenimiento");
-            btnMantenimiento.Width = 220;
             btnGuardar.Click += Guardar_Click;
             btnNuevo.Click += (s, e) => LimpiarFormulario();
             btnEstado.Click += CambiarEstado_Click;
             btnCancelar.Click += (s, e) => CambiarEstado("CANCELADA");
-            btnMantenimiento.Click += (s, e) => { using (var form = new FrmMantenimiento()) form.ShowDialog(this); };
-            acciones.Controls.AddRange(new Control[] { btnGuardar, btnNuevo, btnEstado, btnCancelar, btnMantenimiento });
-            Controls.Add(acciones);
-
-            var filtros = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 42, Padding = new Padding(16, 4, 0, 2) };
-            dtpFiltroFecha = new DateTimePicker { Width = 150, Format = DateTimePickerFormat.Short, ShowCheckBox = true, Checked = false };
-            cmbFiltroEstado = Combo(); cmbFiltroEstado.Width = 150;
-            cmbFiltroEstado.Items.AddRange(new object[] { "Todos", "PENDIENTE", "EN PROCESO", "COMPLETADA", "CANCELADA" });
-            cmbFiltroEstado.SelectedIndex = 0;
+            btnMantenimiento.Click += (s, e) =>
+            {
+                using (var formulario = new FrmMantenimiento())
+                {
+                    formulario.ShowDialog(this);
+                }
+            };
             dtpFiltroFecha.ValueChanged += (s, e) => AplicarFiltros();
             cmbFiltroEstado.SelectedIndexChanged += (s, e) => AplicarFiltros();
-            filtros.Controls.Add(new Label { Text = "Fecha:", AutoSize = true, Padding = new Padding(0, 5, 0, 0) });
-            filtros.Controls.Add(dtpFiltroFecha);
-            filtros.Controls.Add(new Label { Text = "Estado:", AutoSize = true, Padding = new Padding(12, 5, 0, 0) });
-            filtros.Controls.Add(cmbFiltroEstado);
-            Controls.Add(filtros);
-
-            grid = new DataGridView { Dock = DockStyle.Fill, ReadOnly = true, AllowUserToAddRows = false, AutoGenerateColumns = false, MultiSelect = false, SelectionMode = DataGridViewSelectionMode.FullRowSelect, RowHeadersVisible = false, BackgroundColor = System.Drawing.Color.White, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill };
-            grid.Columns.Add(Columna("ID", "Id"));
-            grid.Columns.Add(Columna("Fecha y hora", "Fecha"));
-            grid.Columns.Add(Columna("Placa", "Placa"));
-            grid.Columns.Add(Columna("Cliente", "Cliente"));
-            grid.Columns.Add(Columna("Empleado", "Empleado"));
-            grid.Columns.Add(Columna("Cargo", "Cargo"));
-            grid.Columns.Add(Columna("Servicio", "Servicio"));
-            grid.Columns.Add(Columna("Estado", "Estado"));
-            grid.Columns.Add(Columna("Observación", "Comentario"));
             grid.CellClick += (s, e) => Grid_SelectionChanged(s, EventArgs.Empty);
-            Controls.Add(grid);
-            Controls.SetChildIndex(titulo, 0); Controls.SetChildIndex(campos, 1); Controls.SetChildIndex(acciones, 2); Controls.SetChildIndex(filtros, 3); Controls.SetChildIndex(grid, 4);
+            EstiloUI.ConectarTabla(grid);
         }
 
         private void CargarTodo()
@@ -210,15 +156,6 @@ namespace PRESENTACION
             grid.ClearSelection();
             foreach (Control control in new Control[] { cmbVehiculo, cmbEmpleado, cmbServicio, cmbEstado }) errores.SetError(control, string.Empty);
         }
-
-        private static ComboBox Combo() { return new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList }; }
-        private static void AgregarCampo(TableLayoutPanel p, int r, string label, Control control, int c)
-        {
-            p.Controls.Add(new Label { Text = label, Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft }, c, r);
-            p.Controls.Add(control, c + 1, r);
-        }
-        private static Button Boton(string text) { return new Button { Text = text, Width = 132, Height = 32, BackColor = System.Drawing.Color.FromArgb(45, 95, 145), ForeColor = System.Drawing.Color.White, FlatStyle = FlatStyle.Flat, Margin = new Padding(4) }; }
-        private static DataGridViewTextBoxColumn Columna(string header, string property) { return new DataGridViewTextBoxColumn { HeaderText = header, DataPropertyName = property, Name = property, SortMode = DataGridViewColumnSortMode.NotSortable }; }
 
         private sealed class OpcionVehiculo
         {

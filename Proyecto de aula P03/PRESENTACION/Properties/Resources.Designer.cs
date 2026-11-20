@@ -59,5 +59,12 @@ namespace PRESENTACION.Properties {
                 resourceCulture = value;
             }
         }
+
+        internal static global::System.Drawing.Bitmap LogotipoGotAuto {
+            get {
+                object obj = ResourceManager.GetObject("LogotipoGotAuto", resourceCulture);
+                return ((global::System.Drawing.Bitmap)(obj));
+            }
+        }
     }
 }

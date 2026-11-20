@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -23,7 +23,6 @@ namespace PRESENTACION
         private readonly ArticuloService articuloService;
         private readonly FacturaService facturaService;
         private readonly Validacion validacion = new Validacion();
-        private readonly ErrorProvider errores;
         private List<Cliente> clientes = new List<Cliente>();
         private List<Empleado> empleados = new List<Empleado>();
         private List<Vehiculo> vehiculos = new List<Vehiculo>();
@@ -31,18 +30,13 @@ namespace PRESENTACION
         private List<Articulo> articulos = new List<Articulo>();
         private List<Factura> facturas = new List<Factura>();
         private readonly List<DetalleFactura> carrito = new List<DetalleFactura>();
-        private ComboBox cmbTipo, cmbCliente, cmbEmpleado, cmbVehiculo, cmbAgenda, cmbArticulo;
-        private ComboBox cmbEstadoPago;
-        private DateTimePicker dtpFecha;
-        private CheckBox chkDomicilio;
-        private TextBox txtDireccion, txtObservaciones;
-        private NumericUpDown nudCantidad, nudDescuento;
-        private DataGridView gridCarrito, gridHistorial, gridDetalles;
-        private Label lblSubtotal, lblIva, lblDescuento, lblTotal, lblDetalleDocumento;
 
         public FrmFacturacion()
         {
             InitializeComponent();
+
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime) return;
+
             var clienteRepo = new ClienteRepository();
             var empleadoRepo = new EmpleadoRepository();
             var vehiculoRepo = new VehiculoRepository();
@@ -55,114 +49,36 @@ namespace PRESENTACION
             agendaService = new AgendaService(agendaRepo, clienteRepo, vehiculoRepo, empleadoRepo, articuloRepo);
             articuloService = new ArticuloService(articuloRepo, proveedorRepo);
             facturaService = new FacturaService(new FacturaRepository(), clienteRepo, empleadoRepo, articuloRepo);
-            errores = new ErrorProvider(components) { ContainerControl = this };
-            ConstruirInterfaz();
-            EstiloUI.Aplicar(this);
+            ConfigurarInteraccion();
             Load += (s, e) => CargarDatos();
         }
 
-        private void ConstruirInterfaz()
+        private void ConfigurarInteraccion()
         {
-            Text = "Facturación y cotizaciones"; ClientSize = new Size(1160, 760); MinimumSize = new Size(960, 620);
-            BackColor = Color.FromArgb(245, 247, 250); Font = new Font("Segoe UI", 9F);
-            var tabs = new TabControl { Dock = DockStyle.Fill };
-            var tabNuevo = new TabPage("Nuevo documento") { BackColor = BackColor };
-            var tabHistorial = new TabPage("Historial") { BackColor = BackColor };
-            tabs.TabPages.Add(tabNuevo); tabs.TabPages.Add(tabHistorial); Controls.Add(tabs);
-            ConstruirTabNuevo(tabNuevo); ConstruirTabHistorial(tabHistorial);
-        }
+            cmbTipo.SelectedIndex = 0;
+            cmbEstadoPago.SelectedItem = "Pendiente";
+            dtpFecha.Value = DateTime.Now;
 
-        private void ConstruirTabNuevo(TabPage tab)
-        {
-            var encabezado = new Label { Text = "FACTURACIÓN / COTIZACIONES", Dock = DockStyle.Top, Height = 40, Padding = new Padding(16, 8, 0, 0), Font = new Font("Segoe UI", 15F, FontStyle.Bold) };
-            tab.Controls.Add(encabezado);
-            var cabecera = new TableLayoutPanel { Dock = DockStyle.Top, Height = 184, Padding = new Padding(14, 2, 14, 2), ColumnCount = 4, RowCount = 4, BackColor = Color.White };
-            cabecera.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110)); cabecera.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            cabecera.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110)); cabecera.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            for (int i = 0; i < 4; i++) cabecera.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
-            cmbTipo = CrearCombo(); cmbTipo.Items.AddRange(new object[] { "VENTA", "COTIZACION" }); cmbTipo.SelectedIndex = 0; cmbTipo.SelectedIndexChanged += (s, e) => FiltrarAgendasVehiculo();
-            cmbCliente = CrearCombo(); cmbCliente.SelectedIndexChanged += (s, e) => FiltrarVehiculosCliente();
-            cmbEmpleado = CrearCombo(); cmbVehiculo = CrearCombo(); cmbVehiculo.SelectedIndexChanged += (s, e) => FiltrarAgendasVehiculo();
-            cmbAgenda = CrearCombo(); cmbEstadoPago = CrearCombo(); cmbEstadoPago.Items.AddRange(new object[] { "Pendiente", "Pagada" }); cmbEstadoPago.SelectedItem = "Pendiente";
+            cmbTipo.SelectedIndexChanged += (s, e) => FiltrarAgendasVehiculo();
+            cmbCliente.SelectedIndexChanged += (s, e) => FiltrarVehiculosCliente();
+            cmbVehiculo.SelectedIndexChanged += (s, e) => FiltrarAgendasVehiculo();
             cmbAgenda.SelectionChangeCommitted += SeleccionarVehiculoDeCita;
-            dtpFecha = new DateTimePicker { Dock = DockStyle.Fill, Format = DateTimePickerFormat.Custom, CustomFormat = "dd/MM/yyyy HH:mm", ShowUpDown = true, Value = DateTime.Now };
-            chkDomicilio = new CheckBox { Text = "Domicilio", AutoSize = true, Anchor = AnchorStyles.Left, Checked = false };
-            chkDomicilio.CheckedChanged += (s, e) => { txtDireccion.Enabled = chkDomicilio.Checked; if (!chkDomicilio.Checked) txtDireccion.Clear(); };
-            txtDireccion = new TextBox { Dock = DockStyle.Fill, MaxLength = 150, Enabled = false };
-            txtObservaciones = new TextBox { Dock = DockStyle.Fill, MaxLength = 200 };
-            AgregarCampo(cabecera, 0, "Documento", cmbTipo, 0); AgregarCampo(cabecera, 0, "Cliente", cmbCliente, 2);
-            AgregarCampo(cabecera, 1, "Atiende", cmbEmpleado, 0); AgregarCampo(cabecera, 1, "Vehículo (opcional)", cmbVehiculo, 2);
-            AgregarCampo(cabecera, 2, "Cita (opcional)", cmbAgenda, 0); AgregarCampo(cabecera, 2, "Fecha", dtpFecha, 2);
-            cabecera.Controls.Add(chkDomicilio, 0, 3); cabecera.Controls.Add(txtDireccion, 1, 3);
-            cabecera.Controls.Add(new Label { Text = "Estado de pago", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft }, 2, 3); cabecera.Controls.Add(cmbEstadoPago, 3, 3);
-            tab.Controls.Add(cabecera);
-
-            var obsPanel = new Panel { Dock = DockStyle.Top, Height = 42, Padding = new Padding(14, 4, 14, 2) };
-            obsPanel.Controls.Add(new Label { Text = "Observaciones:", AutoSize = true, Location = new Point(14, 10) });
-            txtObservaciones.Location = new Point(120, 5); txtObservaciones.Width = 600; txtObservaciones.Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right;
-            obsPanel.Controls.Add(txtObservaciones); EstiloUI.AjustarBusqueda(txtObservaciones); tab.Controls.Add(obsPanel);
-
-            var accionesDetalle = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, MinimumSize = new Size(0, 44), Padding = new Padding(10, 4, 0, 3), BackColor = Color.White };
-            cmbArticulo = CrearCombo(); cmbArticulo.Dock = DockStyle.None; cmbArticulo.Width = 260;
-            nudCantidad = new NumericUpDown { Minimum = 1, Maximum = 1000000, Value = 1, Width = 90, DecimalPlaces = 0, ThousandsSeparator = true };
-            nudDescuento = new NumericUpDown { Minimum = 0, Maximum = 99999999.99M, Value = 0, Width = 130, DecimalPlaces = 2, ThousandsSeparator = true };
-            var btnAgregar = CrearBoton("Agregar ítem", 118); var btnQuitar = CrearBoton("Quitar ítem", 108);
-            btnAgregar.Click += AgregarItem_Click; btnQuitar.Click += QuitarItem_Click;
-            accionesDetalle.Controls.Add(new Label { Text = "Artículo:", AutoSize = true, Padding = new Padding(0, 7, 0, 0) });
-            accionesDetalle.Controls.Add(cmbArticulo); accionesDetalle.Controls.Add(new Label { Text = "Cantidad:", AutoSize = true, Padding = new Padding(0, 7, 0, 0) });
-            accionesDetalle.Controls.Add(nudCantidad); accionesDetalle.Controls.Add(new Label { Text = "Desc. línea:", AutoSize = true, Padding = new Padding(0, 7, 0, 0) });
-            accionesDetalle.Controls.Add(nudDescuento); accionesDetalle.Controls.Add(btnAgregar); accionesDetalle.Controls.Add(btnQuitar);
-            tab.Controls.Add(accionesDetalle);
-
-            gridCarrito = CrearGrid();
-            gridCarrito.Columns.Add(Columna("Artículo", "Articulo")); gridCarrito.Columns.Add(Columna("Tipo", "Tipo"));
-            gridCarrito.Columns.Add(Columna("Cantidad", "Cantidad")); gridCarrito.Columns.Add(Columna("Precio unitario", "Precio"));
-            gridCarrito.Columns.Add(Columna("IVA %", "PorcentajeIVA")); gridCarrito.Columns.Add(Columna("Descuento", "Descuento"));
-            gridCarrito.Columns.Add(Columna("Subtotal", "Subtotal")); gridCarrito.Columns.Add(Columna("IVA", "Iva")); gridCarrito.Columns.Add(Columna("Total", "Total"));
-            tab.Controls.Add(gridCarrito);
-
-            var pie = new TableLayoutPanel { Dock = DockStyle.Bottom, Height = 96, BackColor = Color.White, Padding = new Padding(10, 4, 10, 4), ColumnCount = 4, RowCount = 2 };
-            for (int i = 0; i < 4; i++) pie.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
-            pie.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
-            pie.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-            lblSubtotal = CrearEtiquetaTotal("Subtotal: —", 0); lblIva = CrearEtiquetaTotal("IVA: —", 190);
-            lblDescuento = CrearEtiquetaTotal("Descuento: —", 340); lblTotal = CrearEtiquetaTotal("Total: —", 520);
-            var totales = new[] { lblSubtotal, lblIva, lblDescuento, lblTotal };
-            for (int i = 0; i < totales.Length; i++) { totales[i].AutoSize = false; totales[i].Dock = DockStyle.Fill; totales[i].TextAlign = ContentAlignment.MiddleLeft; pie.Controls.Add(totales[i], i, 0); }
-            var btnGuardar = CrearBoton("Guardar documento", 180); btnGuardar.Dock = DockStyle.Fill; btnGuardar.BackColor = Color.FromArgb(25, 125, 85);
-            var btnNuevo = CrearBoton("Limpiar / Nuevo", 160); btnNuevo.Dock = DockStyle.Fill;
-            btnNuevo.Click += (s, e) => NuevoDocumento();
+            chkDomicilio.CheckedChanged += (s, e) =>
+            {
+                txtDireccion.Enabled = chkDomicilio.Checked;
+                if (!chkDomicilio.Checked) txtDireccion.Clear();
+            };
+            btnAgregar.Click += AgregarItem_Click;
+            btnQuitar.Click += QuitarItem_Click;
             btnGuardar.Click += GuardarDocumento_Click;
-            pie.Controls.Add(btnNuevo, 2, 1); pie.Controls.Add(btnGuardar, 3, 1);
-            tab.Controls.Add(pie);
-            tab.Controls.SetChildIndex(encabezado, 0); tab.Controls.SetChildIndex(cabecera, 1); tab.Controls.SetChildIndex(obsPanel, 2);
-            tab.Controls.SetChildIndex(accionesDetalle, 3); tab.Controls.SetChildIndex(pie, 4); tab.Controls.SetChildIndex(gridCarrito, 5);
-        }
-
-        private void ConstruirTabHistorial(TabPage tab)
-        {
-            var barra = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 44, Padding = new Padding(12, 4, 0, 3), BackColor = Color.White };
-            var btnActualizar = CrearBoton("Actualizar", 110); var btnConvertir = CrearBoton("Convertir cotización en venta", 240);
-            var btnAnular = CrearBoton("Anular documento", 160);
-            btnActualizar.Click += (s, e) => CargarHistorial(); btnConvertir.Click += Convertir_Click; btnAnular.Click += Anular_Click;
-            barra.Controls.Add(btnActualizar); barra.Controls.Add(btnConvertir); barra.Controls.Add(btnAnular); tab.Controls.Add(barra);
-            gridHistorial = CrearGrid();
-            gridHistorial.Columns.Add(Columna("ID", "Id")); gridHistorial.Columns.Add(Columna("Tipo", "Tipo"));
-            gridHistorial.Columns.Add(Columna("Fecha", "Fecha")); gridHistorial.Columns.Add(Columna("Cliente", "Cliente"));
-            gridHistorial.Columns.Add(Columna("Empleado", "Empleado")); gridHistorial.Columns.Add(Columna("Vehículo", "Vehiculo"));
-            gridHistorial.Columns.Add(Columna("Subtotal", "Subtotal")); gridHistorial.Columns.Add(Columna("IVA", "Iva"));
-            gridHistorial.Columns.Add(Columna("Descuento", "Descuento")); gridHistorial.Columns.Add(Columna("Total", "Total"));
-            gridHistorial.Columns.Add(Columna("Pago", "EstadoPago")); gridHistorial.CellClick += (s, e) => Historial_SelectionChanged(s, EventArgs.Empty);
-            tab.Controls.Add(gridHistorial);
-            gridDetalles = CrearGrid();
-            gridDetalles.Columns.Add(Columna("Artículo", "Articulo")); gridDetalles.Columns.Add(Columna("Cantidad", "Cantidad"));
-            gridDetalles.Columns.Add(Columna("Precio unitario", "Precio")); gridDetalles.Columns.Add(Columna("Descuento", "Descuento"));
-            gridDetalles.Columns.Add(Columna("IVA", "Iva")); gridDetalles.Columns.Add(Columna("Total", "Total"));
-            tab.Controls.Add(gridDetalles);
-            lblDetalleDocumento = new Label { Text = "Selecciona un documento para consultar sus líneas.", Dock = DockStyle.Bottom, Height = 28, Padding = new Padding(12, 4, 0, 0) };
-            tab.Controls.Add(lblDetalleDocumento);
-            tab.Controls.SetChildIndex(barra, 0); tab.Controls.SetChildIndex(gridHistorial, 1); tab.Controls.SetChildIndex(lblDetalleDocumento, 2); tab.Controls.SetChildIndex(gridDetalles, 3);
-            gridHistorial.Dock = DockStyle.Top; gridHistorial.Height = 270; gridDetalles.Dock = DockStyle.Fill;
+            btnNuevo.Click += (s, e) => NuevoDocumento();
+            btnActualizar.Click += (s, e) => CargarHistorial();
+            btnConvertir.Click += Convertir_Click;
+            btnAnular.Click += Anular_Click;
+            gridHistorial.CellClick += (s, e) => Historial_SelectionChanged(s, EventArgs.Empty);
+            EstiloUI.ConectarTabla(gridCarrito);
+            EstiloUI.ConectarTabla(gridHistorial);
+            EstiloUI.ConectarTabla(gridDetalles);
         }
 
         private void CargarDatos()
@@ -417,13 +333,6 @@ namespace PRESENTACION
             if (correcto) CargarHistorial(true);
         }
 
-        private static ComboBox CrearCombo() { return new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList }; }
-        private static DataGridView CrearGrid() { return new DataGridView { Dock = DockStyle.Fill, ReadOnly = true, AllowUserToAddRows = false, AllowUserToDeleteRows = false, AutoGenerateColumns = false, MultiSelect = false, SelectionMode = DataGridViewSelectionMode.FullRowSelect, RowHeadersVisible = false, BackgroundColor = Color.White, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill }; }
-        private static DataGridViewTextBoxColumn Columna(string h, string p) { return new DataGridViewTextBoxColumn { HeaderText = h, DataPropertyName = p, Name = p, SortMode = DataGridViewColumnSortMode.NotSortable }; }
-        private static Button CrearBoton(string t, int w) { return new Button { Text = t, Width = w, Height = 32, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(45, 95, 145), ForeColor = Color.White, Margin = new Padding(4) }; }
-        private static Label CrearEtiquetaTotal(string t, int x) { return new Label { Text = t, AutoSize = true, Location = new Point(14 + x, 28), Font = new Font("Segoe UI", 10F, FontStyle.Bold), Anchor = AnchorStyles.Left | AnchorStyles.Top }; }
-        private static void AgregarCampo(TableLayoutPanel p, int r, string t, Control c, int col) { p.Controls.Add(new Label { Text = t, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft }, col, r); p.Controls.Add(c, col + 1, r); }
-
         private sealed class Opcion
         {
             public Opcion(object valor, string texto) { Valor = valor; Texto = texto; }
@@ -455,6 +364,16 @@ namespace PRESENTACION
             public int Id { get; set; } public string Tipo { get; set; } public DateTime Fecha { get; set; } public string Cliente { get; set; } public string Empleado { get; set; }
             public string Vehiculo { get; set; } public decimal Subtotal { get; set; } public decimal Iva { get; set; } public decimal Descuento { get; set; } public decimal Total { get; set; } public string EstadoPago { get; set; } public Factura Original { get; set; }
             public static FacturaFila Crear(Factura f) { return new FacturaFila { Id = f.FacturaID, Tipo = f.TipoDocumento, Fecha = f.Fecha, Cliente = f.Cliente == null ? "" : (f.Cliente.Nombre + " " + f.Cliente.Apellido).Trim(), Empleado = f.Empleado == null ? "" : (f.Empleado.Nombre + " " + f.Empleado.Apellido).Trim(), Vehiculo = f.Vehiculo == null ? "" : f.Vehiculo.Placa, Subtotal = f.SubTotal, Iva = f.Iva, Descuento = f.Descuento, Total = f.Total, EstadoPago = f.EstadoPago, Original = f }; }
+        }
+
+        private void lblNudCantidad_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void gridCarrito_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+
         }
     }
 }

@@ -1,7 +1,8 @@
-using DATOS;
+﻿using DATOS;
 using ENTIDADES;
 using LOGICA;
 using System;
+using System.ComponentModel;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -13,143 +14,28 @@ namespace PRESENTACION
     {
         private readonly ClienteService servicio;
         private readonly Validacion validacion = new Validacion();
-        private readonly ErrorProvider errores;
         private List<Cliente> clientes = new List<Cliente>();
-        private TextBox txtCedula, txtPrimerNombre, txtSegundoNombre, txtPrimerApellido, txtSegundoApellido, txtTelefono, txtCorreo, txtDireccion, txtBuscar;
-        private ComboBox cmbSexo;
-        private DataGridView grid;
-        private Button btnGuardar, btnNuevo, btnEliminar;
         private bool editando;
 
         public FrmClientes()
         {
             InitializeComponent();
+
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime) return;
+
             servicio = new ClienteService(new ClienteRepository());
-            errores = new ErrorProvider(components) { ContainerControl = this };
-            ConstruirInterfaz();
-            EstiloUI.Aplicar(this);
+            ConfigurarInteraccion();
             Load += (s, e) => CargarClientes();
         }
 
-        private void ConstruirInterfaz()
+        private void ConfigurarInteraccion()
         {
-            Text = "Gestión de clientes";
-            BackColor = Color.FromArgb(245, 247, 250);
-            Font = new Font("Segoe UI", 9F);
-            var encabezado = new Label
-            {
-                Text = "CLIENTES", Dock = DockStyle.Top, Height = 42, Padding = new Padding(18, 8, 0, 0),
-                Font = new Font("Segoe UI", 16F, FontStyle.Bold), ForeColor = Color.FromArgb(35, 45, 60)
-            };
-            Controls.Add(encabezado);
-
-            var formulario = new TableLayoutPanel
-            {
-                Dock = DockStyle.Top, Height = 205, Padding = new Padding(18, 4, 18, 0),
-                ColumnCount = 4, RowCount = 5, BackColor = Color.White
-            };
-            formulario.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100));
-            formulario.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            formulario.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100));
-            formulario.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            for (int i = 0; i < 5; i++) formulario.RowStyles.Add(new RowStyle(SizeType.Percent, 20));
-
-            txtCedula = CrearTexto(10);
-            txtPrimerNombre = CrearTexto(100);
-            txtSegundoNombre = CrearTexto(100);
-            txtPrimerApellido = CrearTexto(100);
-            txtSegundoApellido = CrearTexto(100);
-            cmbSexo = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill };
-            cmbSexo.Items.AddRange(new object[] { "M", "F" });
-            txtTelefono = CrearTexto(15);
-            txtCorreo = CrearTexto(100);
-            txtDireccion = CrearTexto(150);
-
-            AgregarCampo(formulario, 0, "Cédula", txtCedula, 0);
-            AgregarCampo(formulario, 0, "Primer nombre", txtPrimerNombre, 2);
-            AgregarCampo(formulario, 1, "Segundo nombre (opcional)", txtSegundoNombre, 0);
-            AgregarCampo(formulario, 1, "Primer apellido", txtPrimerApellido, 2);
-            AgregarCampo(formulario, 2, "Segundo apellido (opcional)", txtSegundoApellido, 0);
-            AgregarCampo(formulario, 2, "Sexo", cmbSexo, 2);
-            AgregarCampo(formulario, 3, "Telefono", txtTelefono, 0);
-            AgregarCampo(formulario, 3, "Correo", txtCorreo, 2);
-            AgregarCampo(formulario, 4, "Direccion", txtDireccion, 0);
-            formulario.SetColumnSpan(txtDireccion, 3);
-            Controls.Add(formulario);
-
-            var acciones = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Top, Height = 48, Padding = new Padding(14, 4, 0, 4),
-                BackColor = Color.White, FlowDirection = FlowDirection.LeftToRight
-            };
-            btnGuardar = CrearBoton("Guardar", Color.FromArgb(29, 111, 180));
-            btnNuevo = CrearBoton("Nuevo", Color.FromArgb(85, 95, 110));
-            btnEliminar = CrearBoton("Eliminar", Color.FromArgb(173, 58, 58));
             btnGuardar.Click += Guardar_Click;
             btnNuevo.Click += (s, e) => LimpiarFormulario();
             btnEliminar.Click += Eliminar_Click;
-            acciones.Controls.AddRange(new Control[] { btnGuardar, btnNuevo, btnEliminar });
-            Controls.Add(acciones);
-
-            var buscar = new Panel { Dock = DockStyle.Top, Height = 42, Padding = new Padding(18, 4, 18, 4), BackColor = BackColor };
-            buscar.Controls.Add(new Label { Text = "Buscar cédula o nombre:", AutoSize = true, Location = new Point(18, 12) });
-            txtBuscar = CrearTexto(100);
-            txtBuscar.Location = new Point(175, 6);
-            txtBuscar.Width = 310;
-            txtBuscar.Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right;
             txtBuscar.TextChanged += (s, e) => AplicarBusqueda();
-            buscar.Controls.Add(txtBuscar);
-            EstiloUI.AjustarBusqueda(txtBuscar);
-            Controls.Add(buscar);
-
-            grid = new DataGridView
-            {
-                Dock = DockStyle.Fill, ReadOnly = true, AllowUserToAddRows = false, AllowUserToDeleteRows = false,
-                AutoGenerateColumns = false, MultiSelect = false, SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-                BackgroundColor = Color.White, BorderStyle = BorderStyle.None, RowHeadersVisible = false,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
-            };
-            grid.Columns.Add(Columna("Cédula", "Cedula"));
-            grid.Columns.Add(Columna("Primer nombre", "PrimerNombre"));
-            grid.Columns.Add(Columna("Segundo nombre", "SegundoNombre"));
-            grid.Columns.Add(Columna("Primer apellido", "PrimerApellido"));
-            grid.Columns.Add(Columna("Segundo apellido", "SegundoApellido"));
-            grid.Columns.Add(Columna("Sexo", "Sexo"));
-            grid.Columns.Add(Columna("Teléfono", "Telefono"));
-            grid.Columns.Add(Columna("Correo", "CorreoElectronico"));
-            grid.Columns.Add(Columna("Dirección", "Direccion"));
             grid.CellClick += (s, e) => Grid_SelectionChanged(s, EventArgs.Empty);
-            Controls.Add(grid);
-            grid.BringToFront();
-            buscar.BringToFront();
-            acciones.BringToFront();
-            formulario.BringToFront();
-            encabezado.BringToFront();
-        }
-
-        private static TextBox CrearTexto(int maximo)
-        {
-            return new TextBox { Dock = DockStyle.Fill, MaxLength = maximo, Margin = new Padding(4, 7, 10, 4) };
-        }
-
-        private static void AgregarCampo(TableLayoutPanel panel, int fila, string texto, Control control, int columna)
-        {
-            panel.Controls.Add(new Label { Text = texto, TextAlign = ContentAlignment.MiddleLeft, Dock = DockStyle.Fill }, columna, fila);
-            panel.Controls.Add(control, columna + 1, fila);
-        }
-
-        private static Button CrearBoton(string texto, Color color)
-        {
-            return new Button
-            {
-                Text = texto, Width = 104, Height = 34, FlatStyle = FlatStyle.Flat, ForeColor = Color.White,
-                BackColor = color, Margin = new Padding(4), Cursor = Cursors.Hand
-            };
-        }
-
-        private static DataGridViewTextBoxColumn Columna(string encabezado, string propiedad)
-        {
-            return new DataGridViewTextBoxColumn { HeaderText = encabezado, DataPropertyName = propiedad, SortMode = DataGridViewColumnSortMode.Automatic };
+            EstiloUI.ConectarTabla(grid);
         }
 
         private bool ValidarFormulario()

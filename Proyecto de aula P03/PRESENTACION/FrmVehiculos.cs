@@ -1,7 +1,8 @@
-using DATOS;
+﻿using DATOS;
 using ENTIDADES;
 using LOGICA;
 using System;
+using System.ComponentModel;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
@@ -16,186 +17,52 @@ namespace PRESENTACION
         private readonly VehiculoService vehiculoService;
         private readonly SoatService soatService;
         private readonly Validacion validacion = new Validacion();
-        private readonly ErrorProvider errores;
-        private readonly TabControl tabs = new TabControl();
-        private readonly TabPage tabVehiculos = new TabPage("Vehículos");
-        private readonly TabPage tabSoat = new TabPage("SOAT");
         private List<Cliente> clientes = new List<Cliente>();
         private List<Vehiculo> vehiculos = new List<Vehiculo>();
         private List<Soat> soats = new List<Soat>();
 
-        private TextBox txtPlaca, txtMarca, txtModelo, txtColor, txtLinea, txtBuscarVehiculo;
-        private ComboBox cmbTipoVehiculo, cmbPropietario;
-        private DataGridView gridVehiculos;
-        private Button btnGuardarVehiculo;
         private bool editandoVehiculo;
 
-        private ComboBox cmbPlacaSoat;
-        private TextBox txtNumeroSoat;
-        private DateTimePicker dtpFechaInicio, dtpFechaFin;
-        private DataGridView gridSoat;
-        private Button btnGuardarSoat;
         private bool editandoSoat;
         private int soatIdSeleccionado;
 
         public FrmVehiculos()
         {
             InitializeComponent();
+
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime) return;
+
             var clienteRepository = new ClienteRepository();
             clienteService = new ClienteService(clienteRepository);
             vehiculoService = new VehiculoService(new VehiculoRepository(), clienteRepository);
             soatService = new SoatService(new SoatRepository(), new VehiculoRepository());
-            errores = new ErrorProvider(components) { ContainerControl = this };
-            ConstruirInterfaz();
-            EstiloUI.Aplicar(this);
+            ConfigurarInteraccion();
             Load += (s, e) => CargarTodo();
         }
 
-        private void ConstruirInterfaz()
+        private void ConfigurarInteraccion()
         {
-            Text = "Gestión de vehículos y SOAT";
-            BackColor = Color.FromArgb(245, 247, 250);
-            Font = new Font("Segoe UI", 9F);
-            tabs.Dock = DockStyle.Fill;
-            tabVehiculos.BackColor = BackColor;
-            tabSoat.BackColor = BackColor;
-            tabs.TabPages.Add(tabVehiculos);
-            tabs.TabPages.Add(tabSoat);
-            Controls.Add(tabs);
-            ConstruirTabVehiculos();
-            ConstruirTabSoat();
-        }
+            DateTime hoy = DateTime.Today;
+            dtpFechaInicio.MaxDate = hoy.AddYears(10);
+            dtpFechaFin.MaxDate = hoy.AddYears(10);
+            dtpFechaInicio.Value = hoy;
+            dtpFechaFin.Value = hoy;
 
-        private void ConstruirTabVehiculos()
-        {
-            var encabezado = CrearEncabezado("VEHÍCULOS");
-            tabVehiculos.Controls.Add(encabezado);
-
-            var campos = new TableLayoutPanel
-            {
-                Dock = DockStyle.Top, Height = 128, Padding = new Padding(16, 3, 16, 3),
-                BackColor = Color.White, ColumnCount = 4, RowCount = 4
-            };
-            campos.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 108));
-            campos.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            campos.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 108));
-            campos.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            for (int i = 0; i < 4; i++) campos.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
-
-            txtPlaca = CrearTexto(7);
-            txtPlaca.CharacterCasing = CharacterCasing.Upper;
-            txtPlaca.TextChanged += (s, e) => { int pos = txtPlaca.SelectionStart; txtPlaca.Text = txtPlaca.Text.ToUpperInvariant(); txtPlaca.SelectionStart = Math.Min(pos, txtPlaca.Text.Length); };
-            txtMarca = CrearTexto(50);
-            txtModelo = CrearTexto(4);
-            txtModelo.KeyPress += SoloDigitos_KeyPress;
-            cmbTipoVehiculo = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
-            cmbTipoVehiculo.Items.AddRange(new object[] { "Automovil", "Motocicleta" });
-            txtColor = CrearTexto(50);
-            txtLinea = CrearTexto(50);
-            cmbPropietario = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
-
-            AgregarCampo(campos, 0, "Placa", txtPlaca, 0);
-            AgregarCampo(campos, 0, "Marca", txtMarca, 2);
-            AgregarCampo(campos, 1, "Modelo / año", txtModelo, 0);
-            AgregarCampo(campos, 1, "Tipo", cmbTipoVehiculo, 2);
-            AgregarCampo(campos, 2, "Color", txtColor, 0);
-            AgregarCampo(campos, 2, "Línea", txtLinea, 2);
-            campos.Controls.Add(new Label { Text = "Propietario", TextAlign = ContentAlignment.MiddleLeft, Dock = DockStyle.Fill }, 0, 3);
-            campos.Controls.Add(cmbPropietario, 1, 3);
-            campos.SetColumnSpan(cmbPropietario, 3);
-            tabVehiculos.Controls.Add(campos);
-
-            var acciones = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 42, Padding = new Padding(12, 3, 0, 3), BackColor = Color.White };
-            btnGuardarVehiculo = CrearBoton("Guardar", Color.FromArgb(29, 111, 180));
-            var btnNuevo = CrearBoton("Nuevo", Color.FromArgb(85, 95, 110));
-            var btnEliminar = CrearBoton("Eliminar", Color.FromArgb(173, 58, 58));
             btnGuardarVehiculo.Click += GuardarVehiculo_Click;
-            btnNuevo.Click += (s, e) => LimpiarVehiculo();
-            btnEliminar.Click += EliminarVehiculo_Click;
-            acciones.Controls.AddRange(new Control[] { btnGuardarVehiculo, btnNuevo, btnEliminar });
-            tabVehiculos.Controls.Add(acciones);
-
-            var busqueda = new Panel { Dock = DockStyle.Top, Height = 40, Padding = new Padding(16, 3, 16, 3) };
-            busqueda.Controls.Add(new Label { Text = "Filtrar por placa o cédula:", AutoSize = true, Location = new Point(16, 10) });
-            txtBuscarVehiculo = new TextBox { Location = new Point(190, 5), Width = 300, Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right };
+            btnNuevoVehiculo.Click += (s, e) => LimpiarVehiculo();
+            btnEliminarVehiculo.Click += EliminarVehiculo_Click;
+            txtModelo.KeyPress += SoloDigitos_KeyPress;
             txtBuscarVehiculo.TextChanged += (s, e) => MostrarVehiculos();
-            busqueda.Controls.Add(txtBuscarVehiculo);
-            EstiloUI.AjustarBusqueda(txtBuscarVehiculo);
-            tabVehiculos.Controls.Add(busqueda);
-
-            gridVehiculos = CrearGrid();
-            gridVehiculos.Columns.Add(Columna("Placa", "Placa"));
-            gridVehiculos.Columns.Add(Columna("Marca", "Marca"));
-            gridVehiculos.Columns.Add(Columna("Línea", "Linea"));
-            gridVehiculos.Columns.Add(Columna("Modelo / año", "Modelo"));
-            gridVehiculos.Columns.Add(Columna("Tipo", "TipoVehiculo"));
-            gridVehiculos.Columns.Add(Columna("Color", "Color"));
-            gridVehiculos.Columns.Add(Columna("Propietario", "Propietario"));
-            gridVehiculos.Columns.Add(Columna("Cédula", "CedulaPropietario"));
             gridVehiculos.CellClick += (s, e) => GridVehiculos_SelectionChanged(s, EventArgs.Empty);
-            tabVehiculos.Controls.Add(gridVehiculos);
 
-            tabVehiculos.Controls.SetChildIndex(encabezado, 0);
-            tabVehiculos.Controls.SetChildIndex(campos, 1);
-            tabVehiculos.Controls.SetChildIndex(acciones, 2);
-            tabVehiculos.Controls.SetChildIndex(busqueda, 3);
-            tabVehiculos.Controls.SetChildIndex(gridVehiculos, 4);
-        }
-
-        private void ConstruirTabSoat()
-        {
-            var encabezado = CrearEncabezado("PÓLIZAS SOAT");
-            tabSoat.Controls.Add(encabezado);
-            var campos = new TableLayoutPanel
-            {
-                Dock = DockStyle.Top, Height = 94, Padding = new Padding(16, 3, 16, 3),
-                BackColor = Color.White, ColumnCount = 4, RowCount = 2
-            };
-            campos.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
-            campos.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            campos.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
-            campos.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            campos.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
-            campos.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
-
-            cmbPlacaSoat = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
-            txtNumeroSoat = CrearTexto(20);
-            txtNumeroSoat.KeyPress += SoloDigitos_KeyPress;
-            dtpFechaInicio = CrearFecha();
-            dtpFechaFin = CrearFecha();
-            AgregarCampo(campos, 0, "Vehículo", cmbPlacaSoat, 0);
-            AgregarCampo(campos, 0, "Número SOAT", txtNumeroSoat, 2);
-            AgregarCampo(campos, 1, "Fecha inicio", dtpFechaInicio, 0);
-            AgregarCampo(campos, 1, "Fecha fin", dtpFechaFin, 2);
-            cmbPlacaSoat.SelectedValueChanged += (s, e) => MostrarSoats();
-            tabSoat.Controls.Add(campos);
-
-            var acciones = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 42, Padding = new Padding(12, 3, 0, 3), BackColor = Color.White };
-            btnGuardarSoat = CrearBoton("Guardar", Color.FromArgb(29, 111, 180));
-            var btnNuevo = CrearBoton("Nuevo", Color.FromArgb(85, 95, 110));
-            var btnEliminar = CrearBoton("Eliminar", Color.FromArgb(173, 58, 58));
             btnGuardarSoat.Click += GuardarSoat_Click;
-            btnNuevo.Click += (s, e) => LimpiarSoat();
-            btnEliminar.Click += EliminarSoat_Click;
-            acciones.Controls.AddRange(new Control[] { btnGuardarSoat, btnNuevo, btnEliminar });
-            tabSoat.Controls.Add(acciones);
-
-            gridSoat = CrearGrid();
-            gridSoat.Columns.Add(Columna("ID", "SoatId"));
-            gridSoat.Columns.Add(Columna("Número SOAT", "NumeroSoat"));
-            gridSoat.Columns.Add(Columna("Placa", "Placa"));
-            gridSoat.Columns.Add(Columna("Marca / línea", "Vehiculo"));
-            gridSoat.Columns.Add(Columna("Propietario", "Propietario"));
-            gridSoat.Columns.Add(Columna("Fecha inicio", "FechaInicio"));
-            gridSoat.Columns.Add(Columna("Fecha fin", "FechaFin"));
-            gridSoat.Columns.Add(Columna("Estado", "Estado"));
+            btnNuevoSoat.Click += (s, e) => LimpiarSoat();
+            btnEliminarSoat.Click += EliminarSoat_Click;
+            txtNumeroSoat.KeyPress += SoloDigitos_KeyPress;
+            cmbPlacaSoat.SelectedValueChanged += (s, e) => MostrarSoats();
             gridSoat.CellClick += (s, e) => GridSoat_SelectionChanged(s, EventArgs.Empty);
-            tabSoat.Controls.Add(gridSoat);
-
-            tabSoat.Controls.SetChildIndex(encabezado, 0);
-            tabSoat.Controls.SetChildIndex(campos, 1);
-            tabSoat.Controls.SetChildIndex(acciones, 2);
-            tabSoat.Controls.SetChildIndex(gridSoat, 3);
+            EstiloUI.ConectarTabla(gridVehiculos);
+            EstiloUI.ConectarTabla(gridSoat);
         }
 
         private void CargarTodo()
@@ -408,52 +275,6 @@ namespace PRESENTACION
             errores.SetError(cmbPlacaSoat, string.Empty);
             gridSoat.ClearSelection();
             txtNumeroSoat.Focus();
-        }
-
-        private static Label CrearEncabezado(string texto)
-        {
-            return new Label
-            {
-                Text = texto, Dock = DockStyle.Top, Height = 42, Padding = new Padding(18, 8, 0, 0),
-                Font = new Font("Segoe UI", 16F, FontStyle.Bold), ForeColor = Color.FromArgb(35, 45, 60)
-            };
-        }
-
-        private static TextBox CrearTexto(int maximo)
-        {
-            return new TextBox { Dock = DockStyle.Fill, MaxLength = maximo, Margin = new Padding(4, 6, 10, 4) };
-        }
-
-        private static DateTimePicker CrearFecha()
-        {
-            return new DateTimePicker { Dock = DockStyle.Fill, Format = DateTimePickerFormat.Short, MinDate = new DateTime(2000, 1, 1), MaxDate = DateTime.Today.AddYears(10), Value = DateTime.Today };
-        }
-
-        private static void AgregarCampo(TableLayoutPanel panel, int fila, string texto, Control control, int columna)
-        {
-            panel.Controls.Add(new Label { Text = texto, TextAlign = ContentAlignment.MiddleLeft, Dock = DockStyle.Fill }, columna, fila);
-            panel.Controls.Add(control, columna + 1, fila);
-        }
-
-        private static Button CrearBoton(string texto, Color color)
-        {
-            return new Button { Text = texto, Width = 104, Height = 32, FlatStyle = FlatStyle.Flat, ForeColor = Color.White, BackColor = color, Margin = new Padding(4), Cursor = Cursors.Hand };
-        }
-
-        private static DataGridView CrearGrid()
-        {
-            return new DataGridView
-            {
-                Dock = DockStyle.Fill, ReadOnly = true, AllowUserToAddRows = false, AllowUserToDeleteRows = false,
-                AutoGenerateColumns = false, MultiSelect = false, SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-                BackgroundColor = Color.White, BorderStyle = BorderStyle.None, RowHeadersVisible = false,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
-            };
-        }
-
-        private static DataGridViewTextBoxColumn Columna(string encabezado, string propiedad)
-        {
-            return new DataGridViewTextBoxColumn { HeaderText = encabezado, DataPropertyName = propiedad, Name = propiedad, SortMode = DataGridViewColumnSortMode.NotSortable };
         }
 
         private static void SoloDigitos_KeyPress(object sender, KeyPressEventArgs e)
