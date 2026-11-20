@@ -1,205 +1,69 @@
-﻿using DATOS;
+using DATOS;
 using ENTIDADES;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace LOGICA
 {
     public class ArticuloService
     {
-        ArticuloRepository repositorio;
-        ProveedorRepository proveedorRepositorio;
-        int siguienteArticuloId;
+        public int TotalArticulos() { return repositorio.Contar(); }
+        private readonly ArticuloRepository repositorio;
+        private readonly ProveedorRepository proveedorRepositorio;
 
         public ArticuloService(ArticuloRepository repositorio, ProveedorRepository proveedorRepositorio)
         {
-            this.repositorio = repositorio;
-            this.proveedorRepositorio = proveedorRepositorio;
-            siguienteArticuloId = 1;
+            this.repositorio = repositorio ?? throw new ArgumentNullException("repositorio");
+            this.proveedorRepositorio = proveedorRepositorio ?? throw new ArgumentNullException("proveedorRepositorio");
         }
 
-        public string Guardar(string nombre, double precio, double porcentajeIVA, string tipoArticulo, int cantidad, string descripcion, int duracion, string nitProveedor)
+        public string Guardar(string nombre, double precio, double porcentajeIVA, string tipoArticulo,
+            int cantidad, string descripcion, int duracion, string nitProveedor)
         {
             try
             {
-                // Nombre
-                if (string.IsNullOrWhiteSpace(nombre))
-                {
-                    return "El nombre del articulo es obligatorio y no puede estar vacio ni tener solo espacios ...";
-                }
-                if (nombre != nombre.Trim())
-                {
-                    return "El nombre del articulo no puede empezar ni terminar con espacios ...";
-                }
-                if (nombre.Contains("  "))
-                {
-                    return "El nombre del articulo no puede tener espacios seguidos ...";
-                }
-                if (nombre.Length < 3 || nombre.Length > 100)
-                {
-                    return "El nombre del articulo debe tener entre 3 y 100 caracteres ...";
-                }
-                foreach (char c in nombre)
-                {
-                    if (!char.IsLetterOrDigit(c) && c != ' ' && "-./".IndexOf(c) < 0)
-                    {
-                        return $"El nombre del articulo tiene el caracter '{c}' que no esta permitido ...";
-                    }
-                }
+                string error = Validar(nombre, precio, porcentajeIVA, tipoArticulo, cantidad, descripcion, duracion, nitProveedor);
+                if (error != null) return error;
+                Proveedor proveedor;
+                Articulo articulo = CrearArticulo(0, nombre, precio, porcentajeIVA, tipoArticulo,
+                    cantidad, descripcion, duracion, nitProveedor, out proveedor);
+                error = ValidarDuplicado(articulo, null);
+                if (error != null) return error;
 
-                // Precio
-                if (precio <= 0)
-                {
-                    return "El precio debe ser mayor que cero ...";
-                }
-                if (precio > 99999999.99)
-                {
-                    return "El precio es demasiado alto ...";
-                }
-                if (Math.Round(precio, 2) != precio)
-                {
-                    return "El precio solo puede tener 2 decimales ...";
-                }
-
-                // IVA
-                if (porcentajeIVA != 0 && porcentajeIVA != 5 && porcentajeIVA != 19)
-                {
-                    return "El porcentaje de IVA solo puede ser 0, 5 o 19 ...";
-                }
-
-                // Tipo de articulo (opcional)
-                if (!string.IsNullOrEmpty(tipoArticulo))
-                {
-                    if (string.IsNullOrWhiteSpace(tipoArticulo))
-                    {
-                        return "El tipo de articulo no puede tener solo espacios ...";
-                    }
-                    if (tipoArticulo != tipoArticulo.Trim() || tipoArticulo.Contains("  "))
-                    {
-                        return "El tipo de articulo no puede tener espacios al inicio, al final ni seguidos ...";
-                    }
-                    if (tipoArticulo.Length < 3 || tipoArticulo.Length > 20)
-                    {
-                        return "El tipo de articulo debe tener entre 3 y 20 caracteres ...";
-                    }
-                    foreach (char c in tipoArticulo)
-                    {
-                        if (!char.IsLetter(c) && c != ' ')
-                        {
-                            return $"El tipo de articulo tiene el caracter '{c}' que no esta permitido, solo letras ...";
-                        }
-                    }
-                }
-
-                // Cantidad y duracion
-                if (cantidad < 0 || cantidad > 1000000)
-                {
-                    return "La cantidad debe estar entre 0 y 1000000 ...";
-                }
-                if (duracion < 0 || duracion > 10000)
-                {
-                    return "La duracion debe estar entre 0 y 10000 ...";
-                }
-
-                // Descripcion (opcional)
-                if (!string.IsNullOrEmpty(descripcion))
-                {
-                    if (string.IsNullOrWhiteSpace(descripcion))
-                    {
-                        return "La descripcion no puede tener solo espacios ...";
-                    }
-                    if (descripcion != descripcion.Trim() || descripcion.Contains("  "))
-                    {
-                        return "La descripcion no puede tener espacios al inicio, al final ni seguidos ...";
-                    }
-                    if (descripcion.Length < 3 || descripcion.Length > 200)
-                    {
-                        return "La descripcion debe tener entre 3 y 200 caracteres ...";
-                    }
-                    foreach (char c in descripcion)
-                    {
-                        if (char.IsControl(c))
-                        {
-                            return "La descripcion tiene caracteres no permitidos ...";
-                        }
-                    }
-                }
-
-                // Proveedor
-                if (string.IsNullOrWhiteSpace(nitProveedor))
-                {
-                    return "Debe seleccionar un proveedor valido ...";
-                }
-
-                Proveedor proveedor = proveedorRepositorio.BuscarNit(nitProveedor);
-
-                if (proveedor == null)
-                {
-                    return "El proveedor seleccionado no existe ...";
-                }
-
-                // Duplicados
-                foreach (var existente in repositorio.Consultar())
-                {
-                    Repuesto repuestoExistente = existente as Repuesto;
-                    if (repuestoExistente != null && string.Equals(existente.Nombre, nombre, StringComparison.OrdinalIgnoreCase) &&
-                        repuestoExistente.Proveedor != null && repuestoExistente.Proveedor.Nit == nitProveedor)
-                    {
-                        return "Ya existe un articulo con ese nombre para ese proveedor ...";
-                    }
-                }
-
-                int articuloId = GenerarArticuloId();
-
-                Articulo articulo;
-                if (string.Equals(tipoArticulo, "Servicio", StringComparison.OrdinalIgnoreCase))
-                {
-                    articulo = new Servicio
-                    {
-                        ArticuloId = articuloId,
-                        Nombre = nombre,
-                        PrecioVenta = Convert.ToDecimal(precio),
-                        PorcentajeIVA = Convert.ToDecimal(porcentajeIVA),
-                        Duracion = duracion,
-                        Descripcion = descripcion
-                    };
-                }
-                else
-                {
-                    articulo = new Repuesto
-                    {
-                        ArticuloId = articuloId,
-                        Nombre = nombre,
-                        PrecioVenta = Convert.ToDecimal(precio),
-                        PorcentajeIVA = Convert.ToDecimal(porcentajeIVA),
-                        Cantidad = cantidad,
-                        Proveedor = proveedor
-                    };
-                }
                 repositorio.Guardar(articulo);
-
-                return $"se registro el articulo numero {articuloId} desde la logica ...";
+                return "Se registró el artículo número " + articulo.ArticuloId + ".";
             }
             catch (Exception ex)
             {
-                return $"ocurrio un error al guardar: {ex.Message}";
+                return "No se pudo guardar el artículo: " + ex.Message;
             }
         }
 
-        private int GenerarArticuloId()
+        public string Modificar(int articuloId, string nombre, double precio, double porcentajeIVA,
+            string tipoArticulo, int cantidad, string descripcion, int duracion, string nitProveedor)
         {
-            int numero = siguienteArticuloId;
-
-            while (BuscarId(numero) != null)
+            try
             {
-                numero++;
-            }
+                Articulo actual = repositorio.BuscarId(articuloId);
+                if (actual == null) return "No se encontró el artículo para modificar.";
+                if ((actual is Repuesto) != string.Equals(tipoArticulo, "Repuesto", StringComparison.OrdinalIgnoreCase) && repositorio.TieneMovimientos(articuloId))
+                    return "No se puede cambiar el tipo de un artículo con movimientos de facturación.";
+                string error = Validar(nombre, precio, porcentajeIVA, tipoArticulo, cantidad, descripcion, duracion, nitProveedor);
+                if (error != null) return error;
 
-            siguienteArticuloId = numero + 1;
-            return numero;
+                Proveedor proveedor;
+                Articulo actualizado = CrearArticulo(articuloId, nombre, precio, porcentajeIVA, tipoArticulo,
+                    cantidad, descripcion, duracion, nitProveedor, out proveedor);
+                error = ValidarDuplicado(actualizado, articuloId);
+                if (error != null) return error;
+
+                repositorio.Modificar(actualizado);
+                return "El artículo se modificó correctamente.";
+            }
+            catch (Exception ex)
+            {
+                return "No se pudo modificar el artículo: " + ex.Message;
+            }
         }
 
         public Articulo BuscarId(int articuloId)
@@ -216,21 +80,89 @@ namespace LOGICA
         {
             try
             {
-                Articulo articulo = BuscarId(articuloId);
-
-                if (articulo == null)
-                {
-                    return "No se encontro el articulo ...";
-                }
-
+                if (repositorio.BuscarId(articuloId) == null) return "No se encontró el artículo.";
                 repositorio.Eliminar(articuloId);
-
-                return "El articulo se elimino correctamente ...";
+                return "El artículo se eliminó correctamente.";
             }
             catch (Exception ex)
             {
-                return $"Ocurrio un error al eliminar: {ex.Message}";
+                return "No se pudo eliminar el artículo: " + ex.Message;
             }
+        }
+
+        private string ValidarDuplicado(Articulo articulo, int? idExcluir)
+        {
+            foreach (Articulo existente in repositorio.Consultar())
+            {
+                if (idExcluir.HasValue && existente.ArticuloId == idExcluir.Value) continue;
+                if (articulo is Repuesto nuevoRepuesto && existente is Repuesto repuestoExistente &&
+                    string.Equals(existente.Nombre, articulo.Nombre, StringComparison.OrdinalIgnoreCase) &&
+                    repuestoExistente.Proveedor != null && nuevoRepuesto.Proveedor != null &&
+                    string.Equals(repuestoExistente.Proveedor.Nit, nuevoRepuesto.Proveedor.Nit, StringComparison.OrdinalIgnoreCase))
+                    return "Ya existe un repuesto con ese nombre para el proveedor seleccionado.";
+                if (articulo is Servicio && existente is Servicio &&
+                    string.Equals(existente.Nombre, articulo.Nombre, StringComparison.OrdinalIgnoreCase))
+                    return "Ya existe un servicio con ese nombre.";
+            }
+            return null;
+        }
+
+        private Articulo CrearArticulo(int id, string nombre, double precio, double iva, string tipo,
+            int cantidad, string descripcion, int duracion, string nitProveedor, out Proveedor proveedor)
+        {
+            proveedor = null;
+            if (string.Equals(tipo, "Repuesto", StringComparison.OrdinalIgnoreCase))
+            {
+                proveedor = proveedorRepositorio.BuscarNit(nitProveedor);
+                return new Repuesto
+                {
+                    ArticuloId = id, Nombre = nombre.Trim(), PrecioVenta = Convert.ToDecimal(precio),
+                    PorcentajeIVA = Convert.ToDecimal(iva), Cantidad = cantidad, Proveedor = proveedor
+                };
+            }
+            return new Servicio
+            {
+                ArticuloId = id, Nombre = nombre.Trim(), PrecioVenta = Convert.ToDecimal(precio),
+                PorcentajeIVA = Convert.ToDecimal(iva), Duracion = duracion,
+                Descripcion = string.IsNullOrWhiteSpace(descripcion) ? null : descripcion.Trim()
+            };
+        }
+
+        private string Validar(string nombre, double precio, double iva, string tipo, int cantidad,
+            string descripcion, int duracion, string nitProveedor)
+        {
+            if (string.IsNullOrWhiteSpace(nombre) || nombre != nombre.Trim() || nombre.Contains("  ") || nombre.Length < 3 || nombre.Length > 100)
+                return "El nombre debe tener entre 3 y 100 caracteres y no tener espacios sobrantes.";
+            foreach (char c in nombre)
+                if (!char.IsLetterOrDigit(c) && c != ' ' && "-./".IndexOf(c) < 0)
+                    return "El nombre contiene caracteres no permitidos.";
+
+            if (double.IsNaN(precio) || double.IsInfinity(precio) || precio <= 0 || precio > 99999999.99 || Math.Round(precio, 2) != precio)
+                return "El precio debe ser mayor que cero, no superar 99.999.999,99 y tener máximo dos decimales.";
+            if (iva != 0 && iva != 5 && iva != 19) return "El IVA solo puede ser 0, 5 o 19 por ciento.";
+
+            bool repuesto = string.Equals(tipo, "Repuesto", StringComparison.OrdinalIgnoreCase);
+            bool servicio = string.Equals(tipo, "Servicio", StringComparison.OrdinalIgnoreCase);
+            if (!repuesto && !servicio) return "Selecciona Repuesto o Servicio.";
+
+            if (repuesto)
+            {
+                if (cantidad < 0 || cantidad > 1000000) return "El stock debe estar entre 0 y 1.000.000 unidades.";
+                if (string.IsNullOrWhiteSpace(nitProveedor)) return "Selecciona un proveedor para el repuesto.";
+                if (proveedorRepositorio.BuscarNit(nitProveedor) == null) return "El proveedor seleccionado no existe.";
+            }
+            else
+            {
+                if (duracion < 1 || duracion > 10000) return "La duración debe estar entre 1 y 10.000 minutos.";
+                if (!string.IsNullOrWhiteSpace(descripcion))
+                {
+                    if (descripcion != descripcion.Trim() || descripcion.Contains("  ") || descripcion.Length < 3 || descripcion.Length > 200)
+                        return "La descripción debe tener entre 3 y 200 caracteres y no tener espacios sobrantes.";
+                    foreach (char c in descripcion)
+                        if (char.IsControl(c)) return "La descripción contiene caracteres no permitidos.";
+                }
+            }
+            return null;
         }
     }
 }

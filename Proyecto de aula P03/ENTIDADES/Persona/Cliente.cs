@@ -13,6 +13,12 @@ namespace ENTIDADES
         {
         }
 
+        public Cliente(string cedula, string primerNombre, string segundoNombre, string primerApellido,
+            string segundoApellido, string sexo, string telefono, string direccion, string correoElectronico)
+            : base(cedula, primerNombre, segundoNombre, primerApellido, segundoApellido, sexo, telefono, direccion, correoElectronico)
+        {
+        }
+
         public Cliente()
         {
 

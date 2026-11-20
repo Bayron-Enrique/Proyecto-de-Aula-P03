@@ -2,37 +2,56 @@ using ENTIDADES;
 using Oracle.ManagedDataAccess.Client;
 using System;
 using System.Collections.Generic;
+using System.Data;
 
 namespace DATOS
 {
     public class ClienteRepository : ManejadorConexion, IRepository<Cliente>
     {
+        public int Contar()
+        {
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_CLIENTE.PRC_CONTAR", conexion))
+            {
+                comando.CommandType = CommandType.StoredProcedure;
+                comando.Parameters.Add("p_total", OracleDbType.Int32).Direction = ParameterDirection.Output;
+                conexion.Open(); comando.ExecuteNonQuery();
+                return Convert.ToInt32(comando.Parameters["p_total"].Value.ToString());
+            }
+        }
+
         public void Guardar(Cliente cliente)
         {
-            using (OracleConnection con = ObtenerConexion())
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_CLIENTE.PRC_GUARDAR", conexion))
             {
-                string sql = @"INSERT INTO PERSONA (CEDULA, NOMBRES, APELLIDOS, SEXO, TELEFONO, DIRECCION, CORREOELECTRONICO)
-                               VALUES (:cedula, :nombres, :apellidos, :sexo, :telefono, :direccion, :correo)";
-                con.Open();
-                using (OracleTransaction tx = con.BeginTransaction())
+                comando.CommandType = CommandType.StoredProcedure;
+                AgregarParams(comando, cliente);
+
+                conexion.Open();
+                using (OracleTransaction transaccion = conexion.BeginTransaction())
                 {
-                    try
-                    {
-                        using (OracleCommand cmd = new OracleCommand(sql,con))
-                        {
-                            cmd.Transaction = tx;
-                            AgregarParametrosPersona(cmd, cliente);
-                            cmd.ExecuteNonQuery();
-                        }
-                        using (OracleCommand cmd = new OracleCommand("INSERT INTO CLIENTE (CEDULA) VALUES (:cedula)", con))
-                        {
-                            cmd.Transaction = tx;
-                            cmd.Parameters.Add(new OracleParameter("cedula", cliente.Cedula));
-                            cmd.ExecuteNonQuery();
-                        }
-                        tx.Commit();
-                    }
-                    catch { tx.Rollback(); throw; }
+                    comando.Transaction = transaccion;
+                    try { comando.ExecuteNonQuery(); transaccion.Commit(); }
+                    catch { transaccion.Rollback(); throw; }
+                }
+            }
+        }
+
+        public void Modificar(Cliente cliente)
+        {
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_CLIENTE.PRC_MODIFICAR", conexion))
+            {
+                comando.CommandType = CommandType.StoredProcedure;
+                AgregarParams(comando, cliente);
+
+                conexion.Open();
+                using (OracleTransaction transaccion = conexion.BeginTransaction())
+                {
+                    comando.Transaction = transaccion;
+                    try { comando.ExecuteNonQuery(); transaccion.Commit(); }
+                    catch { transaccion.Rollback(); throw; }
                 }
             }
         }
@@ -40,13 +59,13 @@ namespace DATOS
         public List<Cliente> Consultar()
         {
             List<Cliente> clientes = new List<Cliente>();
-            const string sql = @"SELECT P.CEDULA, P.NOMBRES, P.APELLIDOS, P.SEXO, P.TELEFONO, P.DIRECCION, P.CORREOELECTRONICO
-                                 FROM CLIENTE C JOIN PERSONA P ON P.CEDULA = C.CEDULA";
-            using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand(sql, con))
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_CLIENTE.PRC_CONSULTAR", conexion))
             {
-                con.Open();
-                using (OracleDataReader reader = cmd.ExecuteReader())
+                comando.CommandType = CommandType.StoredProcedure;
+                comando.Parameters.Add("p_resultado", OracleDbType.RefCursor).Direction = ParameterDirection.Output;
+                conexion.Open();
+                using (OracleDataReader reader = comando.ExecuteReader())
                     while (reader.Read()) clientes.Add(Mapear(reader));
             }
             return clientes;
@@ -54,94 +73,63 @@ namespace DATOS
 
         public Cliente BuscarCedula(string cedula)
         {
-            const string sql = @"SELECT P.CEDULA, P.NOMBRES, P.APELLIDOS, P.SEXO, P.TELEFONO, P.DIRECCION, P.CORREOELECTRONICO
-                                 FROM CLIENTE C JOIN PERSONA P ON P.CEDULA = C.CEDULA WHERE C.CEDULA = :cedula";
-            using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand(sql, con))
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_CLIENTE.PRC_BUSCAR_CEDULA", conexion))
             {
-                cmd.Parameters.Add(new OracleParameter("cedula", cedula));
-                con.Open();
-                using (OracleDataReader reader = cmd.ExecuteReader()) return reader.Read() ? Mapear(reader) : null;
-            }
-        }
-
-        public void Modificar(Cliente cliente)
-        {
-            const string sql = @"UPDATE PERSONA P SET NOMBRES = :nombres, APELLIDOS = :apellidos, SEXO = :sexo,
-                                 TELEFONO = :telefono, DIRECCION = :direccion, CORREOELECTRONICO = :correo
-                                 WHERE P.CEDULA = :cedula AND EXISTS (SELECT 1 FROM CLIENTE C WHERE C.CEDULA = P.CEDULA)";
-            using (OracleConnection con = ObtenerConexion())
-            {
-                con.Open();
-                using (OracleTransaction tx = con.BeginTransaction())
-                using (OracleCommand cmd = new OracleCommand(sql, con))
-                {
-                    try
-                    {
-                        cmd.Transaction = tx;
-                        cmd.BindByName = true;
-                        AgregarParametrosPersona(cmd, cliente);
-                        cmd.ExecuteNonQuery();
-                        tx.Commit();
-                    }
-                    catch
-                    {
-                        tx.Rollback();
-                        throw;
-                    }
-                }
+                comando.CommandType = CommandType.StoredProcedure;
+                comando.Parameters.Add("p_cedula", OracleDbType.Char, 10).Value = cedula;
+                comando.Parameters.Add("p_resultado", OracleDbType.RefCursor).Direction = ParameterDirection.Output;
+                conexion.Open();
+                using (OracleDataReader reader = comando.ExecuteReader())
+                    return reader.Read() ? Mapear(reader) : null;
             }
         }
 
         public void Eliminar(Cliente cliente)
         {
-            using (OracleConnection con = ObtenerConexion())
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_CLIENTE.PRC_ELIMINAR", conexion))
             {
-                con.Open();
-                using (OracleTransaction tx = con.BeginTransaction())
+                comando.CommandType = CommandType.StoredProcedure;
+                comando.Parameters.Add("p_cedula", OracleDbType.Char, 10).Value = cliente.Cedula;
+                conexion.Open();
+                using (OracleTransaction transaccion = conexion.BeginTransaction())
                 {
-                    try
-                    {
-                        using (OracleCommand cmd = new OracleCommand("DELETE FROM CLIENTE WHERE CEDULA = :cedula", con))
-                        {
-                            cmd.Transaction = tx;
-                            cmd.Parameters.Add(new OracleParameter("cedula", cliente.Cedula));
-                            cmd.ExecuteNonQuery();
-                        }
-                        using (OracleCommand cmd = new OracleCommand("DELETE FROM PERSONA WHERE CEDULA = :cedula", con))
-                        {
-                            cmd.Transaction = tx;
-                            cmd.Parameters.Add(new OracleParameter("cedula", cliente.Cedula));
-                            cmd.ExecuteNonQuery();
-                        }
-                        tx.Commit();
-                    }
-                    catch { tx.Rollback(); throw; }
+                    comando.Transaction = transaccion;
+                    try { comando.ExecuteNonQuery(); transaccion.Commit(); }
+                    catch { transaccion.Rollback(); throw; }
                 }
             }
+        }
+
+        private static void AgregarParams(OracleCommand comando, Cliente cliente)
+        {
+            comando.BindByName = true;
+            comando.Parameters.Add("p_cedula", OracleDbType.Char, 10).Value = cliente.Cedula;
+            comando.Parameters.Add("p_pnombre", OracleDbType.Varchar2).Value = cliente.PrimerNombre;
+            comando.Parameters.Add("p_snombre", OracleDbType.Varchar2).Value = (object)cliente.SegundoNombre ?? DBNull.Value;
+            comando.Parameters.Add("p_papellido", OracleDbType.Varchar2).Value = cliente.PrimerApellido;
+            comando.Parameters.Add("p_sapellido", OracleDbType.Varchar2).Value = (object)cliente.SegundoApellido ?? DBNull.Value;
+            comando.Parameters.Add("p_sexo", OracleDbType.Char, 1).Value = cliente.Sexo;
+            comando.Parameters.Add("p_telefono", OracleDbType.Varchar2).Value = (object)cliente.Telefono ?? DBNull.Value;
+            comando.Parameters.Add("p_direccion", OracleDbType.Varchar2).Value = (object)cliente.Direccion ?? DBNull.Value;
+            comando.Parameters.Add("p_correo", OracleDbType.Varchar2).Value = (object)cliente.CorreoElectronico ?? DBNull.Value;
         }
 
         private static Cliente Mapear(OracleDataReader reader)
         {
             return new Cliente
             {
-                Cedula = reader["CEDULA"].ToString().Trim(), Nombre = reader["NOMBRES"].ToString(),
-                Apellido = reader["APELLIDOS"].ToString(), Sexo = reader["SEXO"].ToString().Trim(),
+                Cedula = reader["CEDULA"].ToString().Trim(),
+                PrimerNombre = reader["PRIMER_NOMBRE"].ToString(),
+                SegundoNombre = reader["SEGUNDO_NOMBRE"] == DBNull.Value ? null : reader["SEGUNDO_NOMBRE"].ToString(),
+                PrimerApellido = reader["PRIMER_APELLIDO"].ToString(),
+                SegundoApellido = reader["SEGUNDO_APELLIDO"] == DBNull.Value ? null : reader["SEGUNDO_APELLIDO"].ToString(),
+                Sexo = reader["SEXO"].ToString().Trim(),
                 Telefono = reader["TELEFONO"] == DBNull.Value ? null : reader["TELEFONO"].ToString(),
                 Direccion = reader["DIRECCION"] == DBNull.Value ? null : reader["DIRECCION"].ToString(),
                 CorreoElectronico = reader["CORREOELECTRONICO"] == DBNull.Value ? null : reader["CORREOELECTRONICO"].ToString()
             };
-        }
-
-        private void AgregarParametrosPersona(OracleCommand cmd, Cliente cliente)
-        {
-            cmd.Parameters.Add(new OracleParameter("cedula", cliente.Cedula));
-            cmd.Parameters.Add(new OracleParameter("nombres", cliente.Nombre));
-            cmd.Parameters.Add(new OracleParameter("apellidos", cliente.Apellido));
-            cmd.Parameters.Add(new OracleParameter("sexo", cliente.Sexo));
-            cmd.Parameters.Add(new OracleParameter("telefono", (object)cliente.Telefono ?? DBNull.Value));
-            cmd.Parameters.Add(new OracleParameter("direccion", (object)cliente.Direccion ?? DBNull.Value));
-            cmd.Parameters.Add(new OracleParameter("correo", (object)cliente.CorreoElectronico ?? DBNull.Value));
         }
     }
 }

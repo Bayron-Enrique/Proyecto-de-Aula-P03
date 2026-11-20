@@ -14,6 +14,7 @@ namespace ENTIDADES
         public decimal ValorUnitario { get; set; }
         public int FacturaID { get; set; }
         public decimal PorcentajeIVA { get; set; }
+        public decimal Descuento { get; set; }
         public string Descripcion { get; set; }
         public Articulo Articulo { get; set; }
 
@@ -34,17 +35,22 @@ namespace ENTIDADES
 
         public decimal Subtotal
         {
-            get { return ValorUnitario * Cantidad; }
+            get { return Math.Round(ValorUnitario * Cantidad, 2, MidpointRounding.AwayFromZero); }
+        }
+
+        public decimal SubtotalNeto
+        {
+            get { return Math.Round(Subtotal - Descuento, 2, MidpointRounding.AwayFromZero); }
         }
 
         public decimal ValorIVA
         {
-            get { return Subtotal * (PorcentajeIVA / 100); }
+            get { return Math.Round(SubtotalNeto * (PorcentajeIVA / 100), 2, MidpointRounding.AwayFromZero); }
         }
 
         public decimal Total
         {
-            get { return Subtotal + ValorIVA; }
+            get { return Math.Round(SubtotalNeto + ValorIVA, 2, MidpointRounding.AwayFromZero); }
         }
 
         public override string ToString()

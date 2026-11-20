@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <connectionStrings>
+    <add name="NombreAPPConfig" connectionString="Data Source=localhost:1521/XEPDB1;User Id=TU_USUARIO;Password=TU_CLAVE;" providerName="Oracle.ManagedDataAccess.Client" />
+  </connectionStrings>
+</configuration>

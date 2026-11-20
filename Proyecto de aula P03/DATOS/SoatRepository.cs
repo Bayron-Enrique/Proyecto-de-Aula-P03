@@ -2,124 +2,106 @@ using ENTIDADES;
 using Oracle.ManagedDataAccess.Client;
 using System;
 using System.Collections.Generic;
+using System.Data;
 
 namespace DATOS
 {
     public class SoatRepository : ManejadorConexion, IRepository<Soat>
     {
-        public int ObtenerSiguienteSoatId()
-        {
-            using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand("SELECT SEQ_SOATID.NEXTVAL FROM DUAL", con))
-            {
-                con.Open();
-                return Convert.ToInt32(cmd.ExecuteScalar());
-            }
-        }
-
         public void Guardar(Soat soat)
         {
-            const string sql = @"INSERT INTO SOAT
-                                 (SOATID, NUMEROSOAT, FECHAINICIO, VEHICULO_PLACA, FECHAFIN)
-                                 VALUES (:soatId, :numeroSoat, :fechaInicio, :placa, :fechaFin)";
-
-            using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand(sql, con))
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_SOAT.GUARDAR", conexion))
             {
-                cmd.BindByName = true;
-                AgregarParametros(cmd, soat);
-                cmd.Parameters.Add(new OracleParameter("soatId", soat.SoatId));
-
-                con.Open();
-                cmd.ExecuteNonQuery();
+                comando.CommandType = CommandType.StoredProcedure;
+                AgregarParametros(comando, soat);
+                OracleParameter parametroId = comando.Parameters.Add("p_id", OracleDbType.Int32);
+                parametroId.Direction = ParameterDirection.Output;
+                conexion.Open();
+                using (OracleTransaction transaccion = conexion.BeginTransaction())
+                {
+                    comando.Transaction = transaccion;
+                    try { comando.ExecuteNonQuery(); soat.SoatId = Convert.ToInt32(parametroId.Value.ToString()); transaccion.Commit(); }
+                    catch { transaccion.Rollback(); throw; }
+                }
             }
         }
-
+        public void Modificar(Soat soat)
+        {
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_SOAT.MODIFICAR", conexion))
+            {
+                comando.CommandType = CommandType.StoredProcedure;
+                AgregarParametros(comando, soat);
+                comando.Parameters.Add("p_id", OracleDbType.Int32).Value = soat.SoatId;
+                conexion.Open();
+                using (OracleTransaction transaccion = conexion.BeginTransaction())
+                {
+                    comando.Transaction = transaccion;
+                    try { comando.ExecuteNonQuery(); transaccion.Commit(); }
+                    catch { transaccion.Rollback(); throw; }
+                }
+            }
+        }
         public List<Soat> Consultar()
         {
             List<Soat> soats = new List<Soat>();
-            using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand(SelectSoats, con))
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_SOAT.CONSULTAR", conexion))
             {
-                con.Open();
-                using (OracleDataReader reader = cmd.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        soats.Add(Mapear(reader));
-                    }
-                }
+                comando.CommandType = CommandType.StoredProcedure;
+                comando.Parameters.Add("p_resultado", OracleDbType.RefCursor).Direction = ParameterDirection.Output;
+                conexion.Open(); using (OracleDataReader reader = comando.ExecuteReader())
+                    while (reader.Read()) soats.Add(Mapear(reader));
             }
             return soats;
         }
-
-        public Soat BuscarId(int soatId)
+        public Soat BuscarId(int id)
         {
-            using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand(SelectSoats + " WHERE S.SOATID = :soatId", con))
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_SOAT.BUSCAR_ID", conexion))
             {
-                cmd.Parameters.Add(new OracleParameter("soatId", soatId));
-                con.Open();
-                using (OracleDataReader reader = cmd.ExecuteReader())
-                {
-                    return reader.Read() ? Mapear(reader) : null;
-                }
+                comando.CommandType = CommandType.StoredProcedure;
+                comando.Parameters.Add("p_id", OracleDbType.Int32).Value = id;
+                comando.Parameters.Add("p_resultado", OracleDbType.RefCursor).Direction = ParameterDirection.Output;
+                conexion.Open(); using (OracleDataReader reader = comando.ExecuteReader()) return reader.Read() ? Mapear(reader) : null;
             }
         }
-
-        public void Modificar(Soat soat)
-        {
-            const string sql = @"UPDATE SOAT
-                                 SET NUMEROSOAT = :numeroSoat,
-                                     FECHAINICIO = :fechaInicio,
-                                     VEHICULO_PLACA = :placa,
-                                     FECHAFIN = :fechaFin
-                                 WHERE SOATID = :soatId";
-
-            using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand(sql, con))
-            {
-                cmd.BindByName = true;
-                AgregarParametros(cmd, soat);
-                cmd.Parameters.Add(new OracleParameter("soatId", soat.SoatId));
-                con.Open();
-                cmd.ExecuteNonQuery();
-            }
-        }
-
         public void Eliminar(Soat soat)
         {
-            using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand("DELETE FROM SOAT WHERE SOATID = :soatId", con))
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_SOAT.ELIMINAR", conexion))
             {
-                cmd.Parameters.Add(new OracleParameter("soatId", soat.SoatId));
-                con.Open();
-                cmd.ExecuteNonQuery();
+                comando.CommandType = CommandType.StoredProcedure;
+                comando.Parameters.Add("p_id", OracleDbType.Int32).Value = soat.SoatId;
+                conexion.Open(); comando.ExecuteNonQuery();
             }
         }
-
-        private const string SelectSoats = @"SELECT S.SOATID, S.NUMEROSOAT, S.FECHAINICIO,
-                                                    S.FECHAFIN, S.VEHICULO_PLACA
-                                             FROM SOAT S";
-
+        private static void AgregarParametros(OracleCommand comando, Soat soat)
+        {
+            if (soat.Vehiculo == null || string.IsNullOrWhiteSpace(soat.Vehiculo.Placa))
+                throw new ArgumentException("Debe seleccionar un vehículo para el SOAT.");
+            comando.BindByName = true;
+            comando.Parameters.Add("p_numero", OracleDbType.Varchar2).Value = soat.NumeroSoat;
+            comando.Parameters.Add("p_inicio", OracleDbType.Date).Value = soat.FechaInicio;
+            comando.Parameters.Add("p_fin", OracleDbType.Date).Value = soat.FechaFin;
+            comando.Parameters.Add("p_placa", OracleDbType.Char, 7).Value = soat.Vehiculo.Placa;
+        }
         private static Soat Mapear(OracleDataReader reader)
         {
             return new Soat
             {
-                SoatId = Convert.ToInt32(reader["SOATID"]),
-                NumeroSoat = reader["NUMEROSOAT"] == DBNull.Value ? null : reader["NUMEROSOAT"].ToString(),
+                SoatId = Convert.ToInt32(reader["SOATID"]), NumeroSoat = reader["NUMEROSOAT"] == DBNull.Value ? null : reader["NUMEROSOAT"].ToString(),
                 FechaInicio = reader["FECHAINICIO"] == DBNull.Value ? DateTime.MinValue : Convert.ToDateTime(reader["FECHAINICIO"]),
                 FechaFin = reader["FECHAFIN"] == DBNull.Value ? DateTime.MinValue : Convert.ToDateTime(reader["FECHAFIN"]),
-                Vehiculo = new Vehiculo { Placa = reader["VEHICULO_PLACA"].ToString().Trim() }
+                Vehiculo = new Vehiculo { Placa = reader["VEHICULO_PLACA"].ToString().Trim(), Marca = reader["MARCA"].ToString(), Linea = reader["LINEA"].ToString(),
+                    Modelo = reader["MODELO"] == DBNull.Value ? 0 : Convert.ToInt32(reader["MODELO"]), Color = reader["COLOR"] == DBNull.Value ? null : reader["COLOR"].ToString(),
+                    TipoVehiculo = reader["TIPO_VEHICULO"].ToString(), Cliente = new Cliente { Cedula = reader["CLIENTE_CEDULA"].ToString().Trim(),
+                        PrimerNombre = reader["PRIMER_NOMBRE"].ToString(), SegundoNombre = reader["SEGUNDO_NOMBRE"] == DBNull.Value ? null : reader["SEGUNDO_NOMBRE"].ToString(),
+                        PrimerApellido = reader["PRIMER_APELLIDO"].ToString(), SegundoApellido = reader["SEGUNDO_APELLIDO"] == DBNull.Value ? null : reader["SEGUNDO_APELLIDO"].ToString(),
+                        CorreoElectronico = reader["CORREOELECTRONICO"] == DBNull.Value ? null : reader["CORREOELECTRONICO"].ToString() }
+                }
             };
-        }
-
-        private static void AgregarParametros(OracleCommand cmd, Soat soat)
-        {
-            cmd.Parameters.Add(new OracleParameter("numeroSoat", soat.NumeroSoat));
-            cmd.Parameters.Add(new OracleParameter("fechaInicio", soat.FechaInicio));
-            cmd.Parameters.Add(new OracleParameter("placa", soat.Vehiculo.Placa));
-            cmd.Parameters.Add(new OracleParameter("fechaFin", soat.FechaFin));
         }
     }
 }

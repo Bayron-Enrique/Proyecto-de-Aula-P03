@@ -2,6 +2,7 @@ using ENTIDADES;
 using Oracle.ManagedDataAccess.Client;
 using System;
 using System.Collections.Generic;
+using System.Data;
 
 namespace DATOS
 {
@@ -9,83 +10,77 @@ namespace DATOS
     {
         public int ObtenerSiguienteCargoId()
         {
-            using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand("SELECT SEQ_CARGOID.NEXTVAL FROM DUAL", con))
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_CARGO.SIGUIENTE_ID", conexion))
             {
-                con.Open();
-                return Convert.ToInt32(cmd.ExecuteScalar());
+                comando.CommandType = CommandType.StoredProcedure;
+                comando.Parameters.Add("p_id", OracleDbType.Int32).Direction = ParameterDirection.Output;
+                conexion.Open(); comando.ExecuteNonQuery();
+                return Convert.ToInt32(comando.Parameters["p_id"].Value.ToString());
             }
         }
-
         public void Guardar(Cargo cargo)
         {
-            using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand(
-                "INSERT INTO CARGO (CARGOID, NOMBRECARGO) VALUES (:cargoId, :nombreCargo)", con))
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_CARGO.GUARDAR", conexion))
             {
-                AgregarParametros(cmd, cargo);
-                con.Open();
-                cmd.ExecuteNonQuery();
+                comando.CommandType = CommandType.StoredProcedure;
+                AgregarParametros(comando, cargo);
+                conexion.Open(); comando.ExecuteNonQuery();
             }
         }
-
+        public void Modificar(Cargo cargo)
+        {
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_CARGO.MODIFICAR", conexion))
+            {
+                comando.CommandType = CommandType.StoredProcedure;
+                AgregarParametros(comando, cargo);
+                conexion.Open(); comando.ExecuteNonQuery();
+            }
+        }
         public List<Cargo> Consultar()
         {
             List<Cargo> cargos = new List<Cargo>();
-            using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand("SELECT CARGOID, NOMBRECARGO FROM CARGO", con))
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_CARGO.CONSULTAR", conexion))
             {
-                con.Open();
-                using (OracleDataReader reader = cmd.ExecuteReader())
+                comando.CommandType = CommandType.StoredProcedure;
+                comando.Parameters.Add("p_resultado", OracleDbType.RefCursor).Direction = ParameterDirection.Output;
+                conexion.Open(); using (OracleDataReader reader = comando.ExecuteReader())
                     while (reader.Read()) cargos.Add(Mapear(reader));
             }
             return cargos;
         }
-
         public Cargo BuscarId(int cargoId)
         {
-            using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand("SELECT CARGOID, NOMBRECARGO FROM CARGO WHERE CARGOID = :cargoId", con))
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_CARGO.BUSCAR_ID", conexion))
             {
-                cmd.Parameters.Add(new OracleParameter("cargoId", cargoId));
-                con.Open();
-                using (OracleDataReader reader = cmd.ExecuteReader())
+                comando.CommandType = CommandType.StoredProcedure;
+                comando.Parameters.Add("p_id", OracleDbType.Int32).Value = cargoId;
+                comando.Parameters.Add("p_resultado", OracleDbType.RefCursor).Direction = ParameterDirection.Output;
+                conexion.Open(); using (OracleDataReader reader = comando.ExecuteReader())
                     return reader.Read() ? Mapear(reader) : null;
             }
         }
-
-        public void Modificar(Cargo cargo)
-        {
-            using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand("UPDATE CARGO SET NOMBRECARGO = :nombreCargo WHERE CARGOID = :cargoId", con))
-            {
-                cmd.BindByName = true;
-                AgregarParametros(cmd, cargo);
-                con.Open();
-                cmd.ExecuteNonQuery();
-            }
-        }
-
         public void Eliminar(Cargo cargo)
         {
-            using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand("DELETE FROM CARGO WHERE CARGOID = :cargoId", con))
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_CARGO.ELIMINAR", conexion))
             {
-                cmd.Parameters.Add(new OracleParameter("cargoId", cargo.CargoId));
-                con.Open();
-                cmd.ExecuteNonQuery();
+                comando.CommandType = CommandType.StoredProcedure;
+                comando.Parameters.Add("p_id", OracleDbType.Int32).Value = cargo.CargoId;
+                conexion.Open(); comando.ExecuteNonQuery();
             }
         }
-
         private static Cargo Mapear(OracleDataReader reader)
+        { return new Cargo { CargoId = Convert.ToInt32(reader["CARGOID"]), NombreCargo = reader["NOMBRECARGO"].ToString() }; }
+        private static void AgregarParametros(OracleCommand comando, Cargo cargo)
         {
-            return new Cargo { CargoId = Convert.ToInt32(reader["CARGOID"]), NombreCargo = reader["NOMBRECARGO"].ToString() };
-        }
-
-        private void AgregarParametros(OracleCommand cmd, Cargo cargo)
-        {
-            cmd.Parameters.Add(new OracleParameter("cargoId", cargo.CargoId));
-            cmd.Parameters.Add(new OracleParameter("nombreCargo", cargo.NombreCargo));
+            comando.BindByName = true;
+            comando.Parameters.Add("p_id", OracleDbType.Int32).Value = cargo.CargoId;
+            comando.Parameters.Add("p_nombre", OracleDbType.Varchar2).Value = cargo.NombreCargo;
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿using DATOS;
+using DATOS;
 using ENTIDADES;
 using System;
 using System.Collections.Generic;
@@ -84,7 +84,7 @@ namespace LOGICA
                     }
                 }
 
-                int soatId = repositorio.ObtenerSiguienteSoatId();
+                int soatId = 0; // El repositorio asigna la secuencia dentro de la transacción.
 
                 Soat soat = new Soat(soatId, numeroSoat, fechaInicio, fechaFin, vehiculo);
                 repositorio.Guardar(soat);

@@ -1,4 +1,4 @@
-﻿using DATOS;
+using DATOS;
 using ENTIDADES;
 using System;
 using System.Collections.Generic;
@@ -10,12 +10,12 @@ namespace LOGICA
 {
     public class AgendaService
     {
+        public int TotalCitasPendientes() { return repositorio.ContarPendientes(); }
         AgendaRepository repositorio;
         ClienteRepository clienteRepositorio;
         VehiculoRepository vehiculoRepositorio;
         EmpleadoRepository empleadoRepositorio;
         ArticuloRepository articuloRepositorio;
-        int siguienteAgendaId;
 
         public AgendaService(AgendaRepository repositorio, ClienteRepository clienteRepositorio, VehiculoRepository vehiculoRepositorio, EmpleadoRepository empleadoRepositorio, ArticuloRepository articuloRepositorio)
         {
@@ -24,175 +24,109 @@ namespace LOGICA
             this.vehiculoRepositorio = vehiculoRepositorio;
             this.empleadoRepositorio = empleadoRepositorio;
             this.articuloRepositorio = articuloRepositorio;
-            siguienteAgendaId = 1;
         }
 
-        public string Guardar(DateTime fecha, string comentario, string nombreServicio, string estado, string cedulaCliente, string placa, string cedulaEmpleado)
+        public string Guardar(DateTime fecha, string comentario, string estado, string placa, string cedulaEmpleado, int servicioId)
+        {
+            return GuardarOActualizar(0, fecha, comentario, estado, placa, cedulaEmpleado, servicioId);
+        }
+
+        public string Modificar(int agendaId, DateTime fecha, string comentario, string estado, string placa, string cedulaEmpleado, int servicioId)
+        {
+            return GuardarOActualizar(agendaId, fecha, comentario, estado, placa, cedulaEmpleado, servicioId);
+        }
+
+        private string GuardarOActualizar(int agendaId, DateTime fecha, string comentario, string estado, string placa, string cedulaEmpleado, int servicioId)
         {
             try
             {
-                // Fecha
-                if (fecha.Year < 2000 || fecha > DateTime.Now.AddYears(5))
-                {
-                    return "La fecha de la agenda no es valida ...";
-                }
-                if (fecha < DateTime.Now)
-                {
-                    return "La fecha y hora de la agenda no pueden ser anteriores a este momento ...";
-                }
+                fecha = new DateTime(fecha.Year, fecha.Month, fecha.Day, fecha.Hour, fecha.Minute, 0);
+                Agenda actual = agendaId > 0 ? repositorio.BuscarId(agendaId) : null;
+                if (agendaId > 0 && actual == null) return "No se encontró la cita seleccionada.";
+                if (fecha < DateTime.Now.AddMinutes(-1) || fecha > DateTime.Now.AddYears(5))
+                    return "Selecciona una fecha y hora válida, posterior al momento actual.";
+                if (!string.IsNullOrWhiteSpace(comentario) && (comentario != comentario.Trim() || comentario.Length > 200 || comentario.Any(char.IsControl)))
+                    return "La observación admite hasta 200 caracteres y no debe tener espacios sobrantes ni controles.";
+                string estadoNormalizado = NormalizarEstado(estado);
+                if (estadoNormalizado == null) return "El estado debe ser PENDIENTE, EN PROCESO, COMPLETADA o CANCELADA.";
+                if (string.IsNullOrWhiteSpace(placa) || string.IsNullOrWhiteSpace(cedulaEmpleado) || servicioId <= 0)
+                    return "Selecciona un vehículo, un empleado y un servicio.";
 
-                // Nombre del servicio
-                if (string.IsNullOrWhiteSpace(nombreServicio))
-                {
-                    return "El nombre del servicio es obligatorio y no puede estar vacio ni tener solo espacios ...";
-                }
-                if (nombreServicio != nombreServicio.Trim())
-                {
-                    return "El nombre del servicio no puede empezar ni terminar con espacios ...";
-                }
-                if (nombreServicio.Contains("  "))
-                {
-                    return "El nombre del servicio no puede tener espacios seguidos ...";
-                }
-                if (nombreServicio.Length < 3 || nombreServicio.Length > 100)
-                {
-                    return "El nombre del servicio debe tener entre 3 y 100 caracteres ...";
-                }
-                foreach (char c in nombreServicio)
-                {
-                    if (!char.IsLetterOrDigit(c) && c != ' ' && "-./".IndexOf(c) < 0)
-                    {
-                        return $"El nombre del servicio tiene el caracter '{c}' que no esta permitido ...";
-                    }
-                }
+                Vehiculo vehiculo = vehiculoRepositorio.BuscarPlaca(placa.Trim());
+                Empleado empleado = empleadoRepositorio.BuscarCedula(cedulaEmpleado.Trim());
+                Servicio servicio = articuloRepositorio.BuscarId(servicioId) as Servicio;
+                if (vehiculo == null) return "El vehículo seleccionado ya no existe.";
+                if (empleado == null || !empleado.Activo) return "El empleado seleccionado no existe o está inactivo.";
+                if (servicio == null) return "El artículo seleccionado no es un servicio válido.";
 
-                // Comentario (opcional)
-                if (!string.IsNullOrEmpty(comentario))
+                // La función Oracle consulta la disponibilidad exacta de fecha y hora.
+                // También se revisa el intervalo real según la duración del servicio.
+                bool disponible = repositorio.EmpleadoDisponible(empleado.Cedula, fecha);
+                List<Agenda> citas = repositorio.Consultar();
+                TimeSpan duracionNueva = TimeSpan.FromMinutes(Math.Max(1, servicio.Duracion));
+                bool empleadoOcupado = citas.Any(a => a.AgendaID != agendaId && a.Estado != "CANCELADA" &&
+                    a.Empleado.Cedula == empleado.Cedula && SeCruzan(fecha, duracionNueva, a.Fecha,
+                        TimeSpan.FromMinutes(Math.Max(1, a.ArticuloServicio is Servicio s ? s.Duracion : 1))));
+                if (estadoNormalizado != "CANCELADA" && (empleadoOcupado || (!disponible && actual == null && citas.Any(a => a.Estado != "CANCELADA" &&
+                    a.Empleado.Cedula == empleado.Cedula && a.Fecha == fecha))))
+                    return "El empleado ya tiene una cita que se cruza con ese horario. Elige otro horario o empleado.";
+
+                bool vehiculoOcupado = citas.Any(a => a.AgendaID != agendaId && a.Estado != "CANCELADA" &&
+                    a.Vehiculo.Placa == vehiculo.Placa && SeCruzan(fecha, duracionNueva, a.Fecha,
+                        TimeSpan.FromMinutes(Math.Max(1, a.ArticuloServicio is Servicio servicioExistente ? servicioExistente.Duracion : 1))));
+                if (estadoNormalizado != "CANCELADA" && vehiculoOcupado) return "El vehículo ya tiene una cita a esa fecha y hora.";
+
+                var agenda = new Agenda
                 {
-                    if (string.IsNullOrWhiteSpace(comentario))
-                    {
-                        return "El comentario no puede tener solo espacios ...";
-                    }
-                    if (comentario != comentario.Trim() || comentario.Contains("  "))
-                    {
-                        return "El comentario no puede tener espacios al inicio, al final ni seguidos ...";
-                    }
-                    if (comentario.Length < 3 || comentario.Length > 200)
-                    {
-                        return "El comentario debe tener entre 3 y 200 caracteres ...";
-                    }
-                    foreach (char c in comentario)
-                    {
-                        if (char.IsControl(c))
-                        {
-                            return "El comentario tiene caracteres no permitidos ...";
-                        }
-                    }
-                }
-
-                // Estado
-                if (estado != "Pendiente" && estado != "En proceso" && estado != "Completada" && estado != "Cancelada")
+                    AgendaID = agendaId,
+                    Fecha = fecha,
+                    Comentario = string.IsNullOrWhiteSpace(comentario) ? null : comentario.Trim(),
+                    Estado = estadoNormalizado,
+                    Vehiculo = vehiculo,
+                    Empleado = empleado,
+                    ArticuloServicio = servicio
+                };
+                if (actual == null)
                 {
-                    return "El estado debe ser uno de estos: Pendiente, En proceso, Completada, Cancelada ...";
+                    repositorio.Guardar(agenda);
+                    return "Se registró la cita número " + agenda.AgendaID + ".";
                 }
-
-                // Cliente, vehiculo y empleado
-                if (string.IsNullOrWhiteSpace(cedulaCliente))
-                {
-                    return "Debe seleccionar un cliente valido ...";
-                }
-                if (string.IsNullOrWhiteSpace(placa))
-                {
-                    return "Debe seleccionar un vehiculo valido ...";
-                }
-                if (string.IsNullOrWhiteSpace(cedulaEmpleado))
-                {
-                    return "Debe seleccionar un empleado valido ...";
-                }
-
-                Cliente cliente = clienteRepositorio.BuscarCedula(cedulaCliente);
-
-                if (cliente == null)
-                {
-                    return "El cliente seleccionado no existe ...";
-                }
-
-                Vehiculo vehiculo = vehiculoRepositorio.BuscarPlaca(placa);
-
-                if (vehiculo == null)
-                {
-                    return "El vehiculo seleccionado no existe ...";
-                }
-
-                if (vehiculo.Cliente == null || vehiculo.Cliente.Cedula != cedulaCliente)
-                {
-                    return "Ese vehiculo no pertenece al cliente seleccionado ...";
-                }
-
-                Empleado empleado = empleadoRepositorio.BuscarCedula(cedulaEmpleado);
-
-                if (empleado == null)
-                {
-                    return "El empleado seleccionado no existe ...";
-                }
-
-                Servicio servicio = articuloRepositorio.Consultar()
-                    .OfType<Servicio>()
-                    .FirstOrDefault(a => string.Equals(a.Nombre, nombreServicio, StringComparison.OrdinalIgnoreCase));
-                if (servicio == null)
-                {
-                    return "El servicio seleccionado no existe ...";
-                }
-
-                // Cruces de horario
-                foreach (var existente in repositorio.Consultar())
-                {
-                    if (existente.Estado != "Cancelada" && existente.Fecha == fecha)
-                    {
-                        if (existente.Empleado.Cedula == cedulaEmpleado)
-                        {
-                            return "Ese empleado ya tiene una cita en esa fecha y hora ...";
-                        }
-                        if (existente.Vehiculo.Placa == placa)
-                        {
-                            return "Ese vehiculo ya tiene una cita en esa fecha y hora ...";
-                        }
-                    }
-                }
-
-                int agendaId = GenerarAgendaId();
-
-                Agenda agenda = new Agenda();
-                agenda.AgendaID = agendaId;
-                agenda.Fecha = fecha;
-                agenda.Comentario = comentario;
-                agenda.Estado = estado;
-                agenda.Vehiculo = vehiculo;
-                agenda.Empleado = empleado;
-                agenda.ArticuloServicio = servicio;
-
-                repositorio.Guardar(agenda);
-
-                return $"se registro la agenda numero {agendaId} desde la logica ...";
+                repositorio.Modificar(agenda);
+                return "La cita se modificó correctamente.";
             }
             catch (Exception ex)
             {
-                return $"ocurrio un error al guardar: {ex.Message}";
+                return "No se pudo guardar la cita: " + ex.Message;
             }
         }
 
-        private int GenerarAgendaId()
+        public string CambiarEstado(int agendaId, string estado)
         {
-            int numero = siguienteAgendaId;
-
-            while (BuscarId(numero) != null)
+            try
             {
-                numero++;
+                Agenda agenda = repositorio.BuscarId(agendaId);
+                if (agenda == null) return "No se encontró la cita.";
+                string normalizado = NormalizarEstado(estado);
+                if (normalizado == null) return "Selecciona un estado válido.";
+                agenda.Estado = normalizado;
+                repositorio.CambiarEstado(agendaId, normalizado);
+                return "El estado de la cita se actualizó.";
             }
-
-            siguienteAgendaId = numero + 1;
-            return numero;
+            catch (Exception ex) { return "No se pudo actualizar el estado: " + ex.Message; }
         }
+
+        private static string NormalizarEstado(string estado)
+        {
+            if (string.IsNullOrWhiteSpace(estado)) return null;
+            string[] estados = { "PENDIENTE", "EN PROCESO", "COMPLETADA", "CANCELADA" };
+            return estados.FirstOrDefault(e => string.Equals(e, estado.Trim(), StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static bool SeCruzan(DateTime inicioA, TimeSpan duracionA, DateTime inicioB, TimeSpan duracionB)
+        {
+            return inicioA < inicioB.Add(duracionB) && inicioB < inicioA.Add(duracionA);
+        }
+
 
         public Agenda BuscarId(int agendaId)
         {

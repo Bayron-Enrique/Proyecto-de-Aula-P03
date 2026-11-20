@@ -19,6 +19,7 @@ namespace ENTIDADES
         public string TipoDocumento { get; set; }
         public Cliente Cliente { get; set; }
         public Empleado Empleado { get; set; }
+        public Vehiculo Vehiculo { get; set; }
         public bool Domicilio { get; set; }
         public string DireccionDomicilio { get; set; }
         public int? AgendaID { get; set; }
@@ -33,14 +34,19 @@ namespace ENTIDADES
         {
             SubTotal = 0;
             Iva = 0;
+            Descuento = 0;
 
             foreach (var detalle in Detalles)
             {
-                SubTotal += detalle.ValorUnitario * detalle.Cantidad;
+                SubTotal += detalle.Subtotal;
+                Descuento += Math.Round(detalle.Descuento, 2, MidpointRounding.AwayFromZero);
                 Iva += detalle.ValorIVA;
             }
 
-            Total = SubTotal - Descuento + Iva;
+            SubTotal = Math.Round(SubTotal, 2, MidpointRounding.AwayFromZero);
+            Descuento = Math.Round(Descuento, 2, MidpointRounding.AwayFromZero);
+            Iva = Math.Round(Iva, 2, MidpointRounding.AwayFromZero);
+            Total = Math.Round(SubTotal - Descuento + Iva, 2, MidpointRounding.AwayFromZero);
         }
 
         public override string ToString()

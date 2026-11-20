@@ -133,9 +133,11 @@
     <Compile Include="CargoService.cs" />
     <Compile Include="ClienteService.cs" />
     <Compile Include="EmpleadoService.cs" />
+    <Compile Include="SesionActual.cs" />
     <Compile Include="Email.cs" />
     <Compile Include="FacturaService.cs" />
     <Compile Include="NotificacionMantenimientoService.cs" />
+    <Compile Include="PasswordHasher.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ProveedorService.cs" />
     <Compile Include="SoatService.cs" />
@@ -152,7 +154,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.config" />
+    <None Include="app.config" />
     <None Include="Oracle.DataAccess.Common.Configuration.Section.xsd">
       <SubType>Designer</SubType>
     </None>

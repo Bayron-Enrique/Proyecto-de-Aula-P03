@@ -19,7 +19,16 @@ namespace ENTIDADES
             Cargo = cargo;
         }
 
+        public Empleado(string cedula, string primerNombre, string segundoNombre, string primerApellido,
+            string segundoApellido, string sexo, string telefono, string direccion, string correoElectronico, Cargo cargo)
+            : base(cedula, primerNombre, segundoNombre, primerApellido, segundoApellido, sexo, telefono, direccion, correoElectronico)
+        {
+            if (cargo == null) throw new NullReferenceException("EL CARGO NO PUEDE SER NULO");
+            Cargo = cargo;
+        }
+
         public Cargo Cargo { get; set; }
+        public bool Activo { get; set; } = true;
         public Empleado()
         {
 

@@ -3,3 +3,7 @@
 [Bb]in/
 [Oo]bj/
 *.cache
+
+# Per-developer application and database settings
+**/App.config
+**/app.config
