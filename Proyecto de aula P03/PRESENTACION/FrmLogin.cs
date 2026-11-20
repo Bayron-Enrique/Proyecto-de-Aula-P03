@@ -54,6 +54,11 @@ namespace PRESENTACION
             button1.ForeColor = Color.White;
             button1.FlatStyle = FlatStyle.Flat;
             button1.FlatAppearance.BorderSize = 0;
+
+
+            txtUsuario.AutoCompleteCustomSource = new AutoCompleteStringCollection();
+            txtUsuario.AutoCompleteSource = AutoCompleteSource.CustomSource;
+            txtUsuario.AutoCompleteMode = AutoCompleteMode.Suggest;
         }
 
         // Todas las suscripciones se hacen aquí; el Designer no conecta eventos.
@@ -187,7 +192,13 @@ namespace PRESENTACION
                     return;
                 }
 
+                if (!txtUsuario.AutoCompleteCustomSource.Contains(cedula))
+                {
+                    txtUsuario.AutoCompleteCustomSource.Add(cedula);
+                }
+
                 AbrirPrincipal(empleado);
+
             }
             catch (Exception)
             {
