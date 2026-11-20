@@ -1,11 +1,8 @@
-
 using ENTIDADES;
 using Oracle.ManagedDataAccess.Client;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Data;
 
 namespace DATOS
 {
@@ -13,151 +10,74 @@ namespace DATOS
     {
         public List<DetalleFactura> Consultar()
         {
-            List<DetalleFactura> lista = new List<DetalleFactura>();
-
-            using (OracleConnection con = ObtenerConexion())
+            List<DetalleFactura> detalles = new List<DetalleFactura>();
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_DETALLE_FACTURA.CONSULTAR", conexion))
             {
-                string sql = @"SELECT D.DETALLEFACTURAID,
-                               D.CANTIDAD,
-                               D.VALORUNITARIO,
-                               D.VALORIVA,
-                               D.FACTURA_FACTURAID,
-                               D.ARTICULO_ARTICULOID,
-                               D.PORCENTAJEIVA,
-                               D.DESCUENTO,
-                               D.DESCRIPCION,
-                               A.NOMBRE AS NOMBRE_ARTICULO,
-                               D.SUBTOTAL,
-                               D.TOTAL,
-                               T.NOMBRE AS TIPODEARTICULO
-                               FROM TALLER.DETALLE_FACTURA D
-                               JOIN TALLER.ARTICULO A
-                               ON D.ARTICULO_ARTICULOID = A.ARTICULOID
-                               JOIN TALLER.TIPO_ARTICULO T
-                               ON A.TIPO_ARTICULO_ID = T.TIPO_ARTICULO_ID
-                               ORDER BY D.DETALLEFACTURAID";
-
-                using (OracleCommand cmd = new OracleCommand(sql, con))
-                {
-                    con.Open();
-
-                    using (OracleDataReader reader = cmd.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            lista.Add(Mapear(reader));
-                        }
-                    }
-                }
+                comando.CommandType = CommandType.StoredProcedure;
+                comando.Parameters.Add("p_resultado", OracleDbType.RefCursor).Direction = ParameterDirection.Output;
+                conexion.Open();
+                using (OracleDataReader reader = comando.ExecuteReader())
+                    while (reader.Read()) detalles.Add(Mapear(reader));
             }
-
-            return lista;
+            return detalles;
         }
 
         public void Guardar(DetalleFactura detalle)
         {
-            using (OracleConnection con = ObtenerConexion())
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_DETALLE_FACTURA.GUARDAR", conexion))
             {
-                string sql = @"INSERT INTO TALLER.DETALLE_FACTURA
-                            (DETALLEFACTURAID, CANTIDAD, VALORUNITARIO,
-                             VALORIVA, FACTURA_FACTURAID,
-                             ARTICULO_ARTICULOID, PORCENTAJEIVA,
-                             DESCRIPCION, SUBTOTAL, TOTAL, DESCUENTO)
-                            VALUES
-                            (TALLER.SEQ_DETALLEFACTURAID.NEXTVAL, :cantidad,
-                             :valorUnitario, :valorIva, :facturaId,
-                             :articuloId, :porcentajeIva,
-                             :descripcion, :subtotal, :total, :descuento)";
-
-                using (OracleCommand cmd = new OracleCommand(sql, con))
+                comando.CommandType = CommandType.StoredProcedure;
+                AgregarParams(comando, detalle, true);
+                OracleParameter parametroId = comando.Parameters.Add("p_id", OracleDbType.Int32);
+                parametroId.Direction = ParameterDirection.Output;
+                conexion.Open();
+                using (OracleTransaction transaccion = conexion.BeginTransaction())
                 {
-                    // Llamamos al método auxiliar que empaqueta
-                    // todos los parámetros
-                    AgregarParams(cmd, detalle);
-
-                    con.Open();
-                    cmd.ExecuteNonQuery();
+                    comando.Transaction = transaccion;
+                    try
+                    {
+                        comando.ExecuteNonQuery();
+                        detalle.DetalleFacturaID = Convert.ToInt32(parametroId.Value.ToString());
+                        transaccion.Commit();
+                    }
+                    catch { transaccion.Rollback(); throw; }
                 }
             }
         }
 
-        private void AgregarParams(OracleCommand cmd, DetalleFactura detalle)
+        public void Modificar(DetalleFactura detalle)
         {
-            cmd.BindByName = true;
-
-            cmd.Parameters.Add(
-                new OracleParameter("cantidad", detalle.Cantidad));
-
-            cmd.Parameters.Add(
-                new OracleParameter("valorUnitario", detalle.ValorUnitario));
-
-            cmd.Parameters.Add(
-                new OracleParameter("valorIva", detalle.ValorIVA));
-
-            cmd.Parameters.Add(
-                new OracleParameter("facturaId", detalle.FacturaID));
-
-            // Extraemos el ID del objeto Articulo polimórfico
-            // (sea Repuesto o Servicio)
-            int articuloId = detalle.Articulo != null
-                ? detalle.Articulo.ArticuloId
-                : 0;
-
-            cmd.Parameters.Add(
-                new OracleParameter("articuloId", articuloId));
-
-            cmd.Parameters.Add(
-                new OracleParameter("porcentajeIva", detalle.PorcentajeIVA));
-
-            cmd.Parameters.Add(
-                new OracleParameter("descripcion",
-                    string.IsNullOrEmpty(detalle.Descripcion)
-                    ? (object)DBNull.Value
-                    : detalle.Descripcion));
-
-            cmd.Parameters.Add(
-                new OracleParameter("subtotal", detalle.Subtotal));
-
-            cmd.Parameters.Add(
-                new OracleParameter("total", detalle.Total));
-            cmd.Parameters.Add(
-                new OracleParameter("descuento", detalle.Descuento));
-        }
-
-        public void Modificar(DetalleFactura entidad)
-        {
-            const string sql = @"UPDATE TALLER.DETALLE_FACTURA SET CANTIDAD = :cantidad,
-                                 VALORUNITARIO = :valorUnitario, VALORIVA = :valorIva,
-                                 ARTICULO_ARTICULOID = :articuloId, PORCENTAJEIVA = :porcentajeIva,
-                                 DESCRIPCION = :descripcion, SUBTOTAL = :subtotal, TOTAL = :total,
-                                 DESCUENTO = :descuento
-                                 WHERE DETALLEFACTURAID = :detalleId";
-            using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand(sql, con))
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_DETALLE_FACTURA.MODIFICAR", conexion))
             {
-                AgregarParams(cmd, entidad);
-                cmd.Parameters.Add("detalleId", entidad.DetalleFacturaID);
-                con.Open();
-                cmd.ExecuteNonQuery();
+                comando.CommandType = CommandType.StoredProcedure;
+                AgregarParams(comando, detalle, false);
+                comando.Parameters.Add("p_id", OracleDbType.Int32).Value = detalle.DetalleFacturaID;
+                conexion.Open();
+                using (OracleTransaction transaccion = conexion.BeginTransaction())
+                {
+                    comando.Transaction = transaccion;
+                    try { comando.ExecuteNonQuery(); transaccion.Commit(); }
+                    catch { transaccion.Rollback(); throw; }
+                }
             }
         }
 
         public void Eliminar(int id)
         {
-            using (OracleConnection con = ObtenerConexion())
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_DETALLE_FACTURA.ELIMINAR", conexion))
             {
-                string sql = @"DELETE FROM TALLER.DETALLE_FACTURA
-                               WHERE DETALLEFACTURAID = :detalleId";
-
-                using (OracleCommand cmd = new OracleCommand(sql, con))
+                comando.CommandType = CommandType.StoredProcedure;
+                comando.Parameters.Add("p_id", OracleDbType.Int32).Value = id;
+                conexion.Open();
+                using (OracleTransaction transaccion = conexion.BeginTransaction())
                 {
-                    cmd.BindByName = true;
-
-                    cmd.Parameters.Add(
-                        new OracleParameter("detalleId", id));
-
-                    con.Open();
-                    cmd.ExecuteNonQuery();
+                    comando.Transaction = transaccion;
+                    try { comando.ExecuteNonQuery(); transaccion.Commit(); }
+                    catch { transaccion.Rollback(); throw; }
                 }
             }
         }
@@ -165,110 +85,54 @@ namespace DATOS
         public List<DetalleFactura> ConsultarPorFactura(int facturaId)
         {
             List<DetalleFactura> detalles = new List<DetalleFactura>();
-
-            using (OracleConnection con = ObtenerConexion())
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_DETALLE_FACTURA.CONSULTAR_POR_FACTURA", conexion))
             {
-                string sql = @"SELECT D.DETALLEFACTURAID,
-                               D.CANTIDAD,
-                               D.VALORUNITARIO,
-                               D.VALORIVA,
-                               D.FACTURA_FACTURAID,
-                               D.ARTICULO_ARTICULOID,
-                               D.PORCENTAJEIVA,
-                               D.DESCUENTO,
-                               D.DESCRIPCION,
-                               A.NOMBRE AS NOMBRE_ARTICULO,
-                               D.SUBTOTAL,
-                               D.TOTAL,
-                               T.NOMBRE AS TIPODEARTICULO
-                               FROM TALLER.DETALLE_FACTURA D
-                               JOIN TALLER.ARTICULO A
-                               ON D.ARTICULO_ARTICULOID = A.ARTICULOID
-                               JOIN TALLER.TIPO_ARTICULO T
-                               ON A.TIPO_ARTICULO_ID = T.TIPO_ARTICULO_ID
-                               WHERE D.FACTURA_FACTURAID = :facturaId
-                               ORDER BY D.DETALLEFACTURAID";
-
-                using (OracleCommand cmd = new OracleCommand(sql, con))
-                {
-                    cmd.BindByName = true;
-
-                    cmd.Parameters.Add(
-                        new OracleParameter("facturaId", facturaId));
-
-                    con.Open();
-
-                    using (OracleDataReader reader = cmd.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            detalles.Add(Mapear(reader));
-                        }
-                    }
-                }
+                comando.CommandType = CommandType.StoredProcedure;
+                comando.Parameters.Add("p_factura_id", OracleDbType.Int32).Value = facturaId;
+                comando.Parameters.Add("p_resultado", OracleDbType.RefCursor).Direction = ParameterDirection.Output;
+                conexion.Open();
+                using (OracleDataReader reader = comando.ExecuteReader())
+                    while (reader.Read()) detalles.Add(Mapear(reader));
             }
-
             return detalles;
+        }
+
+        private static void AgregarParams(OracleCommand comando, DetalleFactura detalle, bool incluirFacturaId)
+        {
+            comando.BindByName = true;
+            if (incluirFacturaId)
+                comando.Parameters.Add("p_factura_id", OracleDbType.Int32).Value = detalle.FacturaID;
+            comando.Parameters.Add("p_cantidad", OracleDbType.Int32).Value = detalle.Cantidad;
+            comando.Parameters.Add("p_valor_unitario", OracleDbType.Decimal).Value = detalle.ValorUnitario;
+            comando.Parameters.Add("p_valor_iva", OracleDbType.Decimal).Value = detalle.ValorIVA;
+            comando.Parameters.Add("p_articulo_id", OracleDbType.Int32).Value = detalle.Articulo.ArticuloId;
+            comando.Parameters.Add("p_porcentaje_iva", OracleDbType.Decimal).Value = detalle.PorcentajeIVA;
+            comando.Parameters.Add("p_descripcion", OracleDbType.Varchar2).Value = (object)detalle.Descripcion ?? DBNull.Value;
+            comando.Parameters.Add("p_subtotal", OracleDbType.Decimal).Value = detalle.Subtotal;
+            comando.Parameters.Add("p_total", OracleDbType.Decimal).Value = detalle.Total;
+            comando.Parameters.Add("p_descuento", OracleDbType.Decimal).Value = detalle.Descuento;
         }
 
         private DetalleFactura Mapear(OracleDataReader reader)
         {
-            int articuloId = Convert.ToInt32(
-                reader["ARTICULO_ARTICULOID"]);
-
+            int articuloId = Convert.ToInt32(reader["ARTICULO_ARTICULOID"]);
             string nombreArticulo = reader["NOMBRE_ARTICULO"].ToString();
-
-            decimal precioVenta = Convert.ToDecimal(
-                reader["VALORUNITARIO"]);
-
-            decimal porcentajeIva = reader["PORCENTAJEIVA"] != DBNull.Value
-                ? Convert.ToDecimal(reader["PORCENTAJEIVA"])
-                : 0;
-
+            decimal precioVenta = Convert.ToDecimal(reader["VALORUNITARIO"]);
+            decimal porcentajeIva = reader["PORCENTAJEIVA"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["PORCENTAJEIVA"]);
             string tipoArticulo = reader["TIPODEARTICULO"].ToString();
 
-            Articulo articulo;
+            Articulo articulo = string.Equals(tipoArticulo, "Repuesto", StringComparison.OrdinalIgnoreCase) || tipoArticulo == "1"
+                ? (Articulo)new Repuesto { ArticuloId = articuloId, Nombre = nombreArticulo, PrecioVenta = precioVenta, PorcentajeIVA = porcentajeIva }
+                : new Servicio { ArticuloId = articuloId, Nombre = nombreArticulo, PrecioVenta = precioVenta, PorcentajeIVA = porcentajeIva };
 
-            if (string.Equals(tipoArticulo, "Repuesto",
-                StringComparison.OrdinalIgnoreCase) || tipoArticulo == "1")
+            DetalleFactura detalle = new DetalleFactura(Convert.ToInt32(reader["CANTIDAD"]), articulo)
             {
-                articulo = new Repuesto
-                {
-                    ArticuloId = articuloId,
-                    Nombre = nombreArticulo,
-                    PrecioVenta = precioVenta,
-                    PorcentajeIVA = porcentajeIva
-                };
-            }
-            else
-            {
-                articulo = new Servicio
-                {
-                    ArticuloId = articuloId,
-                    Nombre = nombreArticulo,
-                    PrecioVenta = precioVenta,
-                    PorcentajeIVA = porcentajeIva
-                };
-            }
-
-            int cantidad = Convert.ToInt32(reader["CANTIDAD"]);
-
-            DetalleFactura detalle = new DetalleFactura(cantidad, articulo)
-            {
-                DetalleFacturaID = reader["DETALLEFACTURAID"] != DBNull.Value
-                    ? Convert.ToInt32(reader["DETALLEFACTURAID"])
-                    : 0,
-
-                FacturaID = reader["FACTURA_FACTURAID"] != DBNull.Value
-                    ? Convert.ToInt32(reader["FACTURA_FACTURAID"])
-                    : 0
+                DetalleFacturaID = Convert.ToInt32(reader["DETALLEFACTURAID"]),
+                FacturaID = Convert.ToInt32(reader["FACTURA_FACTURAID"]),
+                Descripcion = reader["DESCRIPCION"] == DBNull.Value ? string.Empty : reader["DESCRIPCION"].ToString(),
+                Descuento = reader["DESCUENTO"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["DESCUENTO"])
             };
-
-            detalle.Descripcion = reader["DESCRIPCION"] != DBNull.Value
-                ? reader["DESCRIPCION"].ToString()
-                : string.Empty;
-            detalle.Descuento = reader["DESCUENTO"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["DESCUENTO"]);
-
             return detalle;
         }
     }

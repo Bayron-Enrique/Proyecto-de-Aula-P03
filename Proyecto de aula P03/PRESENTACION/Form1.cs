@@ -559,5 +559,11 @@ namespace PRESENTACION
             PintarBotonActivo(btnEmpleadosMenu);
             AbrirFormularioHijo(new FrmEmpleados());
         }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            this.MaximizedBounds = Screen.FromHandle(this.Handle).WorkingArea;
+            this.WindowState = FormWindowState.Maximized;
+        }
     }
 }

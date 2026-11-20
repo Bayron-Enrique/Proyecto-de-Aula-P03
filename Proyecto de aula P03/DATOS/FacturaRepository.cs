@@ -3,6 +3,7 @@ using ENTIDADES;
 using Oracle.ManagedDataAccess.Client;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 
 namespace DATOS
@@ -16,30 +17,30 @@ namespace DATOS
 
         public int ObtenerSiguienteFacturaId()
         {
-            int siguienteID = 0;
-            using (OracleConnection con = ObtenerConexion())
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_FACTURA.SIGUIENTE_ID", conexion))
             {
-                string sql = "SELECT TALLER.SEQ_FACTURAID.NEXTVAL FROM DUAL";
-                using (OracleCommand cmd = new OracleCommand(sql, con))
-                {
-                    con.Open();
-                    siguienteID = Convert.ToInt32(cmd.ExecuteScalar());
-                    return siguienteID;
-                }
+                comando.CommandType = CommandType.StoredProcedure;
+                comando.Parameters.Add("p_id", OracleDbType.Int32).Direction = ParameterDirection.Output;
+                conexion.Open(); comando.ExecuteNonQuery();
+                return Convert.ToInt32(comando.Parameters["p_id"].Value.ToString());
             }
         }
         public void Guardar(Factura factura)
         {
-            using (OracleConnection con = ObtenerConexion())
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_FACTURA.GUARDAR", conexion))
             {
-                string sql = @"INSERT INTO TALLER.FACTURA
-                         (FACTURAID, FECHA, DESCUENTO, SUBTOTAL, IVA, TOTAL, OBSERVACIONES, ESTADOPAGO, CLIENTE_CEDULA, EMPLEADO_CEDULA, TIPO_DOCUMENTO, DOMICILIO, DIRECCION_DOMICILIO, AGENDA_AGENDAID)
-                         VALUES (:facturaId, :fecha, :descuento, :subtotal, :iva, :total, :observaciones, :estadoPago, :clienteCedula, :empleadoCedula, :tipoDocumento, :domicilio, :direccionDomicilio, :agendaId)";
-                using (OracleCommand cmd = new OracleCommand(sql, con))
+                comando.CommandType = CommandType.StoredProcedure;
+                AgregarParamsFactura(comando, factura);
+                OracleParameter parametroId = comando.Parameters.Add("p_id", OracleDbType.Int32);
+                parametroId.Direction = ParameterDirection.Output;
+                conexion.Open();
+                using (OracleTransaction transaccion = conexion.BeginTransaction())
                 {
-                    AgregarPararms(cmd, factura);
-                    con.Open();
-                    cmd.ExecuteNonQuery();
+                    comando.Transaction = transaccion;
+                    try { comando.ExecuteNonQuery(); factura.FacturaID = Convert.ToInt32(parametroId.Value.ToString()); transaccion.Commit(); }
+                    catch { transaccion.Rollback(); throw; }
                 }
             }
         }
@@ -62,125 +63,93 @@ namespace DATOS
                     {
                         if (factura.AgendaID.HasValue)
                         {
-                            using (var cita = new OracleCommand(@"SELECT A.VEHICULO_PLACA, V.CLIENTE_CEDULA, A.ESTADO
-                                FROM TALLER.AGENDA A JOIN TALLER.VEHICULO V ON V.PLACA = A.VEHICULO_PLACA
-                                WHERE A.AGENDAID = :id FOR UPDATE OF A.ESTADO, V.CLIENTE_CEDULA", con))
+                            using (OracleCommand cita = new OracleCommand("TALLER.PKG_FACTURA.VALIDAR_CITA", con))
                             {
+                                cita.CommandType = CommandType.StoredProcedure;
                                 cita.Transaction = tx;
-                                cita.Parameters.Add("id", factura.AgendaID.Value);
-                                using (var reader = cita.ExecuteReader())
-                                {
-                                    if (!reader.Read() || reader["VEHICULO_PLACA"].ToString().Trim() != factura.Vehiculo.Placa.Trim() ||
-                                        reader["CLIENTE_CEDULA"].ToString().Trim() != factura.Cliente.Cedula.Trim() ||
-                                        string.Equals(reader["ESTADO"].ToString().Trim(), "CANCELADA", StringComparison.OrdinalIgnoreCase))
-                                        throw new InvalidOperationException("La cita no corresponde al cliente/vehículo o fue cancelada.");
-                                }
+                                cita.BindByName = true;
+                                cita.Parameters.Add("p_agenda_id", OracleDbType.Int32).Value = factura.AgendaID.Value;
+                                cita.Parameters.Add("p_placa", OracleDbType.Char, 7).Value = factura.Vehiculo.Placa;
+                                cita.Parameters.Add("p_cliente", OracleDbType.Char, 10).Value = factura.Cliente.Cedula;
+                                cita.ExecuteNonQuery();
                             }
                         }
-                        using (OracleCommand secuencia = new OracleCommand("SELECT TALLER.SEQ_FACTURAID.NEXTVAL FROM DUAL", con))
+                        using (OracleCommand cmd = new OracleCommand("TALLER.PKG_FACTURA.GUARDAR", con))
                         {
-                            secuencia.Transaction = tx;
-                            factura.FacturaID = Convert.ToInt32(secuencia.ExecuteScalar());
-                        }
-
-                        const string sqlCabecera = @"INSERT INTO TALLER.FACTURA
-                            (FACTURAID, FECHA, DESCUENTO, SUBTOTAL, IVA, TOTAL, OBSERVACIONES, ESTADOPAGO,
-                             CLIENTE_CEDULA, EMPLEADO_CEDULA, TIPO_DOCUMENTO, DOMICILIO, DIRECCION_DOMICILIO, AGENDA_AGENDAID)
-                            VALUES (:facturaId, :fecha, :descuento, :subtotal, :iva, :total, :observaciones, :estadoPago,
-                                    :clienteCedula, :empleadoCedula, :tipoDocumento, :domicilio, :direccionDomicilio, :agendaId)";
-                        using (OracleCommand cmd = new OracleCommand(sqlCabecera, con))
-                        {
+                            cmd.CommandType = CommandType.StoredProcedure;
                             cmd.Transaction = tx;
-                            AgregarPararms(cmd, factura);
+                            AgregarParamsFactura(cmd, factura);
+                            OracleParameter parametroFacturaId = cmd.Parameters.Add("p_id", OracleDbType.Int32);
+                            parametroFacturaId.Direction = ParameterDirection.Output;
                             cmd.ExecuteNonQuery();
+                            factura.FacturaID = Convert.ToInt32(parametroFacturaId.Value.ToString());
                         }
 
                         bool venta = string.Equals(factura.TipoDocumento, "VENTA", StringComparison.OrdinalIgnoreCase);
                         foreach (DetalleFactura detalle in factura.Detalles.OrderBy(d => d.Articulo.ArticuloId))
                         {
                             detalle.FacturaID = factura.FacturaID;
-                            using (var articulo = new OracleCommand(@"SELECT T.NOMBRE FROM TALLER.ARTICULO A
-                                JOIN TALLER.TIPO_ARTICULO T ON T.TIPO_ARTICULO_ID = A.TIPO_ARTICULO_ID
-                                WHERE A.ARTICULOID = :id FOR UPDATE OF A.CANTIDAD", con))
+                            using (OracleCommand articulo = new OracleCommand("TALLER.PKG_ARTICULO.OBTENER_TIPO", con))
                             {
+                                articulo.CommandType = CommandType.StoredProcedure;
                                 articulo.Transaction = tx;
-                                articulo.Parameters.Add("id", detalle.Articulo.ArticuloId);
-                                string tipo = Convert.ToString(articulo.ExecuteScalar());
+                                articulo.BindByName = true;
+                                articulo.Parameters.Add("p_id", OracleDbType.Int32).Value = detalle.Articulo.ArticuloId;
+                                articulo.Parameters.Add("p_tipo", OracleDbType.Varchar2, 100).Direction = ParameterDirection.Output;
+                                articulo.ExecuteNonQuery();
+                                string tipo = Convert.ToString(articulo.Parameters["p_tipo"].Value);
                                 if (!string.Equals(tipo, detalle.Articulo is Repuesto ? "Repuesto" : "Servicio", StringComparison.OrdinalIgnoreCase))
                                     throw new InvalidOperationException("El tipo del artículo cambió. Recarga el documento antes de guardar.");
                             }
                             if (venta && detalle.Articulo is Repuesto)
                             {
-                                const string sqlStock = @"UPDATE TALLER.ARTICULO SET CANTIDAD = CANTIDAD - :cantidad
-                                                          WHERE ARTICULOID = :articuloId AND CANTIDAD >= :cantidad";
-                                using (OracleCommand stock = new OracleCommand(sqlStock, con))
+                                using (OracleCommand stock = new OracleCommand("TALLER.PKG_ARTICULO.DESCONTAR_STOCK", con))
                                 {
+                                    stock.CommandType = CommandType.StoredProcedure;
                                     stock.Transaction = tx;
-                                    stock.BindByName = true;
-                                    stock.Parameters.Add("cantidad", detalle.Cantidad);
-                                    stock.Parameters.Add("articuloId", detalle.Articulo.ArticuloId);
-                                    if (stock.ExecuteNonQuery() != 1)
-                                        throw new InvalidOperationException("El stock cambió o no alcanza para el artículo " + detalle.Articulo.Nombre + ".");
+                                    stock.Parameters.Add("p_id", OracleDbType.Int32).Value = detalle.Articulo.ArticuloId;
+                                    stock.Parameters.Add("p_cantidad", OracleDbType.Int32).Value = detalle.Cantidad;
+                                    stock.ExecuteNonQuery();
                                 }
                             }
 
-                            const string sqlDetalle = @"INSERT INTO TALLER.DETALLE_FACTURA
-                                (DETALLEFACTURAID, CANTIDAD, VALORUNITARIO, VALORIVA, FACTURA_FACTURAID,
-                                 ARTICULO_ARTICULOID, PORCENTAJEIVA, DESCRIPCION, SUBTOTAL, TOTAL, DESCUENTO)
-                                VALUES (TALLER.SEQ_DETALLEFACTURAID.NEXTVAL, :cantidad, :valorUnitario, :valorIva,
-                                        :facturaId, :articuloId, :porcentajeIva, :descripcion, :subtotal, :total, :descuento)";
-                            using (OracleCommand cmd = new OracleCommand(sqlDetalle, con))
+                            using (OracleCommand cmd = new OracleCommand("TALLER.PKG_DETALLE_FACTURA.GUARDAR", con))
                             {
+                                cmd.CommandType = CommandType.StoredProcedure;
                                 cmd.Transaction = tx;
-                                cmd.BindByName = true;
-                                cmd.Parameters.Add("cantidad", detalle.Cantidad);
-                                cmd.Parameters.Add("valorUnitario", detalle.ValorUnitario);
-                                cmd.Parameters.Add("valorIva", detalle.ValorIVA);
-                                cmd.Parameters.Add("facturaId", factura.FacturaID);
-                                cmd.Parameters.Add("articuloId", detalle.Articulo.ArticuloId);
-                                cmd.Parameters.Add("porcentajeIva", detalle.PorcentajeIVA);
-                                cmd.Parameters.Add("descripcion", (object)detalle.Descripcion ?? DBNull.Value);
-                                cmd.Parameters.Add("subtotal", detalle.Subtotal);
-                                cmd.Parameters.Add("total", detalle.Total);
-                                cmd.Parameters.Add("descuento", detalle.Descuento);
+                                AgregarParamsDetalleFactura(cmd, detalle);
+                                OracleParameter parametroDetalleId = cmd.Parameters.Add("p_id", OracleDbType.Int32);
+                                parametroDetalleId.Direction = ParameterDirection.Output;
                                 cmd.ExecuteNonQuery();
+                                detalle.DetalleFacturaID = Convert.ToInt32(parametroDetalleId.Value.ToString());
                             }
                         }
 
                         if (factura.Vehiculo != null)
                         {
-                            using (OracleCommand bloquear = new OracleCommand("LOCK TABLE TALLER.DETALLE_VEHICULO IN EXCLUSIVE MODE", con))
+                            using (OracleCommand cmd = new OracleCommand("TALLER.PKG_DETALLE_VEHICULO.GUARDAR", con))
                             {
-                                bloquear.Transaction = tx;
-                                bloquear.ExecuteNonQuery();
-                            }
-                            int detalleVehiculoId;
-                            using (OracleCommand siguiente = new OracleCommand("SELECT NVL(MAX(DETALLEVEHICULOID), 0) + 1 FROM TALLER.DETALLE_VEHICULO", con))
-                            {
-                                siguiente.Transaction = tx;
-                                detalleVehiculoId = Convert.ToInt32(siguiente.ExecuteScalar());
-                            }
-                            const string sqlVehiculo = @"INSERT INTO TALLER.DETALLE_VEHICULO
-                                (DETALLEVEHICULOID, FACTURA_FACTURAID, VEHICULO_PLACA) VALUES (:id, :facturaId, :placa)";
-                            using (OracleCommand cmd = new OracleCommand(sqlVehiculo, con))
-                            {
+                                cmd.CommandType = System.Data.CommandType.StoredProcedure;
                                 cmd.Transaction = tx;
-                                cmd.BindByName = true;
-                                cmd.Parameters.Add("id", detalleVehiculoId);
-                                cmd.Parameters.Add("facturaId", factura.FacturaID);
-                                cmd.Parameters.Add("placa", OracleDbType.Char, 7).Value = factura.Vehiculo.Placa;
+                                OracleParameter parametroId = cmd.Parameters.Add("p_id", OracleDbType.Int32);
+                                parametroId.Direction = System.Data.ParameterDirection.InputOutput;
+                                parametroId.Value = 0;
+                                AgregarParamsDetalleVehiculo(cmd, new DetalleVehiculo
+                                {
+                                    FacturaID = factura.FacturaID,
+                                    Vehiculo = factura.Vehiculo
+                                });
                                 cmd.ExecuteNonQuery();
                             }
                         }
                         if (factura.AgendaID.HasValue)
                         {
-                            using (OracleCommand completarCita = new OracleCommand(
-                                "UPDATE TALLER.AGENDA SET ESTADO = 'COMPLETADA' WHERE AGENDAID = :agendaId", con))
+                            using (OracleCommand completarCita = new OracleCommand("TALLER.PKG_FACTURA.COMPLETAR_CITA", con))
                             {
+                                completarCita.CommandType = CommandType.StoredProcedure;
                                 completarCita.Transaction = tx;
-                                completarCita.Parameters.Add("agendaId", factura.AgendaID.Value);
-                                if (completarCita.ExecuteNonQuery() != 1)
-                                    throw new InvalidOperationException("La cita asociada ya no existe; no se guardó el documento.");
+                                completarCita.Parameters.Add("p_agenda_id", OracleDbType.Int32).Value = factura.AgendaID.Value;
+                                completarCita.ExecuteNonQuery();
                             }
                         }
                         tx.Commit();
@@ -196,213 +165,94 @@ namespace DATOS
 
         public decimal ObtenerTotalVentas()
         {
-            using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand(@"SELECT NVL(SUM(TOTAL), 0) FROM TALLER.FACTURA
-                WHERE TIPO_DOCUMENTO = 'VENTA' AND UPPER(ESTADOPAGO) <> 'ANULADA'", con))
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_FACTURA.TOTAL_VENTAS", conexion))
             {
-                con.Open();
-                return Convert.ToDecimal(cmd.ExecuteScalar());
+                comando.CommandType = CommandType.StoredProcedure;
+                comando.Parameters.Add("p_total", OracleDbType.Decimal).Direction = ParameterDirection.Output;
+                conexion.Open(); comando.ExecuteNonQuery();
+                return Convert.ToDecimal(comando.Parameters["p_total"].Value.ToString());
             }
         }
 
         public void ConvertirCotizacionEnVenta(int facturaId)
         {
-            using (OracleConnection con = ObtenerConexion())
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_FACTURA.CONVERTIR_COTIZACION", conexion))
             {
-                con.Open();
-                using (OracleTransaction tx = con.BeginTransaction())
+                comando.CommandType = CommandType.StoredProcedure;
+                comando.Parameters.Add("p_id", OracleDbType.Int32).Value = facturaId;
+                conexion.Open();
+                using (OracleTransaction transaccion = conexion.BeginTransaction())
                 {
-                    try
-                    {
-                        string tipo;
-                        string estado;
-                        using (OracleCommand cabecera = new OracleCommand("SELECT TIPO_DOCUMENTO, ESTADOPAGO FROM TALLER.FACTURA WHERE FACTURAID = :id FOR UPDATE", con))
-                        {
-                            cabecera.Transaction = tx;
-                            cabecera.Parameters.Add("id", facturaId);
-                            using (OracleDataReader reader = cabecera.ExecuteReader())
-                            {
-                                if (!reader.Read()) throw new InvalidOperationException("No se encontró el documento.");
-                                tipo = reader["TIPO_DOCUMENTO"].ToString();
-                                estado = reader["ESTADOPAGO"].ToString();
-                            }
-                        }
-                        if (!string.Equals(tipo, "COTIZACION", StringComparison.OrdinalIgnoreCase))
-                            throw new InvalidOperationException("Solo se pueden convertir cotizaciones pendientes.");
-                        if (string.Equals(estado, "Anulada", StringComparison.OrdinalIgnoreCase))
-                            throw new InvalidOperationException("No se puede convertir una cotización anulada.");
-
-                        const string sqlDetalles = @"SELECT D.CANTIDAD, D.ARTICULO_ARTICULOID, T.NOMBRE AS TIPO
-                            FROM TALLER.DETALLE_FACTURA D JOIN TALLER.ARTICULO A ON A.ARTICULOID = D.ARTICULO_ARTICULOID
-                            JOIN TALLER.TIPO_ARTICULO T ON T.TIPO_ARTICULO_ID = A.TIPO_ARTICULO_ID
-                            WHERE D.FACTURA_FACTURAID = :id";
-                        var repuestos = new List<KeyValuePair<int, int>>();
-                        using (OracleCommand detalles = new OracleCommand(sqlDetalles, con))
-                        {
-                            detalles.Transaction = tx;
-                            detalles.Parameters.Add("id", facturaId);
-                            using (OracleDataReader reader = detalles.ExecuteReader())
-                            {
-                                while (reader.Read())
-                                {
-                                    if (!string.Equals(reader["TIPO"].ToString(), "Repuesto", StringComparison.OrdinalIgnoreCase)) continue;
-                                    repuestos.Add(new KeyValuePair<int, int>(Convert.ToInt32(reader["ARTICULO_ARTICULOID"]), Convert.ToInt32(reader["CANTIDAD"])));
-                                }
-                            }
-                        }
-                        foreach (KeyValuePair<int, int> item in repuestos)
-                        {
-                            using (OracleCommand stock = new OracleCommand(@"UPDATE TALLER.ARTICULO SET CANTIDAD = CANTIDAD - :cantidad
-                                WHERE ARTICULOID = :articuloId AND CANTIDAD >= :cantidad", con))
-                            {
-                                stock.Transaction = tx;
-                                stock.BindByName = true;
-                                stock.Parameters.Add("cantidad", item.Value);
-                                stock.Parameters.Add("articuloId", item.Key);
-                                if (stock.ExecuteNonQuery() != 1)
-                                    throw new InvalidOperationException("No hay stock suficiente para convertir esta cotización.");
-                            }
-                        }
-                        using (OracleCommand actualizar = new OracleCommand("UPDATE TALLER.FACTURA SET TIPO_DOCUMENTO = 'VENTA', ESTADOPAGO = 'Pendiente' WHERE FACTURAID = :id", con))
-                        {
-                            actualizar.Transaction = tx;
-                            actualizar.Parameters.Add("id", facturaId);
-                            actualizar.ExecuteNonQuery();
-                        }
-                        tx.Commit();
-                    }
-                    catch { tx.Rollback(); throw; }
+                    comando.Transaction = transaccion;
+                    try { comando.ExecuteNonQuery(); transaccion.Commit(); }
+                    catch { transaccion.Rollback(); throw; }
                 }
             }
         }
 
         public void AnularDocumento(int facturaId)
         {
-            using (OracleConnection con = ObtenerConexion())
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_FACTURA.ANULAR_DOCUMENTO", conexion))
             {
-                con.Open();
-                using (OracleTransaction tx = con.BeginTransaction())
+                comando.CommandType = CommandType.StoredProcedure;
+                comando.Parameters.Add("p_id", OracleDbType.Int32).Value = facturaId;
+                conexion.Open();
+                using (OracleTransaction transaccion = conexion.BeginTransaction())
                 {
-                    try
-                    {
-                        string tipo;
-                        string estado;
-                        using (OracleCommand cmd = new OracleCommand(
-                            "SELECT TIPO_DOCUMENTO, ESTADOPAGO FROM TALLER.FACTURA WHERE FACTURAID = :id FOR UPDATE", con))
-                        {
-                            cmd.Transaction = tx;
-                            cmd.Parameters.Add("id", facturaId);
-                            using (OracleDataReader reader = cmd.ExecuteReader())
-                            {
-                                if (!reader.Read()) throw new InvalidOperationException("No se encontró el documento.");
-                                tipo = reader["TIPO_DOCUMENTO"].ToString();
-                                estado = reader["ESTADOPAGO"].ToString();
-                            }
-                        }
-                        if (string.Equals(estado, "Anulada", StringComparison.OrdinalIgnoreCase))
-                            throw new InvalidOperationException("El documento ya está anulado.");
-
-                        if (string.Equals(tipo, "VENTA", StringComparison.OrdinalIgnoreCase))
-                        {
-                            const string sqlDetalles = @"SELECT D.CANTIDAD, D.ARTICULO_ARTICULOID
-                                FROM TALLER.DETALLE_FACTURA D
-                                JOIN TALLER.ARTICULO A ON A.ARTICULOID = D.ARTICULO_ARTICULOID
-                                JOIN TALLER.TIPO_ARTICULO T ON T.TIPO_ARTICULO_ID = A.TIPO_ARTICULO_ID
-                                WHERE D.FACTURA_FACTURAID = :id AND UPPER(T.NOMBRE) = 'REPUESTO'";
-                            var lineas = new List<KeyValuePair<int, int>>();
-                            using (OracleCommand cmd = new OracleCommand(sqlDetalles, con))
-                            {
-                                cmd.Transaction = tx;
-                                cmd.Parameters.Add("id", facturaId);
-                                using (OracleDataReader reader = cmd.ExecuteReader())
-                                    while (reader.Read()) lineas.Add(new KeyValuePair<int, int>(
-                                        Convert.ToInt32(reader["ARTICULO_ARTICULOID"]), Convert.ToInt32(reader["CANTIDAD"])));
-                            }
-                            foreach (KeyValuePair<int, int> linea in lineas)
-                            {
-                                using (OracleCommand stock = new OracleCommand(
-                                    "UPDATE TALLER.ARTICULO SET CANTIDAD = NVL(CANTIDAD, 0) + :cantidad WHERE ARTICULOID = :articuloId", con))
-                                {
-                                    stock.Transaction = tx;
-                                    stock.BindByName = true;
-                                    stock.Parameters.Add("cantidad", linea.Value);
-                                    stock.Parameters.Add("articuloId", linea.Key);
-                                    if (stock.ExecuteNonQuery() != 1) throw new InvalidOperationException("No se pudo devolver un repuesto al inventario.");
-                                }
-                            }
-                        }
-                        using (OracleCommand actualizar = new OracleCommand(
-                            "UPDATE TALLER.FACTURA SET ESTADOPAGO = 'Anulada' WHERE FACTURAID = :id", con))
-                        {
-                            actualizar.Transaction = tx;
-                            actualizar.Parameters.Add("id", facturaId);
-                            if (actualizar.ExecuteNonQuery() != 1) throw new InvalidOperationException("No se pudo anular el documento.");
-                        }
-                        tx.Commit();
-                    }
-                    catch { tx.Rollback(); throw; }
+                    comando.Transaction = transaccion;
+                    try { comando.ExecuteNonQuery(); transaccion.Commit(); }
+                    catch { transaccion.Rollback(); throw; }
                 }
             }
         }
 
-        private void AgregarPararms(OracleCommand cmd, Factura factura)
+        private void AgregarParamsFactura(OracleCommand cmd, Factura factura)
         {
-            // Enlazar por nombre: en Modificar el orden del SQL no coincide con el orden de los parametros
             cmd.BindByName = true;
-
-            cmd.Parameters.Add(new OracleParameter("facturaId", factura.FacturaID));
-            cmd.Parameters.Add(new OracleParameter("fecha", factura.Fecha));
-            cmd.Parameters.Add(new OracleParameter("descuento", factura.Descuento));
-            cmd.Parameters.Add(new OracleParameter("subtotal", factura.SubTotal));
-            cmd.Parameters.Add(new OracleParameter("iva", factura.Iva));
-            cmd.Parameters.Add(new OracleParameter("total", factura.Total));
-            cmd.Parameters.Add(new OracleParameter("observaciones", string.IsNullOrEmpty(factura.Observaciones) ? (object)DBNull.Value : factura.Observaciones));
-            cmd.Parameters.Add(new OracleParameter("estadoPago", factura.EstadoPago));
-            cmd.Parameters.Add("clienteCedula", OracleDbType.Char, 10).Value = factura.Cliente != null ? (object)factura.Cliente.Cedula : DBNull.Value;
-            cmd.Parameters.Add("empleadoCedula", OracleDbType.Char, 10).Value = factura.Empleado != null ? (object)factura.Empleado.Cedula : DBNull.Value;
-            cmd.Parameters.Add(new OracleParameter("tipoDocumento", string.IsNullOrEmpty(factura.TipoDocumento) ? "VENTA" : factura.TipoDocumento));
-
-            // En la BD DOMICILIO es CHAR(1): 'S' o 'N'
-            cmd.Parameters.Add(new OracleParameter("domicilio", factura.Domicilio ? "S" : "N"));
-            cmd.Parameters.Add(new OracleParameter("direccionDomicilio", factura.Domicilio && !string.IsNullOrEmpty(factura.DireccionDomicilio) ? (object)factura.DireccionDomicilio : DBNull.Value));
-            cmd.Parameters.Add(new OracleParameter("agendaId", (object)factura.AgendaID ?? DBNull.Value));
+            cmd.Parameters.Add("p_fecha", OracleDbType.Date).Value = factura.Fecha;
+            cmd.Parameters.Add("p_descuento", OracleDbType.Decimal).Value = factura.Descuento;
+            cmd.Parameters.Add("p_subtotal", OracleDbType.Decimal).Value = factura.SubTotal;
+            cmd.Parameters.Add("p_iva", OracleDbType.Decimal).Value = factura.Iva;
+            cmd.Parameters.Add("p_total", OracleDbType.Decimal).Value = factura.Total;
+            cmd.Parameters.Add("p_observaciones", OracleDbType.Varchar2).Value = (object)factura.Observaciones ?? DBNull.Value;
+            cmd.Parameters.Add("p_estado_pago", OracleDbType.Varchar2).Value = factura.EstadoPago;
+            cmd.Parameters.Add("p_cliente", OracleDbType.Char, 10).Value = factura.Cliente != null ? (object)factura.Cliente.Cedula : DBNull.Value;
+            cmd.Parameters.Add("p_empleado", OracleDbType.Char, 10).Value = factura.Empleado != null ? (object)factura.Empleado.Cedula : DBNull.Value;
+            cmd.Parameters.Add("p_tipo_documento", OracleDbType.Varchar2).Value = string.IsNullOrEmpty(factura.TipoDocumento) ? "VENTA" : factura.TipoDocumento;
+            cmd.Parameters.Add("p_domicilio", OracleDbType.Char, 1).Value = factura.Domicilio ? "S" : "N";
+            cmd.Parameters.Add("p_direccion_domicilio", OracleDbType.Varchar2).Value = factura.Domicilio ? (object)factura.DireccionDomicilio : DBNull.Value;
+            cmd.Parameters.Add("p_agenda_id", OracleDbType.Int32).Value = (object)factura.AgendaID ?? DBNull.Value;
         }
 
-        private const string SelectFactura = @"SELECT F.FACTURAID, F.FECHA, F.DESCUENTO, F.SUBTOTAL, F.IVA, F.TOTAL,
-                    F.OBSERVACIONES, F.ESTADOPAGO, F.CLIENTE_CEDULA, F.EMPLEADO_CEDULA, F.TIPO_DOCUMENTO,
-                    F.DOMICILIO, F.DIRECCION_DOMICILIO, F.AGENDA_AGENDAID,
-                    CP.PRIMER_NOMBRE AS CLIENTE_PRIMER_NOMBRE, CP.SEGUNDO_NOMBRE AS CLIENTE_SEGUNDO_NOMBRE,
-                    CP.PRIMER_APELLIDO AS CLIENTE_PRIMER_APELLIDO, CP.SEGUNDO_APELLIDO AS CLIENTE_SEGUNDO_APELLIDO,
-                    EP.PRIMER_NOMBRE AS EMPLEADO_PRIMER_NOMBRE, EP.SEGUNDO_NOMBRE AS EMPLEADO_SEGUNDO_NOMBRE,
-                    EP.PRIMER_APELLIDO AS EMPLEADO_PRIMER_APELLIDO, EP.SEGUNDO_APELLIDO AS EMPLEADO_SEGUNDO_APELLIDO,
-                    V.PLACA AS VEHICULO_PLACA, V.MODELO AS VEHICULO_MODELO, V.MARCA AS VEHICULO_MARCA,
-                    V.TIPO_VEHICULO AS VEHICULO_TIPO, V.COLOR AS VEHICULO_COLOR, V.LINEA AS VEHICULO_LINEA
-                FROM TALLER.FACTURA F
-                LEFT JOIN TALLER.CLIENTE C ON C.CEDULA = F.CLIENTE_CEDULA
-                LEFT JOIN TALLER.PERSONA CP ON CP.CEDULA = C.CEDULA
-                LEFT JOIN TALLER.EMPLEADO E ON E.CEDULA = F.EMPLEADO_CEDULA
-                LEFT JOIN TALLER.PERSONA EP ON EP.CEDULA = E.CEDULA
-                LEFT JOIN TALLER.DETALLE_VEHICULO DV ON DV.FACTURA_FACTURAID = F.FACTURAID
-                LEFT JOIN TALLER.VEHICULO V ON V.PLACA = DV.VEHICULO_PLACA";
+        private static void AgregarParamsDetalleFactura(OracleCommand cmd, DetalleFactura detalle)
+        {
+            cmd.BindByName = true;
+            cmd.Parameters.Add("p_cantidad", OracleDbType.Int32).Value = detalle.Cantidad;
+            cmd.Parameters.Add("p_valor_unitario", OracleDbType.Decimal).Value = detalle.ValorUnitario;
+            cmd.Parameters.Add("p_valor_iva", OracleDbType.Decimal).Value = detalle.ValorIVA;
+            cmd.Parameters.Add("p_factura_id", OracleDbType.Int32).Value = detalle.FacturaID;
+            cmd.Parameters.Add("p_articulo_id", OracleDbType.Int32).Value = detalle.Articulo.ArticuloId;
+            cmd.Parameters.Add("p_porcentaje_iva", OracleDbType.Decimal).Value = detalle.PorcentajeIVA;
+            cmd.Parameters.Add("p_descripcion", OracleDbType.Varchar2).Value = (object)detalle.Descripcion ?? DBNull.Value;
+            cmd.Parameters.Add("p_subtotal", OracleDbType.Decimal).Value = detalle.Subtotal;
+            cmd.Parameters.Add("p_total", OracleDbType.Decimal).Value = detalle.Total;
+            cmd.Parameters.Add("p_descuento", OracleDbType.Decimal).Value = detalle.Descuento;
+        }
 
         public List<Factura> Consultar()
         {
             List<Factura> facturas = new List<Factura>();
-
-            using (OracleConnection con = ObtenerConexion())
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_FACTURA.CONSULTAR", conexion))
             {
-                using (OracleCommand cmd = new OracleCommand(SelectFactura + " ORDER BY F.FECHA DESC, F.FACTURAID DESC", con))
-                {
-                    con.Open();
-                    using (OracleDataReader reader = cmd.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            facturas.Add(Mapear(reader));
-                        }
-                    }
-                }
-
+                comando.CommandType = CommandType.StoredProcedure;
+                comando.Parameters.Add("p_resultado", OracleDbType.RefCursor).Direction = ParameterDirection.Output;
+                conexion.Open();
+                using (OracleDataReader reader = comando.ExecuteReader())
+                    while (reader.Read()) facturas.Add(Mapear(reader));
             }
             return facturas;
         }
@@ -467,22 +317,15 @@ namespace DATOS
 
         public Factura BuscarId(int facturaId)
         {
-            using (OracleConnection con = ObtenerConexion())
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_FACTURA.BUSCAR_ID", conexion))
             {
-                using (OracleCommand cmd = new OracleCommand(SelectFactura + " WHERE F.FACTURAID = :facturaId", con))
-                {
-                    cmd.Parameters.Add(new OracleParameter("facturaId", facturaId));
-                    con.Open();
-                    using (OracleDataReader reader = cmd.ExecuteReader())
-                    {
-                        if (reader.Read())
-                        {
-                            return Mapear(reader);
-                        }
-                    }
-                }
+                comando.CommandType = CommandType.StoredProcedure;
+                comando.Parameters.Add("p_id", OracleDbType.Int32).Value = facturaId;
+                comando.Parameters.Add("p_resultado", OracleDbType.RefCursor).Direction = ParameterDirection.Output;
+                conexion.Open();
+                using (OracleDataReader reader = comando.ExecuteReader()) return reader.Read() ? Mapear(reader) : null;
             }
-            return null;
         }
 
         public void Eliminar(int facturaId)
@@ -493,29 +336,18 @@ namespace DATOS
 
         public void Modificar(Factura factura)
         {
-            using (OracleConnection con = ObtenerConexion())
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_FACTURA.MODIFICAR", conexion))
             {
-                string sql = @"UPDATE TALLER.FACTURA SET 
-                                 FECHA = :fecha, 
-                                 DESCUENTO = :descuento, 
-                                 SUBTOTAL = :subtotal, 
-                                 IVA = :iva, 
-                                 TOTAL = :total, 
-                                 OBSERVACIONES = :observaciones, 
-                                 ESTADOPAGO = :estadoPago, 
-                                 CLIENTE_CEDULA = :clienteCedula, 
-                                 EMPLEADO_CEDULA = :empleadoCedula, 
-                                 TIPO_DOCUMENTO = :tipoDocumento,
-                                 DOMICILIO = :domicilio,
-                                 DIRECCION_DOMICILIO = :direccionDomicilio,
-                                 AGENDA_AGENDAID = :agendaId
-                               WHERE FACTURAID = :facturaId";
-
-                using (OracleCommand cmd = new OracleCommand(sql, con))
+                comando.CommandType = CommandType.StoredProcedure;
+                AgregarParamsFactura(comando, factura);
+                comando.Parameters.Add("p_id", OracleDbType.Int32).Value = factura.FacturaID;
+                conexion.Open();
+                using (OracleTransaction transaccion = conexion.BeginTransaction())
                 {
-                    AgregarPararms(cmd, factura);
-                    con.Open();
-                    cmd.ExecuteNonQuery();
+                    comando.Transaction = transaccion;
+                    try { comando.ExecuteNonQuery(); transaccion.Commit(); }
+                    catch { transaccion.Rollback(); throw; }
                 }
             }
         }
@@ -528,22 +360,83 @@ namespace DATOS
             }
 
             using (OracleConnection con = ObtenerConexion())
+            using (OracleCommand cmd = new OracleCommand("TALLER.PKG_DETALLE_VEHICULO.GUARDAR", con))
             {
+                cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                OracleParameter parametroId = cmd.Parameters.Add("p_id", OracleDbType.Int32);
+                parametroId.Direction = System.Data.ParameterDirection.InputOutput;
+                parametroId.Value = detalle.ID;
+                AgregarParamsDetalleVehiculo(cmd, detalle);
                 con.Open();
-                using (OracleCommand bloquear = new OracleCommand("LOCK TABLE TALLER.DETALLE_VEHICULO IN EXCLUSIVE MODE", con)) bloquear.ExecuteNonQuery();
-                int detalleVehiculoId;
-                using (OracleCommand siguiente = new OracleCommand("SELECT NVL(MAX(DETALLEVEHICULOID), 0) + 1 FROM TALLER.DETALLE_VEHICULO", con))
-                    detalleVehiculoId = Convert.ToInt32(siguiente.ExecuteScalar());
-                string sql = @"INSERT INTO TALLER.DETALLE_VEHICULO (DETALLEVEHICULOID, FACTURA_FACTURAID, VEHICULO_PLACA)
-                               VALUES (:id, :facturaId, :placa)";
-
-                using (OracleCommand cmd = new OracleCommand(sql, con))
+                using (OracleTransaction tx = con.BeginTransaction())
                 {
-                    cmd.BindByName = true;
-                    cmd.Parameters.Add(new OracleParameter("id", detalleVehiculoId));
-                    cmd.Parameters.Add(new OracleParameter("facturaId", detalle.FacturaID));
-                    cmd.Parameters.Add("placa", OracleDbType.Char, 7).Value = detalle.Vehiculo.Placa;
-                    cmd.ExecuteNonQuery();
+                    cmd.Transaction = tx;
+                    try
+                    {
+                        cmd.ExecuteNonQuery();
+                        detalle.ID = Convert.ToInt32(parametroId.Value.ToString());
+                        tx.Commit();
+                    }
+                    catch { tx.Rollback(); throw; }
+                }
+            }
+        }
+
+        private static void AgregarParamsDetalleVehiculo(OracleCommand cmd, DetalleVehiculo detalle)
+        {
+            cmd.BindByName = true;
+            cmd.Parameters.Add("p_factura_id", OracleDbType.Int32).Value = detalle.FacturaID;
+            cmd.Parameters.Add("p_placa", OracleDbType.Char, 7).Value = detalle.Vehiculo.Placa;
+        }
+
+        public void ModificarDetalleVehiculo(DetalleVehiculo detalle)
+        {
+            if (detalle == null || detalle.Vehiculo == null)
+                throw new ArgumentException("El detalle debe tener un vehículo asociado.");
+
+            using (OracleConnection con = ObtenerConexion())
+            using (OracleCommand cmd = new OracleCommand("TALLER.PKG_DETALLE_VEHICULO.MODIFICAR", con))
+            {
+                cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                cmd.Parameters.Add("p_id", OracleDbType.Int32).Value = detalle.ID;
+                AgregarParamsDetalleVehiculo(cmd, detalle);
+                con.Open();
+                using (OracleTransaction tx = con.BeginTransaction())
+                {
+                    cmd.Transaction = tx;
+                    try { cmd.ExecuteNonQuery(); tx.Commit(); }
+                    catch { tx.Rollback(); throw; }
+                }
+            }
+        }
+
+        public DetalleVehiculo BuscarDetalleVehiculo(int id)
+        {
+            using (OracleConnection con = ObtenerConexion())
+            using (OracleCommand cmd = new OracleCommand("TALLER.PKG_DETALLE_VEHICULO.BUSCAR_ID", con))
+            {
+                cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                cmd.Parameters.Add("p_id", OracleDbType.Int32).Value = id;
+                cmd.Parameters.Add("p_resultado", OracleDbType.RefCursor).Direction = System.Data.ParameterDirection.Output;
+                con.Open();
+                using (OracleDataReader reader = cmd.ExecuteReader())
+                    return reader.Read() ? MapearDetalleVehiculo(reader) : null;
+            }
+        }
+
+        public void EliminarDetalleVehiculo(int id)
+        {
+            using (OracleConnection con = ObtenerConexion())
+            using (OracleCommand cmd = new OracleCommand("TALLER.PKG_DETALLE_VEHICULO.ELIMINAR", con))
+            {
+                cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                cmd.Parameters.Add("p_id", OracleDbType.Int32).Value = id;
+                con.Open();
+                using (OracleTransaction tx = con.BeginTransaction())
+                {
+                    cmd.Transaction = tx;
+                    try { cmd.ExecuteNonQuery(); tx.Commit(); }
+                    catch { tx.Rollback(); throw; }
                 }
             }
         }
@@ -553,43 +446,38 @@ namespace DATOS
             List<DetalleVehiculo> detalles = new List<DetalleVehiculo>();
 
             using (OracleConnection con = ObtenerConexion())
+            using (OracleCommand cmd = new OracleCommand("TALLER.PKG_DETALLE_VEHICULO.CONSULTAR_POR_FACTURA", con))
             {
-                string sql = @"SELECT DV.DETALLEVEHICULOID, DV.FACTURA_FACTURAID,
-                               V.PLACA, V.MODELO, V.MARCA, V.TIPO_VEHICULO, V.COLOR, V.LINEA, V.CLIENTE_CEDULA
-                               FROM TALLER.DETALLE_VEHICULO DV
-                               JOIN TALLER.VEHICULO V ON DV.VEHICULO_PLACA = V.PLACA
-                               WHERE DV.FACTURA_FACTURAID = :facturaId";
-
-                using (OracleCommand cmd = new OracleCommand(sql, con))
-                {
-                    cmd.Parameters.Add(new OracleParameter("facturaId", facturaId));
-                    con.Open();
-                    using (OracleDataReader reader = cmd.ExecuteReader())
+                cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                cmd.Parameters.Add("p_factura_id", OracleDbType.Int32).Value = facturaId;
+                cmd.Parameters.Add("p_resultado", OracleDbType.RefCursor).Direction = System.Data.ParameterDirection.Output;
+                con.Open();
+                using (OracleDataReader reader = cmd.ExecuteReader())
+                    while (reader.Read())
                     {
-                        while (reader.Read())
-                        {
-                            Vehiculo vehiculo = new Vehiculo
-                            {
-                                Placa = reader["PLACA"].ToString().Trim(),
-                                Modelo = reader["MODELO"] == DBNull.Value ? 0 : Convert.ToInt32(reader["MODELO"]),
-                                Marca = reader["MARCA"] == DBNull.Value ? null : reader["MARCA"].ToString(),
-                                TipoVehiculo = reader["TIPO_VEHICULO"].ToString(),
-                                Color = reader["COLOR"] == DBNull.Value ? null : reader["COLOR"].ToString(),
-                                Linea = reader["LINEA"] == DBNull.Value ? null : reader["LINEA"].ToString(),
-                                Cliente = new Cliente { Cedula = reader["CLIENTE_CEDULA"].ToString().Trim() }
-                            };
-
-                            detalles.Add(new DetalleVehiculo
-                            {
-                                ID = Convert.ToInt32(reader["DETALLEVEHICULOID"]),
-                                FacturaID = Convert.ToInt32(reader["FACTURA_FACTURAID"]),
-                                Vehiculo = vehiculo
-                            });
-                        }
+                        detalles.Add(MapearDetalleVehiculo(reader));
                     }
-                }
             }
             return detalles;
+        }
+
+        private static DetalleVehiculo MapearDetalleVehiculo(OracleDataReader reader)
+        {
+            return new DetalleVehiculo
+            {
+                ID = Convert.ToInt32(reader["DETALLEVEHICULOID"]),
+                FacturaID = Convert.ToInt32(reader["FACTURA_FACTURAID"]),
+                Vehiculo = new Vehiculo
+                {
+                    Placa = reader["PLACA"].ToString().Trim(),
+                    Modelo = reader["MODELO"] == DBNull.Value ? 0 : Convert.ToInt32(reader["MODELO"]),
+                    Marca = reader["MARCA"] == DBNull.Value ? null : reader["MARCA"].ToString(),
+                    TipoVehiculo = reader["TIPO_VEHICULO"].ToString(),
+                    Color = reader["COLOR"] == DBNull.Value ? null : reader["COLOR"].ToString(),
+                    Linea = reader["LINEA"] == DBNull.Value ? null : reader["LINEA"].ToString(),
+                    Cliente = new Cliente { Cedula = reader["CLIENTE_CEDULA"].ToString().Trim() }
+                }
+            };
         }
     }
 }

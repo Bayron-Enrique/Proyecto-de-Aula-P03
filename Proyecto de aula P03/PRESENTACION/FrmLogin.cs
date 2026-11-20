@@ -1,12 +1,6 @@
-
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using DATOS;
 using ENTIDADES;
@@ -17,153 +11,212 @@ namespace PRESENTACION
     public partial class FrmLogin : Form
     {
         private readonly EmpleadoService empleadoService;
-        private readonly Validacion validacion = new Validacion();
         private readonly ErrorProvider errores;
+
+        private const string PlaceholderUsuario = "Ingrese su cédula";
+        private const string PlaceholderClave = "Ingrese su contraseña";
 
         public FrmLogin()
         {
             InitializeComponent();
-            if (components == null) components = new System.ComponentModel.Container();
-            empleadoService = new EmpleadoService(new EmpleadoRepository(), new CargoRepository());
-            errores = new ErrorProvider(components) { ContainerControl = this };
-            button1.Click += button1_Click;
+
+            empleadoService = new EmpleadoService(
+                new EmpleadoRepository(),
+                new CargoRepository());
+
+            errores = new ErrorProvider { ContainerControl = this };
+
+            ConfigurarFormulario();
+            ConfigurarCampos();
+            ConfigurarEventos();
+            ConfigurarPaneles();
+        }
+
+        private void ConfigurarFormulario()
+        {
+            WindowState = FormWindowState.Maximized;
+            StartPosition = FormStartPosition.CenterScreen;
+            BackColor = Color.White;
+            MinimumSize = new Size(900, 600);
+            Text = "GOT-AUTO | Iniciar sesión";
             AcceptButton = button1;
+        }
+
+        private void ConfigurarCampos()
+        {
+            txtUsuario.Text = PlaceholderUsuario;
+            txtUsuario.ForeColor = Color.Gray;
+            txtPassword.UseSystemPasswordChar = false;
+            txtPassword.Text = PlaceholderClave;
+            txtPassword.ForeColor = Color.Gray;
+            button1.Text = "INICIAR SESIÓN";
+            button1.BackColor = Color.FromArgb(37, 99, 235);
+            button1.ForeColor = Color.White;
+            button1.FlatStyle = FlatStyle.Flat;
+            button1.FlatAppearance.BorderSize = 0;
+        }
+
+        // Todas las suscripciones se hacen aquí; el Designer no conecta eventos.
+        private void ConfigurarEventos()
+        {
+            txtUsuario.Enter += txtUsuario_Enter;
+            txtUsuario.Leave += txtUsuario_Leave;
+            txtPassword.Enter += txtPassword_Enter;
+            txtPassword.Leave += txtPassword_Leave;
+            chckPassword.CheckedChanged += chckPassword_CheckedChanged;
+            button1.Click += button1_Click;
+            Shown += FrmLogin_Shown;
+        }
+
+        private void FrmLogin_Shown(object sender, EventArgs e)
+        {
+            // El Panel permite abrir sin el cursor parpadeando en un TextBox.
+            ActiveControl = panelCamposLogin;
+        }
+
+        private void txtUsuario_Enter(object sender, EventArgs e)
+        {
+            if (txtUsuario.ForeColor == Color.Gray && txtUsuario.Text == PlaceholderUsuario)
+            {
+                txtUsuario.Clear();
+                txtUsuario.ForeColor = Color.FromArgb(31, 41, 55);
+            }
+        }
+
+        private void txtUsuario_Leave(object sender, EventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(txtUsuario.Text))
+            {
+                txtUsuario.Text = PlaceholderUsuario;
+                txtUsuario.ForeColor = Color.Gray;
+            }
+        }
+
+        private void txtPassword_Enter(object sender, EventArgs e)
+        {
+            if (txtPassword.ForeColor == Color.Gray && txtPassword.Text == PlaceholderClave)
+            {
+                txtPassword.Clear();
+                txtPassword.ForeColor = Color.FromArgb(31, 41, 55);
+                txtPassword.UseSystemPasswordChar = !chckPassword.Checked;
+            }
+        }
+
+        private void txtPassword_Leave(object sender, EventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(txtPassword.Text))
+            {
+                txtPassword.UseSystemPasswordChar = false;
+                txtPassword.Text = PlaceholderClave;
+                txtPassword.ForeColor = Color.Gray;
+            }
         }
 
         private void chckPassword_CheckedChanged(object sender, EventArgs e)
         {
-            if (chckPassword.Checked)
-            {
-                txtPassword.PasswordChar = '\0';
+            bool esPlaceholder = txtPassword.ForeColor == Color.Gray;
+            txtPassword.UseSystemPasswordChar = !esPlaceholder && !chckPassword.Checked;
+        }
 
-            }
-            else
+        private void ConfigurarPaneles()
+        {
+            RedondearControl(pnUsuario, 10);
+            RedondearControl(pnContraseña, 10);
+            RedondearControl(button1, 10);
+            pnUsuario.Resize += (s, e) => RedondearControl(pnUsuario, 10);
+            pnContraseña.Resize += (s, e) => RedondearControl(pnContraseña, 10);
+            button1.Resize += (s, e) => RedondearControl(button1, 10);
+        }
+
+        private void RedondearControl(Control control, int radio)
+        {
+            if (control.Width <= 0 || control.Height <= 0) return;
+
+            int diametro = Math.Min(radio * 2, Math.Min(control.Width, control.Height));
+            using (GraphicsPath path = new GraphicsPath())
             {
-                txtPassword.PasswordChar = '*';
+                int ancho = control.Width;
+                int alto = control.Height;
+                path.AddArc(0, 0, diametro, diametro, 180, 90);
+                path.AddArc(ancho - diametro, 0, diametro, diametro, 270, 90);
+                path.AddArc(ancho - diametro, alto - diametro, diametro, diametro, 0, 90);
+                path.AddArc(0, alto - diametro, diametro, diametro, 90, 90);
+                path.CloseFigure();
+                Region anterior = control.Region;
+                control.Region = new Region(path);
+                if (anterior != null) anterior.Dispose();
             }
         }
 
-        // AGREGADO: abrir Form1 desde el login
+        private bool ValidarCampos()
+        {
+            errores.Clear();
+            bool usuarioVacio = string.IsNullOrWhiteSpace(txtUsuario.Text) || txtUsuario.ForeColor == Color.Gray;
+            bool claveVacia = string.IsNullOrWhiteSpace(txtPassword.Text) || txtPassword.ForeColor == Color.Gray;
+
+            if (usuarioVacio) errores.SetError(pnUsuario, "Ingrese su cédula.");
+            if (claveVacia) errores.SetError(pnContraseña, "Ingrese su contraseña.");
+            if (usuarioVacio) txtUsuario.Focus();
+            else if (claveVacia) txtPassword.Focus();
+            return !usuarioVacio && !claveVacia;
+        }
+
         private void button1_Click(object sender, EventArgs e)
         {
-            // ValidarCampoVacioEspecifico devuelve true cuando detecta un error.
-            if (validacion.ValidarCampoVacioEspecifico(textBox1, errores) ||
-                validacion.ValidarCampoVacioEspecifico(txtPassword, errores))
-            {
-                MessageBox.Show(this, "Ingresa usuario y contraseña.", "Validación", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
+            if (ValidarCampos()) IniciarSesion();
+        }
+
+        private void IniciarSesion()
+        {
+            string cedula = txtUsuario.Text.Trim();
+            string clave = txtPassword.Text;
 
             try
             {
-                string usuario = textBox1.Text.Trim();
-                string clave = txtPassword.Text;
-                int cantidadEmpleados = empleadoService.TotalEmpleados();
-                if (cantidadEmpleados == 0 && usuario.Equals("admin", StringComparison.OrdinalIgnoreCase) && clave == "admin123")
-                {
-                    Empleado respaldo = empleadoService.AutenticarRespaldo(usuario, clave);
-                    if (respaldo != null) AbrirPrincipal(respaldo);
-                    else MessageBox.Show(this, "El acceso de respaldo ya no está disponible.", "Acceso denegado", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-                if (cantidadEmpleados == 0)
-                {
-                    MessageBox.Show(this, "Todavía no hay empleados. Acceso de respaldo: usuario admin, contraseña admin123.", "Acceso", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
+                button1.Enabled = false;
+                Empleado empleado = empleadoService.Autenticar(cedula, clave);
 
-                Empleado empleado = empleadoService.BuscarCedula(usuario);
-                if (empleado == null)
+                if (empleado == null || !empleado.Activo)
                 {
-                    MessageBox.Show(this, "No existe un empleado con esa cédula.", "Acceso denegado", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-                if (!empleado.Activo)
-                {
-                    MessageBox.Show(this, "El empleado está inactivo.", "Acceso denegado", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-                if (!empleadoService.TieneClaveConfigurada(usuario))
-                {
-                    if (clave != usuario)
-                    {
-                        MessageBox.Show(this, "Es el primer ingreso. Usa la cédula como clave temporal para definir una contraseña personal.", "Configurar acceso", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        return;
-                    }
-                    using (var dialogo = new DialogoConfigurarClave())
-                    {
-                        if (dialogo.ShowDialog(this) != DialogResult.OK) return;
-                        string error = empleadoService.ConfigurarClaveInicial(usuario, clave, dialogo.ClaveNueva);
-                        if (error != null)
-                        {
-                            MessageBox.Show(this, error, "No se pudo configurar el acceso", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                            return;
-                        }
-                    }
-                    MessageBox.Show(this, "Contraseña configurada. Ya puedes ingresar.", "Acceso", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show(this, "Credenciales incorrectas o cuenta inactiva.", "Acceso denegado",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     txtPassword.Clear();
+                    txtPassword.ForeColor = Color.FromArgb(31, 41, 55);
+                    txtPassword.UseSystemPasswordChar = !chckPassword.Checked;
+                    txtPassword.Focus();
                     return;
                 }
 
-                empleado = empleadoService.Autenticar(usuario, clave);
-                if (empleado == null)
-                {
-                    MessageBox.Show(this, "La cédula o contraseña no es correcta.", "Acceso denegado", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
                 AbrirPrincipal(empleado);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                MessageBox.Show(this, "No se pudo validar el acceso contra Oracle. " + ex.Message, "Error de autenticación", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(this,
+                    "No fue posible validar el acceso. Verifique la conexión con Oracle.",
+                    "Error de autenticación", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                button1.Enabled = true;
             }
         }
 
         private void AbrirPrincipal(Empleado empleado)
         {
-            var formularioPrincipal = new Form1(empleado);
-            formularioPrincipal.FormClosed += (s, args) =>
+            Form1 principal = new Form1(empleado);
+            principal.FormClosed += (s, e) =>
             {
                 SesionActual.Cerrar();
                 txtPassword.Clear();
+                txtPassword.UseSystemPasswordChar = false;
+                txtPassword.Text = PlaceholderClave;
+                txtPassword.ForeColor = Color.Gray;
                 Show();
+                WindowState = FormWindowState.Maximized;
                 Activate();
-                textBox1.Focus();
             };
             Hide();
-            formularioPrincipal.Show();
-        }
-
-        private sealed class DialogoConfigurarClave : Form
-        {
-            private readonly TextBox txtClave = new TextBox { UseSystemPasswordChar = true, Width = 250 };
-            private readonly TextBox txtConfirmar = new TextBox { UseSystemPasswordChar = true, Width = 250 };
-            public string ClaveNueva { get { return txtClave.Text; } }
-
-            public DialogoConfigurarClave()
-            {
-                Text = "Crear contraseña"; StartPosition = FormStartPosition.CenterParent; FormBorderStyle = FormBorderStyle.FixedDialog;
-                MinimizeBox = false; MaximizeBox = false; ClientSize = new System.Drawing.Size(340, 190);
-                var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(14), ColumnCount = 1, RowCount = 5 };
-                layout.Controls.Add(new Label { Text = "Nueva contraseña (mínimo 8 caracteres):", AutoSize = true }, 0, 0);
-                layout.Controls.Add(txtClave, 0, 1);
-                layout.Controls.Add(new Label { Text = "Confirmar contraseña:", AutoSize = true }, 0, 2);
-                layout.Controls.Add(txtConfirmar, 0, 3);
-                var botones = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft };
-                var aceptar = new Button { Text = "Guardar", DialogResult = DialogResult.None, Width = 90 };
-                var cancelar = new Button { Text = "Cancelar", DialogResult = DialogResult.Cancel, Width = 90 };
-                aceptar.Click += (s, e) =>
-                {
-                    if (txtClave.Text.Length < 8 || txtClave.Text.Length > 100 || txtClave.Text != txtConfirmar.Text)
-                    {
-                        MessageBox.Show(this, "Las contraseñas deben coincidir y tener entre 8 y 100 caracteres.", "Validación", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        return;
-                    }
-                    DialogResult = DialogResult.OK;
-                };
-                botones.Controls.Add(aceptar); botones.Controls.Add(cancelar); layout.Controls.Add(botones, 0, 4);
-                Controls.Add(layout); AcceptButton = aceptar; CancelButton = cancelar;
-            }
+            principal.Show();
         }
     }
 }

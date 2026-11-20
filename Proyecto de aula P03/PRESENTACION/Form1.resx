@@ -163,33 +163,7 @@
         EI5vxDorhOMbse6IKp1uwAWVTvf7PDcNda5LuebNAAAAAElFTkSuQmCC
 </value>
   </data>
-  <data name="button3.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
-    <value>
-        iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAABGdBTUEAALGPC/xhBQAAAAlwSFlzAAAL
-        DAAACwwBP0AiyAAAANRJREFUSEvtzSFOA0AUBNBCCIYEg0BjcChugEPjegkSDJYr9AA4zoBDY7gABkeC
-        JUEUAa8pyabtbFO6Wwkv+WYzMzsY/Cm4ml6+bwxbuDEzwnbmumAHt3PjxR12M98Ee7jP5TkP2M/eWnCA
-        x1xc4gmH2V8JR3jOpRVecJw7S+EEr7mwhjec5t4CnOE9mw0+cJ67P3CBcTY6fGKY45f4yuQGvnG98EmR
-        yVa5V8lCq9yrZKFV7lWyUPTmKlkoenOVLBS9uUoWit5cJQtFb66ShaI39+9XE2VgyRqTDwRYAAAAAElF
-        TkSuQmCC
-</value>
-  </data>
   <data name="btnAgenda.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
-    <value>
-        iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAABGdBTUEAALGPC/xhBQAAAHZJREFUSEvd
-        1TEOgDAMBME8Jf//pJEQdnEu1sqJAqYL2nPLWr8VD/2upl0zHU67W0TsHBi23i1antK7BQOAewwA7jNw
-        6d2i4Sm9WzAAuMcA4F4D991o4L4bDADuMQC418B9Nxq47wYDgHsMAO4zcOnd8voP55MuwsHps0g/9lsA
-        AAAASUVORK5CYII=
-</value>
-  </data>
-  <data name="button8.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
-    <value>
-        iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAABGdBTUEAALGPC/xhBQAAAHZJREFUSEvd
-        1TEOgDAMBME8Jf//pJEQdnEu1sqJAqYL2nPLWr8VD/2upl0zHU67W0TsHBi23i1antK7BQOAewwA7jNw
-        6d2i4Sm9WzAAuMcA4F4D991o4L4bDADuMQC418B9Nxq47wYDgHsMAO4zcOnd8voP55MuwsHps0g/9lsA
-        AAAASUVORK5CYII=
-</value>
-  </data>
-  <data name="button7.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
     <value>
         iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAABGdBTUEAALGPC/xhBQAAAHZJREFUSEvd
         1TEOgDAMBME8Jf//pJEQdnEu1sqJAqYL2nPLWr8VD/2upl0zHU67W0TsHBi23i1antK7BQOAewwA7jNw
@@ -234,9 +208,6 @@
         txk1dlT3m7wAKf48GxbciIAAAAAASUVORK5CYII=
 </value>
   </data>
-  <metadata name="MenuTransition.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
-    <value>17, 17</value>
-  </metadata>
   <metadata name="sidebarTransition.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
     <value>178, 17</value>
   </metadata>

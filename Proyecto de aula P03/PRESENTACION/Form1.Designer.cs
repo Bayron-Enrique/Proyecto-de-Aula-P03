@@ -81,7 +81,7 @@ namespace PRESENTACION
             this.pnBarraSuperior.Dock = System.Windows.Forms.DockStyle.Top;
             this.pnBarraSuperior.Location = new System.Drawing.Point(0, 0);
             this.pnBarraSuperior.Name = "pnBarraSuperior";
-            this.pnBarraSuperior.Size = new System.Drawing.Size(1068, 54);
+            this.pnBarraSuperior.Size = new System.Drawing.Size(1920, 54);
             this.pnBarraSuperior.TabIndex = 0;
             this.pnBarraSuperior.MouseDown += new System.Windows.Forms.MouseEventHandler(this.pnBarraSuperior_MouseDown);
             this.pnBarraSuperior.MouseUp += new System.Windows.Forms.MouseEventHandler(this.pnBarraSuperior_MouseUp);
@@ -94,7 +94,7 @@ namespace PRESENTACION
             this.btnSalir.FlatAppearance.MouseOverBackColor = System.Drawing.Color.Red;
             this.btnSalir.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnSalir.Image = ((System.Drawing.Image)(resources.GetObject("btnSalir.Image")));
-            this.btnSalir.Location = new System.Drawing.Point(1010, 19);
+            this.btnSalir.Location = new System.Drawing.Point(1862, 19);
             this.btnSalir.Name = "btnSalir";
             this.btnSalir.Size = new System.Drawing.Size(30, 25);
             this.btnSalir.TabIndex = 2;
@@ -119,7 +119,7 @@ namespace PRESENTACION
             this.btnMaximizar.FlatAppearance.MouseOverBackColor = System.Drawing.Color.Silver;
             this.btnMaximizar.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnMaximizar.Image = ((System.Drawing.Image)(resources.GetObject("btnMaximizar.Image")));
-            this.btnMaximizar.Location = new System.Drawing.Point(965, 19);
+            this.btnMaximizar.Location = new System.Drawing.Point(1817, 19);
             this.btnMaximizar.Name = "btnMaximizar";
             this.btnMaximizar.Size = new System.Drawing.Size(30, 25);
             this.btnMaximizar.TabIndex = 2;
@@ -133,7 +133,7 @@ namespace PRESENTACION
             this.label2.Location = new System.Drawing.Point(53, 9);
             this.label2.Name = "label2";
             this.label2.Padding = new System.Windows.Forms.Padding(0, 10, 0, 0);
-            this.label2.Size = new System.Drawing.Size(83, 27);
+            this.label2.Size = new System.Drawing.Size(97, 30);
             this.label2.TabIndex = 1;
             this.label2.Text = "GOT-AUTO";
             // 
@@ -145,7 +145,7 @@ namespace PRESENTACION
             this.btnMinimizar.FlatAppearance.MouseOverBackColor = System.Drawing.Color.Silver;
             this.btnMinimizar.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnMinimizar.Image = ((System.Drawing.Image)(resources.GetObject("btnMinimizar.Image")));
-            this.btnMinimizar.Location = new System.Drawing.Point(920, 19);
+            this.btnMinimizar.Location = new System.Drawing.Point(1772, 19);
             this.btnMinimizar.Name = "btnMinimizar";
             this.btnMinimizar.Size = new System.Drawing.Size(28, 27);
             this.btnMinimizar.TabIndex = 2;
@@ -166,7 +166,7 @@ namespace PRESENTACION
             this.sidebar.ForeColor = System.Drawing.Color.White;
             this.sidebar.Location = new System.Drawing.Point(0, 54);
             this.sidebar.Name = "sidebar";
-            this.sidebar.Size = new System.Drawing.Size(251, 611);
+            this.sidebar.Size = new System.Drawing.Size(251, 1026);
             this.sidebar.TabIndex = 1;
             // 
             // PnPanel
@@ -215,7 +215,7 @@ namespace PRESENTACION
             this.pnAgenda.Name = "pnAgenda";
             this.pnAgenda.Size = new System.Drawing.Size(379, 53);
             this.pnAgenda.TabIndex = 4;
-            //
+            // 
             // btnAgenda
             // 
             this.btnAgenda.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(23)))), ((int)(((byte)(24)))), ((int)(((byte)(29)))));
@@ -236,7 +236,7 @@ namespace PRESENTACION
             this.btnAgenda.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.btnAgenda.UseVisualStyleBackColor = false;
             this.btnAgenda.Click += new System.EventHandler(this.Menu_Click);
-            //
+            // 
             // pnServicio
             // 
             this.pnServicio.Controls.Add(this.btnServicio);
@@ -351,7 +351,7 @@ namespace PRESENTACION
             this.btnConfiguracion.Text = "           Configuracion";
             this.btnConfiguracion.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.btnConfiguracion.UseVisualStyleBackColor = false;
-            //
+            // 
             // sidebarTransition
             // 
             this.sidebarTransition.Interval = 15;
@@ -438,7 +438,7 @@ namespace PRESENTACION
             // Form1
             // 
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
-            this.ClientSize = new System.Drawing.Size(1068, 665);
+            this.ClientSize = new System.Drawing.Size(1920, 1080);
             this.Controls.Add(this.sidebar);
             this.Controls.Add(this.pnBarraSuperior);
             this.ForeColor = System.Drawing.Color.Black;
@@ -447,6 +447,7 @@ namespace PRESENTACION
             this.Name = "Form1";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Form1";
+            this.Load += new System.EventHandler(this.Form1_Load);
             this.pnBarraSuperior.ResumeLayout(false);
             this.pnBarraSuperior.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.btnHam)).EndInit();

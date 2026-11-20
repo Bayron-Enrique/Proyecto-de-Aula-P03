@@ -2,6 +2,7 @@ using ENTIDADES;
 using Oracle.ManagedDataAccess.Client;
 using System;
 using System.Collections.Generic;
+using System.Data;
 
 namespace DATOS
 {
@@ -9,87 +10,115 @@ namespace DATOS
     {
         public int Contar()
         {
-            using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand("SELECT COUNT(*) FROM TALLER.VEHICULO", con))
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_VEHICULO.PRC_CONTAR", conexion))
             {
-                con.Open();
-                return Convert.ToInt32(cmd.ExecuteScalar());
+                comando.CommandType = CommandType.StoredProcedure;
+                comando.Parameters.Add("p_total", OracleDbType.Int32).Direction = ParameterDirection.Output;
+                conexion.Open();
+                comando.ExecuteNonQuery();
+                return Convert.ToInt32(comando.Parameters["p_total"].Value.ToString());
             }
         }
-
-        private const string SelectVehiculos = @"SELECT V.PLACA, V.MODELO, V.MARCA, V.TIPO_VEHICULO,
-                                                        V.COLOR, V.LINEA, V.CLIENTE_CEDULA,
-                                                        P.PRIMER_NOMBRE, P.SEGUNDO_NOMBRE, P.PRIMER_APELLIDO, P.SEGUNDO_APELLIDO, P.SEXO, P.TELEFONO,
-                                                        P.DIRECCION, P.CORREOELECTRONICO
-                                                 FROM TALLER.VEHICULO V
-                                                 JOIN TALLER.CLIENTE C ON C.CEDULA = V.CLIENTE_CEDULA
-                                                 JOIN TALLER.PERSONA P ON P.CEDULA = C.CEDULA";
 
         public void Guardar(Vehiculo vehiculo)
         {
-            const string sql = @"INSERT INTO TALLER.VEHICULO
-                                 (PLACA, MODELO, MARCA, CLIENTE_CEDULA, TIPO_VEHICULO, COLOR, LINEA)
-                                 VALUES (:placa, :modelo, :marca, :clienteCedula, :tipoVehiculo, :color, :linea)";
-            using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand(sql, con))
-            {
-                cmd.BindByName = true;
-                AgregarParametros(cmd, vehiculo);
-                con.Open();
-                cmd.ExecuteNonQuery();
-            }
-        }
+            if (vehiculo.Cliente == null || string.IsNullOrWhiteSpace(vehiculo.Cliente.Cedula))
+                throw new ArgumentException("Debe seleccionar un cliente válido para el vehículo.");
 
-        public List<Vehiculo> Consultar()
-        {
-            var lista = new List<Vehiculo>();
-            using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand(SelectVehiculos + " ORDER BY V.PLACA", con))
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_VEHICULO.PRC_GUARDAR", conexion))
             {
-                con.Open();
-                using (OracleDataReader reader = cmd.ExecuteReader())
-                    while (reader.Read()) lista.Add(Mapear(reader));
-            }
-            return lista;
-        }
+                comando.CommandType = CommandType.StoredProcedure;
+                AgregarParams(comando, vehiculo);
 
-        public Vehiculo BuscarPlaca(string placa)
-        {
-            using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand(SelectVehiculos + " WHERE V.PLACA = :placa", con))
-            {
-                cmd.BindByName = true;
-                cmd.Parameters.Add("placa", OracleDbType.Char, 7).Value = placa;
-                con.Open();
-                using (OracleDataReader reader = cmd.ExecuteReader())
-                    return reader.Read() ? Mapear(reader) : null;
+                conexion.Open();
+                using (OracleTransaction transaccion = conexion.BeginTransaction())
+                {
+                    comando.Transaction = transaccion;
+                    try { comando.ExecuteNonQuery(); transaccion.Commit(); }
+                    catch { transaccion.Rollback(); throw; }
+                }
             }
         }
 
         public void Modificar(Vehiculo vehiculo)
         {
-            const string sql = @"UPDATE TALLER.VEHICULO SET MODELO = :modelo, MARCA = :marca,
-                                 CLIENTE_CEDULA = :clienteCedula, TIPO_VEHICULO = :tipoVehiculo,
-                                 COLOR = :color, LINEA = :linea WHERE PLACA = :placa";
-            using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand(sql, con))
+            if (vehiculo.Cliente == null || string.IsNullOrWhiteSpace(vehiculo.Cliente.Cedula))
+                throw new ArgumentException("Debe seleccionar un cliente válido para el vehículo.");
+
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_VEHICULO.PRC_MODIFICAR", conexion))
             {
-                cmd.BindByName = true;
-                AgregarParametros(cmd, vehiculo);
-                con.Open();
-                cmd.ExecuteNonQuery();
+                comando.CommandType = CommandType.StoredProcedure;
+                AgregarParams(comando, vehiculo);
+
+                conexion.Open();
+                using (OracleTransaction transaccion = conexion.BeginTransaction())
+                {
+                    comando.Transaction = transaccion;
+                    try { comando.ExecuteNonQuery(); transaccion.Commit(); }
+                    catch { transaccion.Rollback(); throw; }
+                }
+            }
+        }
+
+        public List<Vehiculo> Consultar()
+        {
+            List<Vehiculo> vehiculos = new List<Vehiculo>();
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_VEHICULO.PRC_CONSULTAR", conexion))
+            {
+                comando.CommandType = CommandType.StoredProcedure;
+                comando.Parameters.Add("p_resultado", OracleDbType.RefCursor).Direction = ParameterDirection.Output;
+                conexion.Open();
+                using (OracleDataReader reader = comando.ExecuteReader())
+                    while (reader.Read()) vehiculos.Add(Mapear(reader));
+            }
+            return vehiculos;
+        }
+
+        public Vehiculo BuscarPlaca(string placa)
+        {
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_VEHICULO.PRC_BUSCAR_PLACA", conexion))
+            {
+                comando.CommandType = CommandType.StoredProcedure;
+                comando.Parameters.Add("p_placa", OracleDbType.Char, 7).Value = placa;
+                comando.Parameters.Add("p_resultado", OracleDbType.RefCursor).Direction = ParameterDirection.Output;
+                conexion.Open();
+                using (OracleDataReader reader = comando.ExecuteReader())
+                    return reader.Read() ? Mapear(reader) : null;
             }
         }
 
         public void Eliminar(Vehiculo vehiculo)
         {
-            using (OracleConnection con = ObtenerConexion())
-            using (OracleCommand cmd = new OracleCommand("DELETE FROM TALLER.VEHICULO WHERE PLACA = :placa", con))
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_VEHICULO.PRC_ELIMINAR", conexion))
             {
-                cmd.Parameters.Add("placa", OracleDbType.Char, 7).Value = vehiculo.Placa;
-                con.Open();
-                cmd.ExecuteNonQuery();
+                comando.CommandType = CommandType.StoredProcedure;
+                comando.Parameters.Add("p_placa", OracleDbType.Char, 7).Value = vehiculo.Placa;
+                conexion.Open();
+                using (OracleTransaction transaccion = conexion.BeginTransaction())
+                {
+                    comando.Transaction = transaccion;
+                    try { comando.ExecuteNonQuery(); transaccion.Commit(); }
+                    catch { transaccion.Rollback(); throw; }
+                }
             }
+        }
+
+        private static void AgregarParams(OracleCommand comando, Vehiculo vehiculo)
+        {
+            comando.BindByName = true;
+            comando.Parameters.Add("p_placa", OracleDbType.Char, 7).Value = vehiculo.Placa;
+            comando.Parameters.Add("p_modelo", OracleDbType.Decimal).Value = vehiculo.Modelo;
+            comando.Parameters.Add("p_marca", OracleDbType.Varchar2).Value = (object)vehiculo.Marca ?? DBNull.Value;
+            comando.Parameters.Add("p_cliente", OracleDbType.Char, 10).Value = vehiculo.Cliente.Cedula;
+            comando.Parameters.Add("p_tipo", OracleDbType.Varchar2).Value = vehiculo.TipoVehiculo;
+            comando.Parameters.Add("p_color", OracleDbType.Varchar2).Value = (object)vehiculo.Color ?? DBNull.Value;
+            comando.Parameters.Add("p_linea", OracleDbType.Varchar2).Value = (object)vehiculo.Linea ?? DBNull.Value;
         }
 
         private static Vehiculo Mapear(OracleDataReader reader)
@@ -115,19 +144,6 @@ namespace DATOS
                     CorreoElectronico = reader["CORREOELECTRONICO"] == DBNull.Value ? null : reader["CORREOELECTRONICO"].ToString()
                 }
             };
-        }
-
-        private static void AgregarParametros(OracleCommand cmd, Vehiculo vehiculo)
-        {
-            if (vehiculo.Cliente == null || string.IsNullOrWhiteSpace(vehiculo.Cliente.Cedula))
-                throw new ArgumentException("Debe seleccionar un cliente válido para el vehículo.");
-            cmd.Parameters.Add("placa", OracleDbType.Char, 7).Value = vehiculo.Placa;
-            cmd.Parameters.Add("modelo", vehiculo.Modelo);
-            cmd.Parameters.Add("marca", (object)vehiculo.Marca ?? DBNull.Value);
-            cmd.Parameters.Add("clienteCedula", OracleDbType.Char, 10).Value = vehiculo.Cliente.Cedula;
-            cmd.Parameters.Add("tipoVehiculo", vehiculo.TipoVehiculo);
-            cmd.Parameters.Add("color", (object)vehiculo.Color ?? DBNull.Value);
-            cmd.Parameters.Add("linea", (object)vehiculo.Linea ?? DBNull.Value);
         }
     }
 }
