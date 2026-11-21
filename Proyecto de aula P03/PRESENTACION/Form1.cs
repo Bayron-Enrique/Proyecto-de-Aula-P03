@@ -56,8 +56,16 @@ namespace PRESENTACION
         [DllImport("user32.dll")]
         private static extern bool SendMessage(IntPtr hWnd, int wMsg, int wParam, int lParam);
 
+        [DllImport("user32.dll")]
+        private static extern bool RedrawWindow(IntPtr hWnd, IntPtr rectangulo, IntPtr region, uint opciones);
+
         private const int WM_NCLBUTTONDOWN = 0xA1;
+        private const int WM_SETREDRAW = 0x000B;
         private const int HT_CAPTION = 0x2;
+        private const uint RDW_INVALIDATE = 0x0001;
+        private const uint RDW_ERASE = 0x0004;
+        private const uint RDW_ALLCHILDREN = 0x0080;
+        private const uint RDW_FRAME = 0x0400;
 
         Color colorNormal = Color.FromArgb(23, 24, 29);
         Color colorActivo = Color.FromArgb(85, 85, 85);
@@ -248,12 +256,6 @@ namespace PRESENTACION
             MostrarPanelDashboard();
         }
 
-        private void FrmPanel_FormClosed(object sender, FormClosedEventArgs e)
-        {
-            frmPanel = null;
-            if (!cambiandoVista && !cerrandoForm && !IsDisposed) MostrarPanelDashboard();
-        }
-
         private void btnServicio_Click(object sender, EventArgs e)
         {
             PintarBotonActivo(btnServicio);
@@ -420,22 +422,43 @@ namespace PRESENTACION
 
         private void AbrirFormularioHijo(Form formulario)
         {
+            MdiClient areaContenido = Controls.OfType<MdiClient>().Single();
+            IntPtr ventana = areaContenido.IsHandleCreated && areaContenido.Visible
+                ? areaContenido.Handle
+                : IntPtr.Zero;
+
             cambiandoVista = true;
             try
             {
+                // Mantener el último dibujo mientras MDI cierra una vista y ajusta la siguiente.
+                if (ventana != IntPtr.Zero) SendMessage(ventana, WM_SETREDRAW, 0, 0);
+
                 foreach (Form hijo in MdiChildren.ToArray()) hijo.Close();
-                frmPanel = null;
+                frmPanel = formulario as FrmPanel;
                 formulario.FormBorderStyle = FormBorderStyle.None;
+                formulario.StartPosition = FormStartPosition.Manual;
                 formulario.MdiParent = this;
+                formulario.Bounds = areaContenido.ClientRectangle;
                 formulario.Dock = DockStyle.Fill;
                 formulario.FormClosed += Hijo_FormClosed;
                 formulario.Show();
+                areaContenido.PerformLayout();
+                if (frmPanel != null) ActualizarDashboard();
             }
-            finally { cambiandoVista = false; }
+            finally
+            {
+                cambiandoVista = false;
+                if (ventana != IntPtr.Zero && areaContenido.IsHandleCreated && areaContenido.Handle == ventana)
+                {
+                    SendMessage(ventana, WM_SETREDRAW, 1, 0);
+                    RedrawWindow(ventana, IntPtr.Zero, IntPtr.Zero, RDW_INVALIDATE | RDW_ERASE | RDW_FRAME | RDW_ALLCHILDREN);
+                }
+            }
         }
 
         private void Hijo_FormClosed(object sender, FormClosedEventArgs e)
         {
+            if (ReferenceEquals(sender, frmPanel)) frmPanel = null;
             if (!cambiandoVista && !cerrandoForm && !IsDisposed) MostrarPanelDashboard();
         }
 
@@ -447,18 +470,7 @@ namespace PRESENTACION
                 ActualizarDashboard();
                 return;
             }
-            cambiandoVista = true;
-            try
-            {
-                foreach (Form hijo in MdiChildren.ToArray()) hijo.Close();
-                frmPanel = new FrmPanel();
-                frmPanel.FormClosed += FrmPanel_FormClosed;
-                frmPanel.MdiParent = this;
-                frmPanel.Dock = DockStyle.Fill;
-                frmPanel.Show();
-            }
-            finally { cambiandoVista = false; }
-            ActualizarDashboard();
+            AbrirFormularioHijo(new FrmPanel());
         }
 
         public void ActualizarDashboard()
