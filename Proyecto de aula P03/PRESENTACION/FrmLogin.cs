@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -658,6 +658,38 @@ namespace PRESENTACION
                     ItemSeleccionado(items[fila]);
                 }
                 base.OnMouseDown(e);
+            }
+        }
+
+        private sealed class DialogoConfigurarClave : Form
+        {
+            private readonly TextBox txtClave = new TextBox { UseSystemPasswordChar = true, Width = 250 };
+            private readonly TextBox txtConfirmar = new TextBox { UseSystemPasswordChar = true, Width = 250 };
+            public string ClaveNueva { get { return txtClave.Text; } }
+
+            public DialogoConfigurarClave()
+            {
+                Text = "Crear contraseña"; StartPosition = FormStartPosition.CenterParent; FormBorderStyle = FormBorderStyle.FixedDialog;
+                MinimizeBox = false; MaximizeBox = false; ClientSize = new System.Drawing.Size(340, 190);
+                var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(14), ColumnCount = 1, RowCount = 5 };
+                layout.Controls.Add(new Label { Text = "Nueva contraseña (mínimo 8 caracteres):", AutoSize = true }, 0, 0);
+                layout.Controls.Add(txtClave, 0, 1);
+                layout.Controls.Add(new Label { Text = "Confirmar contraseña:", AutoSize = true }, 0, 2);
+                layout.Controls.Add(txtConfirmar, 0, 3);
+                var botones = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft };
+                var aceptar = new Button { Text = "Guardar", DialogResult = DialogResult.None, Width = 90 };
+                var cancelar = new Button { Text = "Cancelar", DialogResult = DialogResult.Cancel, Width = 90 };
+                aceptar.Click += (s, e) =>
+                {
+                    if (txtClave.Text.Length < 8 || txtClave.Text.Length > 100 || txtClave.Text != txtConfirmar.Text)
+                    {
+                        MessageBox.Show(this, "Las contraseñas deben coincidir y tener entre 8 y 100 caracteres.", "Validación", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+                    DialogResult = DialogResult.OK;
+                };
+                botones.Controls.Add(aceptar); botones.Controls.Add(cancelar); layout.Controls.Add(botones, 0, 4);
+                Controls.Add(layout); AcceptButton = aceptar; CancelButton = cancelar;
             }
         }
     }
