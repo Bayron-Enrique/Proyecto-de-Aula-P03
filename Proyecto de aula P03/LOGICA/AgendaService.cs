@@ -65,7 +65,7 @@ namespace LOGICA
                 if (empleado == null || !empleado.Activo) return "El empleado seleccionado no existe o está inactivo.";
                 if (servicio == null) return "El artículo seleccionado no es un servicio válido.";
 
-                // La función Oracle consulta la disponibilidad exacta de fecha y hora.
+                // La consulta sin duración verifica la disponibilidad en el minuto de inicio.
                 // También se revisa el intervalo real según la duración del servicio.
                 bool disponible = repositorio.EmpleadoDisponible(empleado.Cedula, fecha);
                 List<Agenda> citas = repositorio.Consultar();

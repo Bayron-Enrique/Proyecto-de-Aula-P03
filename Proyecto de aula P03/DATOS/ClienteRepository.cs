@@ -115,14 +115,7 @@ namespace DATOS
                 comando.Parameters.Add("p_resultado", OracleDbType.RefCursor).Direction = ParameterDirection.Output;
                 conexion.Open();
                 using (OracleDataReader reader = comando.ExecuteReader())
-                {
-                    if (!reader.Read()) return null;
-
-                    Cliente cliente = Mapear(reader);
-                    cliente.TelegramChatId = reader["TELEGRAM_CHAT_ID"] == DBNull.Value
-                        ? (long?)null : Convert.ToInt64(reader["TELEGRAM_CHAT_ID"]);
-                    return cliente;
-                }
+                    return reader.Read() ? Mapear(reader) : null;
             }
         }
 

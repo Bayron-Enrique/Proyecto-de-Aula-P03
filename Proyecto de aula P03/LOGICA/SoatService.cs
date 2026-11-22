@@ -89,7 +89,7 @@ namespace LOGICA
                 Soat soat = new Soat(soatId, numeroSoat, fechaInicio, fechaFin, vehiculo);
                 repositorio.Guardar(soat);
 
-                return $"se registro el SOAT numero {soatId} desde la logica ...";
+                return $"se registro el SOAT numero {soat.SoatId} desde la logica ...";
             }
             catch (Exception ex)
             {
