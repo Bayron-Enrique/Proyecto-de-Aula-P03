@@ -2,7 +2,9 @@ using ENTIDADES;
 using System;
 using System.Configuration;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Mail;
 using System.Net.Mime;
@@ -118,16 +120,9 @@ namespace LOGICA
                 " es: " + codigo + ". Vence en " + vigencia + ". No lo compartas con nadie. " +
                 "Si no solicitaste la vinculación, ignora este mensaje.";
 
-            string detalleTecnico;
-            bool enviado = Enviar(cliente.CorreoElectronico.Trim(), "Tu código para vincular Telegram con " + NombreTaller,
-                html, texto, out detalleTecnico);
-
-            if (!enviado)
-            {
-                Trace.TraceError("No se pudo enviar el código de vinculación: " + detalleTecnico);
-                mensaje = "No pudimos enviar el código en este momento. Inténtalo más tarde o contacta al taller.";
+            if (!Enviar(cliente.CorreoElectronico.Trim(), "Tu código para vincular Telegram con " + NombreTaller,
+                html, texto, out mensaje))
                 return false;
-            }
 
             mensaje = "Enviamos un código a " + EnmascararCorreo(cliente.CorreoElectronico.Trim()) + ". " +
                 "Escríbelo aquí en los próximos " + vigencia + " para continuar. " +
@@ -282,33 +277,41 @@ namespace LOGICA
 
         private bool Enviar(string destinatario, string asunto, string html, string textoPlano, out string mensaje)
         {
-            string host = LeerConfiguracion("Email.Smtp.Host", "TALLER_EMAIL_SMTP_HOST");
-            string puertoTexto = LeerConfiguracion("Email.Smtp.Port", "TALLER_EMAIL_SMTP_PORT");
-            string usuario = LeerConfiguracion("Email.Smtp.User", "TALLER_EMAIL_SMTP_USER");
-            string contrasena = LeerConfiguracion("Email.Smtp.Password", "TALLER_EMAIL_SMTP_PASSWORD");
-            string remitente = LeerConfiguracion("Email.Smtp.From", "TALLER_EMAIL_SMTP_FROM");
-            string sslTexto = LeerConfiguracion("Email.Smtp.EnableSsl", "TALLER_EMAIL_SMTP_ENABLE_SSL");
-
-            int puerto;
-            bool habilitarSsl;
-            if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(usuario) ||
-                string.IsNullOrWhiteSpace(contrasena) || string.IsNullOrWhiteSpace(remitente) ||
-                !int.TryParse(puertoTexto, out puerto) || !bool.TryParse(sslTexto, out habilitarSsl))
-            {
-                Trace.TraceError("No se envió el correo porque falta o es inválida una configuración SMTP.");
-                mensaje = "No pudimos enviar el correo en este momento. Inténtalo más tarde o contacta al taller.";
-                return false;
-            }
-
+            string claveConfigurada = null;
+            string contrasena = null;
             try
             {
-                // Fuerza TLS 1.2 para la conexión segura STARTTLS de Gmail (puerto 587).
-                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+                string host = LeerConfiguracion("SmtpHost", "HOST", "Host", "HOST")?.Trim() ?? "smtp.gmail.com";
+                string puertoTexto = LeerConfiguracion("SmtpPort", "PORT", "Port", "PORT") ?? "587";
+                string sslTexto = LeerConfiguracion("SmtpSsl", "SSL", "EnableSsl", "ENABLE_SSL") ?? "true";
+                string nombreRemitente = LeerConfiguracion("SmtpNombreRemitente", "NOMBRE_REMITENTE")?.Trim() ?? "Taller Automotriz";
+                string usuario = ExigirConfiguracion("SmtpUsuario", LeerConfiguracion("SmtpUsuario", "USUARIO", "User", "USER")).Trim();
+                claveConfigurada = ExigirConfiguracion("SmtpClave", LeerConfiguracion("SmtpClave", "CLAVE", "Password", "PASSWORD"));
+                contrasena = claveConfigurada;
+                if (string.Equals(host, "smtp.gmail.com", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Gmail presenta las contraseñas de aplicación en grupos separados por espacios.
+                    contrasena = new string(claveConfigurada.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    if (contrasena.Length != 16)
+                        throw new ConfigurationErrorsException("SmtpClave en App.config debe ser una contraseña de aplicación de Gmail de 16 caracteres.");
+                }
+
+                if (!int.TryParse(puertoTexto, NumberStyles.Integer, CultureInfo.InvariantCulture, out int puerto) || puerto < 1 || puerto > 65535)
+                    throw new ConfigurationErrorsException("SmtpPort en App.config debe ser un puerto entre 1 y 65535.");
+                if (!bool.TryParse(sslTexto, out bool habilitarSsl))
+                    throw new ConfigurationErrorsException("SmtpSsl en App.config debe ser true o false.");
+
+                MailAddress remitente;
+                try { remitente = new MailAddress(usuario, nombreRemitente); }
+                catch (FormatException ex)
+                {
+                    throw new ConfigurationErrorsException("SmtpUsuario en App.config debe contener una dirección de correo válida.", ex);
+                }
 
                 using (MailMessage correo = new MailMessage())
                 using (SmtpClient smtp = new SmtpClient(host, puerto))
                 {
-                    correo.From = new MailAddress(remitente, "GOT-AUTO");
+                    correo.From = remitente;
                     correo.To.Add(destinatario);
                     correo.Subject = asunto;
 
@@ -317,6 +320,7 @@ namespace LOGICA
                         AlternateView.CreateAlternateViewFromString(textoPlano, null, MediaTypeNames.Text.Plain));
                     AlternateView vistaHtml =
                         AlternateView.CreateAlternateViewFromString(html, null, MediaTypeNames.Text.Html);
+                    correo.AlternateViews.Add(vistaHtml);
 
                     // Adjunta el logo dentro del propio correo; en el HTML se llama con src='cid:logo'
                     string rutaLogo = RutaLogo();
@@ -326,8 +330,6 @@ namespace LOGICA
                         logo.ContentId = "logo";
                         vistaHtml.LinkedResources.Add(logo);
                     }
-
-                    correo.AlternateViews.Add(vistaHtml);
 
                     smtp.EnableSsl = habilitarSsl;
                     smtp.UseDefaultCredentials = false;
@@ -341,21 +343,40 @@ namespace LOGICA
             }
             catch (Exception ex)
             {
-                Trace.TraceError("Error al enviar correo. Detalle técnico: " + ex);
-                mensaje = "No pudimos enviar el correo en este momento. Inténtalo más tarde o contacta al taller.";
+                string detalle = ex.Message;
+                string causa = ex.InnerException?.Message;
+                if (!string.IsNullOrWhiteSpace(causa) && !string.Equals(detalle, causa, StringComparison.Ordinal))
+                    detalle += " | " + causa;
+                if (ex is SmtpException smtp && (int)smtp.StatusCode > 0)
+                    detalle = "SMTP " + (int)smtp.StatusCode + " | " + detalle;
+                if (!string.IsNullOrEmpty(claveConfigurada)) detalle = detalle.Replace(claveConfigurada, "[oculta]");
+                if (!string.IsNullOrEmpty(contrasena)) detalle = detalle.Replace(contrasena, "[oculta]");
+
+                Trace.TraceError("Error al enviar correo. " + detalle);
+                mensaje = "No pudimos enviar el correo en este momento. Inténtalo más tarde o contacta al taller." +
+                    Environment.NewLine + "Detalle técnico: " + detalle;
                 return false;
             }
         }
 
-        private static string LeerConfiguracion(string clave, string variableAmbiente)
+        private static string ExigirConfiguracion(string clave, string valor)
         {
-            string valorAmbiente = Environment.GetEnvironmentVariable(variableAmbiente);
-            if (!string.IsNullOrWhiteSpace(valorAmbiente))
-            {
-                return valorAmbiente;
-            }
+            if (string.IsNullOrWhiteSpace(valor) || valor.TrimStart().StartsWith("TU_", StringComparison.OrdinalIgnoreCase))
+                throw new ConfigurationErrorsException("Completa " + clave + " en App.config con el valor de la cuenta SMTP.");
+            return valor;
+        }
 
-            return ConfigurationManager.AppSettings[clave];
+        private static string LeerConfiguracion(string clave, string variableAmbiente,
+            string claveAnterior = null, string variableAnterior = null)
+        {
+            // Acepta también los nombres anteriores de credenciales y transporte SMTP.
+            return new[]
+            {
+                Environment.GetEnvironmentVariable("TALLER_SMTP_" + variableAmbiente),
+                variableAnterior == null ? null : Environment.GetEnvironmentVariable("TALLER_EMAIL_SMTP_" + variableAnterior),
+                ConfigurationManager.AppSettings[clave],
+                claveAnterior == null ? null : ConfigurationManager.AppSettings["Email.Smtp." + claveAnterior]
+            }.FirstOrDefault(valor => !string.IsNullOrWhiteSpace(valor));
         }
     }
 }

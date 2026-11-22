@@ -13,6 +13,8 @@ namespace PRESENTACION
     public partial class FrmMantenimiento : Form
     {
         private readonly NotificacionMantenimientoService servicio;
+        private readonly VehiculoService vehiculoService;
+        private readonly ArticuloService articuloService;
         private readonly Validacion validacion = new Validacion();
         private List<NotificacionMantenimiento> notificaciones = new List<NotificacionMantenimiento>();
         private List<Vehiculo> vehiculos = new List<Vehiculo>();
@@ -28,6 +30,8 @@ namespace PRESENTACION
 
             var vehiculoRepo = new VehiculoRepository();
             var articuloRepo = new ArticuloRepository();
+            vehiculoService = new VehiculoService(vehiculoRepo, new ClienteRepository());
+            articuloService = new ArticuloService(articuloRepo, new ProveedorRepository());
             servicio = new NotificacionMantenimientoService(new NotificacionMantenimientoRepository(), vehiculoRepo, articuloRepo);
             ConfigurarInteraccion();
             Load += (s, e) => CargarDatos();
@@ -52,8 +56,8 @@ namespace PRESENTACION
         {
             try
             {
-                vehiculos = new VehiculoRepository().Consultar();
-                articulos = new ArticuloRepository().Consultar();
+                vehiculos = vehiculoService.Consultar();
+                articulos = articuloService.Consultar();
                 cmbVehiculo.DataSource = vehiculos.Select(v => new VehiculoOpcion(v)).ToList(); cmbVehiculo.DisplayMember = "Texto"; cmbVehiculo.ValueMember = "Placa";
                 cmbArticulo.DataSource = articulos.Select(a => new ArticuloOpcion(a)).ToList(); cmbArticulo.DisplayMember = "Texto"; cmbArticulo.ValueMember = "Id";
                 notificaciones = servicio.Consultar(); AplicarFiltro();
@@ -66,7 +70,7 @@ namespace PRESENTACION
             if (grid == null) return;
             string placa = txtFiltroPlaca == null ? string.Empty : txtFiltroPlaca.Text.Trim();
             IEnumerable<NotificacionMantenimiento> filas = notificaciones;
-            if (placa.Length > 0) filas = filas.Where(n => n.Vehiculo.Placa.IndexOf(placa, StringComparison.OrdinalIgnoreCase) >= 0);
+            if (placa.Length > 0) filas = filas.Where(n => n.Vehiculo?.Placa?.IndexOf(placa, StringComparison.OrdinalIgnoreCase) >= 0);
             grid.DataSource = filas.Select(NotificacionFila.Crear).ToList();
             LimpiarFormulario();
         }
@@ -119,7 +123,12 @@ namespace PRESENTACION
             NotificacionMantenimiento n = (grid.SelectedRows[0].DataBoundItem as NotificacionFila)?.Original;
             if (n == null) return;
             editando = true; idSeleccionado = n.NotificacionID; dtpFecha.Value = n.Fecha < dtpFecha.MinDate ? dtpFecha.MinDate : n.Fecha > dtpFecha.MaxDate ? dtpFecha.MaxDate : n.Fecha; txtComentario.Text = n.Comentario;
-            cmbEstado.SelectedItem = n.Estado; cmbVehiculo.SelectedValue = n.Vehiculo.Placa; cmbArticulo.SelectedValue = n.Articulo.ArticuloId; btnGuardar.Text = "Actualizar";
+            cmbEstado.SelectedItem = n.Estado;
+            if (n.Vehiculo != null) cmbVehiculo.SelectedValue = n.Vehiculo.Placa;
+            else cmbVehiculo.SelectedIndex = -1;
+            if (n.Articulo != null) cmbArticulo.SelectedValue = n.Articulo.ArticuloId;
+            else cmbArticulo.SelectedIndex = -1;
+            btnGuardar.Text = "Actualizar";
         }
 
         private void LimpiarFormulario()

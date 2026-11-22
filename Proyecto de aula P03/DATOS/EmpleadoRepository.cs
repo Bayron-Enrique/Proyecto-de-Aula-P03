@@ -1,5 +1,6 @@
 using ENTIDADES;
 using Oracle.ManagedDataAccess.Client;
+using Oracle.ManagedDataAccess.Types;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -109,7 +110,9 @@ namespace DATOS
                 comando.Parameters.Add("p_cedula", OracleDbType.Char, 10).Value = cedula;
                 comando.Parameters.Add("p_hash", OracleDbType.Varchar2, 200).Direction = ParameterDirection.Output;
                 conexion.Open(); comando.ExecuteNonQuery();
-                return comando.Parameters["p_hash"].Value == DBNull.Value ? null : comando.Parameters["p_hash"].Value.ToString();
+                object hash = comando.Parameters["p_hash"].Value;
+                if (hash is OracleString texto) return texto.IsNull ? null : texto.Value;
+                return hash == DBNull.Value ? null : hash?.ToString();
             }
         }
 

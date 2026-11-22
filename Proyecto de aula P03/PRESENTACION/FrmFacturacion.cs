@@ -633,6 +633,9 @@ namespace PRESENTACION
         {
             bool valido = !validacion.ValidarCampoVacioEspecificoCombo(cmbTipo, errores) & !validacion.ValidarCampoVacioEspecificoCombo(cmbCliente, errores) &
                 !validacion.ValidarCampoVacioEspecificoCombo(cmbEmpleado, errores) & !validacion.ValidarCampoVacioEspecificoDataPiker(dtpFecha, errores);
+            bool vehiculoEscrito = !string.IsNullOrWhiteSpace(cmbVehiculo.Text);
+            if (vehiculoEscrito) valido &= !validacion.ValidarCampoVacioEspecificoCombo(cmbVehiculo, errores);
+            else errores.SetError(cmbVehiculo, string.Empty);
             if (chkDomicilio.Checked) valido &= !validacion.ValidarCampoVacioEspecifico(txtDireccion, errores);
             if (!valido) { MessageBox.Show(this, "Completa los datos obligatorios del documento.", "Validación", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
             var factura = new Factura
@@ -640,7 +643,8 @@ namespace PRESENTACION
                 Fecha = dtpFecha.Value, TipoDocumento = cmbTipo.Text, EstadoPago = cmbEstadoPago.Text,
                 Cliente = new Cliente { Cedula = cmbCliente.SelectedValue.ToString() },
                 Empleado = new Empleado { Cedula = cmbEmpleado.SelectedValue.ToString() },
-                Vehiculo = cmbVehiculo.SelectedValue == null || string.IsNullOrEmpty(cmbVehiculo.SelectedValue.ToString()) ? null : vehiculos.FirstOrDefault(v => v.Placa == cmbVehiculo.SelectedValue.ToString()),
+                Vehiculo = vehiculoEscrito && cmbVehiculo.SelectedValue is string placa && placa.Length > 0
+                    ? vehiculos.FirstOrDefault(v => v.Placa == placa) : null,
                 AgendaID = cmbAgenda.SelectedValue == null || Convert.ToInt32(cmbAgenda.SelectedValue) == 0 ? (int?)null : Convert.ToInt32(cmbAgenda.SelectedValue),
                 Domicilio = chkDomicilio.Checked, DireccionDomicilio = chkDomicilio.Checked ? txtDireccion.Text.Trim() : null,
                 Observaciones = string.IsNullOrWhiteSpace(txtObservaciones.Text) ? null : txtObservaciones.Text.Trim(),

@@ -11,6 +11,8 @@
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+    <AppConfig Condition="!Exists('App.config') and Exists('..\TelegramBot\App.config')">..\TelegramBot\App.config</AppConfig>
+    <AppConfig Condition="'$(AppConfig)' == '' and !Exists('App.config') and Exists('..\PRESENTACION\App.config')">..\PRESENTACION\App.config</AppConfig>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
   </PropertyGroup>
@@ -74,6 +76,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <None Include="App.config" Condition="Exists('App.config')" />
     <None Include="App.config.example" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

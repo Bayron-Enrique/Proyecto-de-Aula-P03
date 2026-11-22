@@ -146,20 +146,11 @@ namespace PRESENTACION
         public bool ValidarCampoVacioEspecificoCombo(
             ComboBox obj, ErrorProvider errorProvider)
         {
-            bool error = false;
-
-            if (string.IsNullOrWhiteSpace(obj.Text))
-            {
-                errorProvider.SetError(
-                    obj, "Debe seleccionar una opcion");
-
-                error = true;
-            }
-            else
-            {
-                errorProvider.SetError(obj, "");
-            }
-
+            bool error = obj.SelectedItem == null || string.IsNullOrWhiteSpace(obj.Text) ||
+                (obj.DataSource != null && obj.SelectedValue == null) ||
+                (obj.DropDownStyle == ComboBoxStyle.DropDown &&
+                 !string.Equals(obj.Text.Trim(), obj.GetItemText(obj.SelectedItem).Trim(), StringComparison.CurrentCultureIgnoreCase));
+            errorProvider.SetError(obj, error ? "Selecciona una opción de la lista." : string.Empty);
             return error;
         }
 

@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>
   <appSettings>
-    <add key="Email.Smtp.Host" value="smtp.gmail.com" />
-    <add key="Email.Smtp.Port" value="587" />
-    <add key="Email.Smtp.User" value="TU_CORREO_GMAIL" />
-    <add key="Email.Smtp.Password" value="TU_CONTRASENA_DE_APLICACION" />
-    <add key="Email.Smtp.From" value="TU_CORREO_GMAIL" />
-    <add key="Email.Smtp.EnableSsl" value="true" />
+    <!-- Las variables TALLER_SMTP_* tienen prioridad sobre estos valores. -->
+    <add key="SmtpHost" value="smtp.gmail.com" />
+    <add key="SmtpPort" value="587" />
+    <add key="SmtpSsl" value="true" />
+    <!-- Cuenta SMTP y dirección de correo remitente. -->
+    <add key="SmtpUsuario" value="" />
+    <!-- Gmail requiere una contraseña de aplicación de 16 caracteres. -->
+    <add key="SmtpClave" value="" />
+    <add key="SmtpNombreRemitente" value="Taller Automotriz" />
   </appSettings>
   <connectionStrings>
     <add name="NombreAPPConfig" connectionString="Data Source=dbtaller_tp;User Id=TU_USUARIO;Password=TU_CLAVE;Tns_Admin=C:\Oracle\Wallet_Taller;Wallet_Location=C:\Oracle\Wallet_Taller" providerName="Oracle.ManagedDataAccess.Client" />

@@ -17,8 +17,7 @@ namespace PRESENTACION
     public partial class FrmAgenda : Form
     {
         private readonly AgendaService agendaService;
-        private readonly NotificacionMantenimientoService mantenimientoService;
-        private readonly ClienteService clienteService;
+        private readonly VehiculoService vehiculoService;
         private readonly EmpleadoService empleadoService;
         private readonly ArticuloService articuloService;
         private readonly Validacion validacion = new Validacion();
@@ -49,13 +48,11 @@ namespace PRESENTACION
             var empleadoRepo = new EmpleadoRepository();
             var articuloRepo = new ArticuloRepository();
             var agendaRepo = new AgendaRepository();
-            var notificacionRepo = new NotificacionMantenimientoRepository();
             var proveedorRepo = new ProveedorRepository();
-            clienteService = new ClienteService(clienteRepo);
+            vehiculoService = new VehiculoService(vehiculoRepo, clienteRepo);
             empleadoService = new EmpleadoService(empleadoRepo, new CargoRepository());
             articuloService = new ArticuloService(articuloRepo, proveedorRepo);
             agendaService = new AgendaService(agendaRepo, clienteRepo, vehiculoRepo, empleadoRepo, articuloRepo);
-            mantenimientoService = new NotificacionMantenimientoService(notificacionRepo, vehiculoRepo, articuloRepo);
             ConfigurarInteraccion();
             Load += (s, e) => CargarTodo();
         }
@@ -278,7 +275,7 @@ namespace PRESENTACION
         {
             try
             {
-                vehiculos = new VehiculoRepository().Consultar();
+                vehiculos = vehiculoService.Consultar();
                 empleados = empleadoService.Consultar().Where(e => e.Activo).ToList();
                 servicios = articuloService.Consultar().OfType<Servicio>().ToList();
                 cmbVehiculo.DataSource = vehiculos.Select(v => new OpcionVehiculo(v)).ToList();
@@ -341,9 +338,12 @@ namespace PRESENTACION
             dtpFecha.Value = agenda.Fecha < dtpFecha.MinDate ? dtpFecha.MinDate : agenda.Fecha > dtpFecha.MaxDate ? dtpFecha.MaxDate : agenda.Fecha;
             txtComentario.Text = agenda.Comentario;
             cmbEstado.SelectedItem = agenda.Estado;
-            cmbVehiculo.SelectedValue = agenda.Vehiculo.Placa;
-            cmbEmpleado.SelectedValue = agenda.Empleado.Cedula;
+            if (agenda.Vehiculo != null) cmbVehiculo.SelectedValue = agenda.Vehiculo.Placa;
+            else cmbVehiculo.SelectedIndex = -1;
+            if (agenda.Empleado != null) cmbEmpleado.SelectedValue = agenda.Empleado.Cedula;
+            else cmbEmpleado.SelectedIndex = -1;
             if (agenda.ArticuloServicio != null) cmbServicio.SelectedValue = agenda.ArticuloServicio.ArticuloId;
+            else cmbServicio.SelectedIndex = -1;
             btnGuardar.Text = "Actualizar cita";
         }
 
