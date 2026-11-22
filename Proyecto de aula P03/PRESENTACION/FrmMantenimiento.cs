@@ -1,7 +1,8 @@
-using DATOS;
+﻿using DATOS;
 using ENTIDADES;
 using LOGICA;
 using System;
+using System.ComponentModel;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -9,77 +10,42 @@ using System.Windows.Forms;
 
 namespace PRESENTACION
 {
-    public class FrmMantenimiento : Form
+    public partial class FrmMantenimiento : Form
     {
         private readonly NotificacionMantenimientoService servicio;
         private readonly Validacion validacion = new Validacion();
-        private readonly ErrorProvider errores;
         private List<NotificacionMantenimiento> notificaciones = new List<NotificacionMantenimiento>();
         private List<Vehiculo> vehiculos = new List<Vehiculo>();
         private List<Articulo> articulos = new List<Articulo>();
-        private ComboBox cmbVehiculo, cmbArticulo, cmbEstado;
-        private DateTimePicker dtpFecha;
-        private TextBox txtComentario, txtFiltroPlaca;
-        private DataGridView grid;
-        private Button btnGuardar;
         private bool editando;
         private int idSeleccionado;
 
         public FrmMantenimiento()
         {
+            InitializeComponent();
+
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime) return;
+
             var vehiculoRepo = new VehiculoRepository();
             var articuloRepo = new ArticuloRepository();
             servicio = new NotificacionMantenimientoService(new NotificacionMantenimientoRepository(), vehiculoRepo, articuloRepo);
-            errores = new ErrorProvider { ContainerControl = this };
-            ConstruirInterfaz();
-            EstiloUI.Aplicar(this);
+            ConfigurarInteraccion();
             Load += (s, e) => CargarDatos();
         }
 
-        private void ConstruirInterfaz()
+        private void ConfigurarInteraccion()
         {
-            Text = "Notificaciones de mantenimiento";
-            ClientSize = new Size(1050, 680);
-            MinimumSize = new Size(850, 560);
-            StartPosition = FormStartPosition.CenterParent;
-            BackColor = Color.FromArgb(245, 247, 250);
-            Font = new Font("Segoe UI", 9F);
-            var titulo = new Label { Text = "NOTIFICACIONES DE MANTENIMIENTO", Dock = DockStyle.Top, Height = 44, Padding = new Padding(18, 9, 0, 0), Font = new Font("Segoe UI", 15F, FontStyle.Bold) };
-            Controls.Add(titulo);
+            cmbEstado.SelectedIndex = 0;
+            dtpFecha.Value = DateTime.Now;
 
-            var campos = new TableLayoutPanel { Dock = DockStyle.Top, Height = 142, Padding = new Padding(16, 4, 16, 4), ColumnCount = 4, RowCount = 3, BackColor = Color.White };
-            campos.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 108)); campos.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            campos.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 108)); campos.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            for (int i = 0; i < 3; i++) campos.RowStyles.Add(new RowStyle(SizeType.Percent, 33.33F));
-            cmbVehiculo = CrearCombo(); cmbArticulo = CrearCombo(); cmbEstado = CrearCombo();
-            cmbEstado.Items.AddRange(new object[] { "PENDIENTE", "ENVIADA", "COMPLETADA", "CANCELADA" }); cmbEstado.SelectedIndex = 0;
-            dtpFecha = new DateTimePicker { Dock = DockStyle.Fill, Format = DateTimePickerFormat.Custom, CustomFormat = "dd/MM/yyyy HH:mm", ShowUpDown = true, Value = DateTime.Now };
-            txtComentario = new TextBox { Dock = DockStyle.Fill, MaxLength = 200 };
-            AgregarCampo(campos, 0, "Vehículo", cmbVehiculo, 0); AgregarCampo(campos, 0, "Artículo / servicio", cmbArticulo, 2);
-            AgregarCampo(campos, 1, "Programada", dtpFecha, 0); AgregarCampo(campos, 1, "Estado", cmbEstado, 2);
-            AgregarCampo(campos, 2, "Observación", txtComentario, 0); campos.SetColumnSpan(txtComentario, 3);
-            Controls.Add(campos);
-
-            var acciones = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 42, Padding = new Padding(12, 3, 0, 3), BackColor = Color.White };
-            btnGuardar = CrearBoton("Guardar");
-            var btnNuevo = CrearBoton("Nuevo"); var btnEliminar = CrearBoton("Eliminar"); var btnEstado = CrearBoton("Actualizar estado");
-            var btnEnviar = CrearBoton("Enviar recordatorio");
-            btnGuardar.Click += Guardar_Click; btnNuevo.Click += (s, e) => LimpiarFormulario(); btnEliminar.Click += Eliminar_Click; btnEstado.Click += ActualizarEstado_Click;
+            btnGuardar.Click += Guardar_Click;
+            btnNuevo.Click += (s, e) => LimpiarFormulario();
+            btnEliminar.Click += Eliminar_Click;
+            btnEstado.Click += ActualizarEstado_Click;
             btnEnviar.Click += EnviarRecordatorio_Click;
-            acciones.Controls.AddRange(new Control[] { btnGuardar, btnNuevo, btnEliminar, btnEstado, btnEnviar });
-            Controls.Add(acciones);
-
-            var filtro = new Panel { Dock = DockStyle.Top, Height = 42, Padding = new Padding(16, 5, 16, 3) };
-            filtro.Controls.Add(new Label { Text = "Filtrar por placa:", AutoSize = true, Location = new Point(16, 10) });
-            txtFiltroPlaca = new TextBox { Location = new Point(130, 5), Width = 260, CharacterCasing = CharacterCasing.Upper };
-            txtFiltroPlaca.TextChanged += (s, e) => AplicarFiltro(); filtro.Controls.Add(txtFiltroPlaca);
-            Controls.Add(filtro);
-
-            grid = new DataGridView { Dock = DockStyle.Fill, ReadOnly = true, AllowUserToAddRows = false, AutoGenerateColumns = false, MultiSelect = false, SelectionMode = DataGridViewSelectionMode.FullRowSelect, RowHeadersVisible = false, BackgroundColor = Color.White, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill };
-            grid.Columns.Add(Columna("ID", "Id")); grid.Columns.Add(Columna("Fecha programada", "Fecha")); grid.Columns.Add(Columna("Placa", "Placa"));
-            grid.Columns.Add(Columna("Artículo / servicio", "Articulo")); grid.Columns.Add(Columna("Estado", "Estado")); grid.Columns.Add(Columna("Observación", "Comentario"));
-            grid.CellClick += (s, e) => Grid_SelectionChanged(s, EventArgs.Empty); Controls.Add(grid);
-            Controls.SetChildIndex(titulo, 0); Controls.SetChildIndex(campos, 1); Controls.SetChildIndex(acciones, 2); Controls.SetChildIndex(filtro, 3); Controls.SetChildIndex(grid, 4);
+            txtFiltroPlaca.TextChanged += (s, e) => AplicarFiltro();
+            grid.CellClick += (s, e) => Grid_SelectionChanged(s, EventArgs.Empty);
+            EstiloUI.ConectarTabla(grid);
         }
 
         private void CargarDatos()
@@ -161,14 +127,6 @@ namespace PRESENTACION
             editando = false; idSeleccionado = 0; dtpFecha.Value = DateTime.Now; txtComentario.Clear(); cmbEstado.SelectedItem = "PENDIENTE"; btnGuardar.Text = "Guardar"; grid.ClearSelection();
             foreach (Control c in new Control[] { cmbVehiculo, cmbArticulo, cmbEstado }) errores.SetError(c, string.Empty);
         }
-
-        private static ComboBox CrearCombo() { return new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList }; }
-        private static void AgregarCampo(TableLayoutPanel p, int r, string t, Control c, int col)
-        {
-            p.Controls.Add(new Label { Text = t, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft }, col, r); p.Controls.Add(c, col + 1, r);
-        }
-        private static Button CrearBoton(string t) { return new Button { Text = t, Width = 142, Height = 32, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(45, 95, 145), ForeColor = Color.White, Margin = new Padding(4) }; }
-        private static DataGridViewTextBoxColumn Columna(string h, string p) { return new DataGridViewTextBoxColumn { HeaderText = h, DataPropertyName = p, Name = p, SortMode = DataGridViewColumnSortMode.NotSortable }; }
 
         private sealed class VehiculoOpcion
         {

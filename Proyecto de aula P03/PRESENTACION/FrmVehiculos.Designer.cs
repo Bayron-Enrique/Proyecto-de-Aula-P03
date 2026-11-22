@@ -29,9 +29,41 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
+            this.pnlSugerencias = new System.Windows.Forms.Panel();
+            this.lstSugerencias = new System.Windows.Forms.ListBox();
+            this.lblSinSugerencias = new System.Windows.Forms.Label();
+            this.pnlSugerencias.SuspendLayout();
+            this.pnlSugerencias.BackColor = System.Drawing.Color.White;
+            this.pnlSugerencias.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.pnlSugerencias.Location = new System.Drawing.Point(24, 90);
+            this.pnlSugerencias.Name = "pnlSugerencias";
+            this.pnlSugerencias.Size = new System.Drawing.Size(280, 170);
+            this.pnlSugerencias.Controls.Add(this.lstSugerencias);
+            this.pnlSugerencias.Controls.Add(this.lblSinSugerencias);
+            this.lstSugerencias.BackColor = System.Drawing.Color.White;
+            this.lstSugerencias.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.lstSugerencias.DrawMode = System.Windows.Forms.DrawMode.OwnerDrawFixed;
+            this.lstSugerencias.Font = new System.Drawing.Font("Segoe UI", 9.5F);
+            this.lstSugerencias.IntegralHeight = false;
+            this.lstSugerencias.ItemHeight = 56;
+            this.lstSugerencias.Location = new System.Drawing.Point(1, 1);
+            this.lstSugerencias.Name = "lstSugerencias";
+            this.lstSugerencias.Size = new System.Drawing.Size(276, 166);
+            this.lstSugerencias.TabStop = false;
+            this.lstSugerencias.DrawItem += new System.Windows.Forms.DrawItemEventHandler(this.lstSugerencias_DrawItem);
+            this.lstSugerencias.Items.AddRange(new object[] { "Chevrolet", "Mazda" });
+            this.lblSinSugerencias.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.lblSinSugerencias.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.lblSinSugerencias.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
+            this.lblSinSugerencias.Text = "No se encontraron resultados";
+            this.lblSinSugerencias.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.lblSinSugerencias.Visible = false;
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(800, 450);
-            this.Text = "FrmVehiculos";
+            this.Text = "Gestión de vehículos y SOAT";
+            this.Controls.Add(this.pnlSugerencias);
+            this.Controls.SetChildIndex(this.pnlSugerencias, 0);
+            this.pnlSugerencias.ResumeLayout(false);
         }
 
         #endregion

@@ -1,7 +1,8 @@
-using DATOS;
+﻿using DATOS;
 using ENTIDADES;
 using LOGICA;
 using System;
+using System.ComponentModel;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -14,161 +15,39 @@ namespace PRESENTACION
         private readonly CargoService cargoService;
         private readonly EmpleadoService empleadoService;
         private readonly Validacion validacion = new Validacion();
-        private readonly ErrorProvider errores;
         private List<Empleado> empleados = new List<Empleado>();
         private List<Cargo> cargos = new List<Cargo>();
-        private TextBox txtCedula, txtPrimerNombre, txtSegundoNombre, txtPrimerApellido, txtSegundoApellido, txtTelefono, txtCorreo, txtDireccion, txtBuscar, txtCargo;
-        private ComboBox cmbSexo, cmbCargo;
-        private CheckBox chkActivo;
-        private DataGridView gridEmpleados, gridCargos;
-        private Button btnGuardarEmpleado, btnNuevoEmpleado;
         private bool editando;
 
         public FrmEmpleados()
         {
             InitializeComponent();
+
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime) return;
+
             var cargoRepository = new CargoRepository();
             cargoService = new CargoService(cargoRepository);
             empleadoService = new EmpleadoService(new EmpleadoRepository(), cargoRepository);
-            errores = new ErrorProvider(components) { ContainerControl = this };
-            ConstruirInterfaz();
-            EstiloUI.Aplicar(this);
+            ConfigurarInteraccion();
             Load += (s, e) => CargarTodo();
         }
 
-        private void ConstruirInterfaz()
+        private void ConfigurarInteraccion()
         {
-            Text = "Gestión de empleados y cargos";
-            BackColor = Color.FromArgb(245, 247, 250);
-            Font = new Font("Segoe UI", 9F);
-            var encabezado = new Label
-            {
-                Text = "EMPLEADOS Y CARGOS", Dock = DockStyle.Top, Height = 42,
-                Padding = new Padding(18, 8, 0, 0), Font = new Font("Segoe UI", 16F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(35, 45, 60)
-            };
-            Controls.Add(encabezado);
-
-            var split = new SplitContainer
-            {
-                Dock = DockStyle.Fill, FixedPanel = FixedPanel.Panel2,
-                BackColor = BackColor, BorderStyle = BorderStyle.None
-            };
-            split.SizeChanged += (s, e) =>
-            {
-                int maximo = split.ClientSize.Width - split.SplitterWidth - split.Panel2MinSize;
-                if (maximo >= split.Panel1MinSize)
-                    split.SplitterDistance = Math.Max(split.Panel1MinSize, Math.Min(maximo, split.ClientSize.Width - 310 - split.SplitterWidth));
-            };
-            Controls.Add(split);
-            split.PerformLayout();
-            int distanciaMaxima = split.ClientSize.Width - split.SplitterWidth - split.Panel2MinSize;
-            if (distanciaMaxima >= split.Panel1MinSize)
-                split.SplitterDistance = Math.Max(split.Panel1MinSize, Math.Min(540, distanciaMaxima));
-            encabezado.BringToFront();
-
-            var busqueda = new Panel { Dock = DockStyle.Top, Height = 40, Padding = new Padding(14, 3, 14, 3) };
-            busqueda.Controls.Add(new Label { Text = "Buscar por cédula o nombre:", AutoSize = true, Location = new Point(14, 11) });
-            txtBuscar = new TextBox { Location = new Point(195, 5), Width = 300, Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right };
-            txtBuscar.TextChanged += (s, e) => MostrarEmpleados();
-            busqueda.Controls.Add(txtBuscar);
-            EstiloUI.AjustarBusqueda(txtBuscar);
-            split.Panel1.Controls.Add(busqueda);
-
-            var campos = new TableLayoutPanel
-            {
-                Dock = DockStyle.Top, Height = 200, Padding = new Padding(14, 2, 14, 2),
-                BackColor = Color.White, ColumnCount = 4, RowCount = 5
-            };
-            campos.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92));
-            campos.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            campos.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92));
-            campos.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            for (int i = 0; i < 5; i++) campos.RowStyles.Add(new RowStyle(SizeType.Percent, 20));
-            txtCedula = CrearTexto(10);
-            txtPrimerNombre = CrearTexto(100);
-            txtSegundoNombre = CrearTexto(100);
-            txtPrimerApellido = CrearTexto(100);
-            txtSegundoApellido = CrearTexto(100);
-            cmbSexo = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill };
-            cmbSexo.Items.AddRange(new object[] { "M", "F" });
-            cmbCargo = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill };
-            txtTelefono = CrearTexto(15);
-            txtCorreo = CrearTexto(100);
-            txtDireccion = CrearTexto(150);
-            AgregarCampo(campos, 0, "Cédula", txtCedula, 0);
-            AgregarCampo(campos, 0, "Primer nombre", txtPrimerNombre, 2);
-            AgregarCampo(campos, 1, "Segundo nombre (opcional)", txtSegundoNombre, 0);
-            AgregarCampo(campos, 1, "Primer apellido", txtPrimerApellido, 2);
-            AgregarCampo(campos, 2, "Segundo apellido (opcional)", txtSegundoApellido, 0);
-            AgregarCampo(campos, 2, "Sexo", cmbSexo, 2);
-            AgregarCampo(campos, 3, "Teléfono", txtTelefono, 0);
-            AgregarCampo(campos, 3, "Correo", txtCorreo, 2);
-            AgregarCampo(campos, 4, "Cargo", cmbCargo, 0);
-            AgregarCampo(campos, 4, "Dirección", txtDireccion, 2);
-            split.Panel1.Controls.Add(campos);
-
-            var acciones = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, MinimumSize = new Size(0, 44), Padding = new Padding(10, 3, 0, 3), BackColor = Color.White };
-            btnGuardarEmpleado = CrearBoton("Guardar", Color.FromArgb(29, 111, 180));
-            btnNuevoEmpleado = CrearBoton("Nuevo", Color.FromArgb(85, 95, 110));
-            var btnEliminarEmpleado = CrearBoton("Eliminar", Color.FromArgb(173, 58, 58));
-            var btnClaveEmpleado = CrearBoton("Restablecer clave", Color.FromArgb(85, 95, 110));
             Empleado usuario = SesionActual.Empleado;
             btnClaveEmpleado.Visible = usuario?.Activo == true &&
                 string.Equals(usuario.Cargo?.NombreCargo?.Trim(), "Administrador", StringComparison.OrdinalIgnoreCase);
-            chkActivo = new CheckBox { Text = "Empleado activo", Checked = true, AutoSize = true, Anchor = AnchorStyles.Left };
+
             btnGuardarEmpleado.Click += GuardarEmpleado_Click;
             btnNuevoEmpleado.Click += (s, e) => LimpiarEmpleado();
             btnEliminarEmpleado.Click += EliminarEmpleado_Click;
             btnClaveEmpleado.Click += RestablecerClaveEmpleado_Click;
-            acciones.Controls.AddRange(new Control[] { chkActivo, btnGuardarEmpleado, btnNuevoEmpleado, btnEliminarEmpleado, btnClaveEmpleado });
-            split.Panel1.Controls.Add(acciones);
-
-            gridEmpleados = CrearGrid();
-            gridEmpleados.Columns.Add(Columna("Cédula", "Cedula"));
-            gridEmpleados.Columns.Add(Columna("Primer nombre", "PrimerNombre"));
-            gridEmpleados.Columns.Add(Columna("Segundo nombre", "SegundoNombre"));
-            gridEmpleados.Columns.Add(Columna("Primer apellido", "PrimerApellido"));
-            gridEmpleados.Columns.Add(Columna("Segundo apellido", "SegundoApellido"));
-            gridEmpleados.Columns.Add(Columna("Sexo", "Sexo"));
-            gridEmpleados.Columns.Add(Columna("Teléfono", "Telefono"));
-            gridEmpleados.Columns.Add(Columna("Correo", "CorreoElectronico"));
-            gridEmpleados.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Cargo", Name = "Cargo", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
-            gridEmpleados.CellClick += (s, e) => GridEmpleados_SelectionChanged(s, EventArgs.Empty);
-            split.Panel1.Controls.Add(gridEmpleados);
-
-            var panelCargo = split.Panel2;
-            panelCargo.Padding = new Padding(10);
-            var encabezadoCargo = new Label
-            {
-                Text = "GESTIÓN RÁPIDA DE CARGOS", Dock = DockStyle.Top, Height = 34,
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold), TextAlign = ContentAlignment.MiddleLeft
-            };
-            panelCargo.Controls.Add(encabezadoCargo);
-            txtCargo = new TextBox { Dock = DockStyle.Top, MaxLength = 100, Margin = new Padding(0, 5, 0, 5) };
-            panelCargo.Controls.Add(txtCargo);
-            var accionesCargo = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, MinimumSize = new Size(0, 44), Padding = new Padding(0, 4, 0, 4), WrapContents = true };
-            var btnCrearCargo = CrearBoton("Guardar cargo", Color.FromArgb(29, 111, 180));
-            var btnEliminarCargo = CrearBoton("Eliminar cargo", Color.FromArgb(173, 58, 58));
-            btnCrearCargo.Width = 120;
-            btnEliminarCargo.Width = 120;
             btnCrearCargo.Click += CrearCargo_Click;
             btnEliminarCargo.Click += EliminarCargo_Click;
-            accionesCargo.Controls.AddRange(new Control[] { btnCrearCargo, btnEliminarCargo });
-            panelCargo.Controls.Add(accionesCargo);
-            gridCargos = CrearGrid();
-            gridCargos.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "ID", Name = "CargoId", Width = 55 });
-            gridCargos.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Cargo", Name = "NombreCargo", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
-            panelCargo.Controls.Add(gridCargos);
-
-            split.Panel1.Controls.SetChildIndex(busqueda, 0);
-            split.Panel1.Controls.SetChildIndex(campos, 1);
-            split.Panel1.Controls.SetChildIndex(acciones, 2);
-            split.Panel1.Controls.SetChildIndex(gridEmpleados, 3);
-            panelCargo.Controls.SetChildIndex(encabezadoCargo, 0);
-            panelCargo.Controls.SetChildIndex(txtCargo, 1);
-            panelCargo.Controls.SetChildIndex(accionesCargo, 2);
-            panelCargo.Controls.SetChildIndex(gridCargos, 3);
+            txtBuscar.TextChanged += (s, e) => MostrarEmpleados();
+            gridEmpleados.CellClick += (s, e) => GridEmpleados_SelectionChanged(s, EventArgs.Empty);
+            EstiloUI.ConectarTabla(gridEmpleados);
+            EstiloUI.ConectarTabla(gridCargos);
         }
 
         private void CargarTodo()
@@ -323,38 +202,6 @@ namespace PRESENTACION
             foreach (Control control in new Control[] { txtCedula, txtPrimerNombre, txtSegundoNombre, txtPrimerApellido, txtSegundoApellido, cmbSexo, cmbCargo }) errores.SetError(control, string.Empty);
             gridEmpleados.ClearSelection();
             txtCedula.Focus();
-        }
-
-        private static TextBox CrearTexto(int maximo)
-        {
-            return new TextBox { Dock = DockStyle.Fill, MaxLength = maximo, Margin = new Padding(4, 7, 8, 3) };
-        }
-
-        private static void AgregarCampo(TableLayoutPanel panel, int fila, string texto, Control control, int columna)
-        {
-            panel.Controls.Add(new Label { Text = texto, TextAlign = ContentAlignment.MiddleLeft, Dock = DockStyle.Fill }, columna, fila);
-            panel.Controls.Add(control, columna + 1, fila);
-        }
-
-        private static Button CrearBoton(string texto, Color color)
-        {
-            return new Button { Text = texto, Width = 104, Height = 32, FlatStyle = FlatStyle.Flat, ForeColor = Color.White, BackColor = color, Margin = new Padding(4), Cursor = Cursors.Hand };
-        }
-
-        private static DataGridView CrearGrid()
-        {
-            return new DataGridView
-            {
-                Dock = DockStyle.Fill, ReadOnly = true, AllowUserToAddRows = false, AllowUserToDeleteRows = false,
-                AutoGenerateColumns = false, MultiSelect = false, SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-                BackgroundColor = Color.White, BorderStyle = BorderStyle.None, RowHeadersVisible = false,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
-            };
-        }
-
-        private static DataGridViewTextBoxColumn Columna(string encabezado, string propiedad)
-        {
-            return new DataGridViewTextBoxColumn { HeaderText = encabezado, DataPropertyName = propiedad, SortMode = DataGridViewColumnSortMode.NotSortable };
         }
 
         private static string TextoOpcional(TextBox control)

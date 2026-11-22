@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -22,22 +22,28 @@ namespace PRESENTACION
         private readonly EmpleadoService empleadoService;
         private readonly ArticuloService articuloService;
         private readonly Validacion validacion = new Validacion();
-        private readonly ErrorProvider errores;
         private List<Agenda> agendas = new List<Agenda>();
         private List<Vehiculo> vehiculos = new List<Vehiculo>();
         private List<Empleado> empleados = new List<Empleado>();
         private List<Servicio> servicios = new List<Servicio>();
-        private ComboBox cmbVehiculo, cmbEmpleado, cmbServicio, cmbEstado, cmbFiltroEstado;
-        private DateTimePicker dtpFecha, dtpFiltroFecha;
-        private TextBox txtComentario;
-        private DataGridView grid;
-        private Button btnGuardar;
         private bool editando;
         private int agendaSeleccionada;
+        private Timer temporizadorSugerencias;
+        private ComboBox campoSugerencias;
+        private List<object> elementosSugeridos = new List<object>();
+        private Func<IEnumerable<object>> obtenerElementosSugeridos;
+        private Func<object, string> obtenerTituloSugerido, obtenerSubtituloSugerido, obtenerBusquedaSugerida, obtenerTextoSeleccionado;
+        private Action<object> seleccionarElementoSugerido;
+        private string textoEscritoSugerido;
+        private bool seleccionandoSugerencia;
 
         public FrmAgenda()
         {
             InitializeComponent();
+
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime) return;
+            pnlSugerencias.Visible = false;
+
             var clienteRepo = new ClienteRepository();
             var vehiculoRepo = new VehiculoRepository();
             var empleadoRepo = new EmpleadoRepository();
@@ -50,82 +56,222 @@ namespace PRESENTACION
             articuloService = new ArticuloService(articuloRepo, proveedorRepo);
             agendaService = new AgendaService(agendaRepo, clienteRepo, vehiculoRepo, empleadoRepo, articuloRepo);
             mantenimientoService = new NotificacionMantenimientoService(notificacionRepo, vehiculoRepo, articuloRepo);
-            errores = new ErrorProvider(components) { ContainerControl = this };
-            ConstruirInterfaz();
-            EstiloUI.Aplicar(this);
+            ConfigurarInteraccion();
             Load += (s, e) => CargarTodo();
         }
 
-        private void ConstruirInterfaz()
+        private void ConfigurarInteraccion()
         {
-            Text = "Agenda de citas";
-            ClientSize = new System.Drawing.Size(1120, 720);
-            MinimumSize = new System.Drawing.Size(900, 600);
-            BackColor = System.Drawing.Color.FromArgb(245, 247, 250);
-            Font = new System.Drawing.Font("Segoe UI", 9F);
-            var titulo = new Label { Text = "AGENDA DE CITAS", Dock = DockStyle.Top, Height = 42, Padding = new Padding(18, 8, 0, 0), Font = new System.Drawing.Font("Segoe UI", 16F, System.Drawing.FontStyle.Bold) };
-            Controls.Add(titulo);
-
-            var campos = new TableLayoutPanel { Dock = DockStyle.Top, Height = 152, Padding = new Padding(16, 4, 16, 4), ColumnCount = 4, RowCount = 3, BackColor = System.Drawing.Color.White };
-            campos.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100));
-            campos.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            campos.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100));
-            campos.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            for (int i = 0; i < 3; i++) campos.RowStyles.Add(new RowStyle(SizeType.Percent, 33.33F));
-            cmbVehiculo = Combo(); cmbEmpleado = Combo(); cmbServicio = Combo(); cmbEstado = Combo();
-            cmbEstado.Items.AddRange(new object[] { "PENDIENTE", "EN PROCESO", "COMPLETADA", "CANCELADA" });
+            dtpFecha.Value = DateTime.Now.AddHours(1);
             cmbEstado.SelectedIndex = 0;
-            dtpFecha = new DateTimePicker { Dock = DockStyle.Fill, Format = DateTimePickerFormat.Custom, CustomFormat = "dd/MM/yyyy HH:mm", ShowUpDown = true, Value = DateTime.Now.AddHours(1) };
-            txtComentario = new TextBox { Dock = DockStyle.Fill, MaxLength = 200 };
-            AgregarCampo(campos, 0, "Vehículo", cmbVehiculo, 0);
-            AgregarCampo(campos, 0, "Empleado", cmbEmpleado, 2);
-            AgregarCampo(campos, 1, "Servicio", cmbServicio, 0);
-            AgregarCampo(campos, 1, "Fecha y hora", dtpFecha, 2);
-            AgregarCampo(campos, 2, "Estado", cmbEstado, 0);
-            AgregarCampo(campos, 2, "Observación", txtComentario, 2);
-            Controls.Add(campos);
+            cmbFiltroEstado.SelectedIndex = 0;
 
-            var acciones = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 42, Padding = new Padding(12, 3, 0, 3), BackColor = System.Drawing.Color.White };
-            btnGuardar = Boton("Guardar cita");
-            var btnNuevo = Boton("Nuevo");
-            var btnEstado = Boton("Cambiar estado");
-            var btnCancelar = Boton("Cancelar cita");
-            var btnMantenimiento = Boton("Notificaciones de mantenimiento");
-            btnMantenimiento.Width = 220;
             btnGuardar.Click += Guardar_Click;
             btnNuevo.Click += (s, e) => LimpiarFormulario();
             btnEstado.Click += CambiarEstado_Click;
             btnCancelar.Click += (s, e) => CambiarEstado("CANCELADA");
-            btnMantenimiento.Click += (s, e) => { using (var form = new FrmMantenimiento()) form.ShowDialog(this); };
-            acciones.Controls.AddRange(new Control[] { btnGuardar, btnNuevo, btnEstado, btnCancelar, btnMantenimiento });
-            Controls.Add(acciones);
-
-            var filtros = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 42, Padding = new Padding(16, 4, 0, 2) };
-            dtpFiltroFecha = new DateTimePicker { Width = 150, Format = DateTimePickerFormat.Short, ShowCheckBox = true, Checked = false };
-            cmbFiltroEstado = Combo(); cmbFiltroEstado.Width = 150;
-            cmbFiltroEstado.Items.AddRange(new object[] { "Todos", "PENDIENTE", "EN PROCESO", "COMPLETADA", "CANCELADA" });
-            cmbFiltroEstado.SelectedIndex = 0;
+            btnMantenimiento.Click += (s, e) =>
+            {
+                using (var formulario = new FrmMantenimiento())
+                {
+                    formulario.ShowDialog(this);
+                }
+            };
             dtpFiltroFecha.ValueChanged += (s, e) => AplicarFiltros();
             cmbFiltroEstado.SelectedIndexChanged += (s, e) => AplicarFiltros();
-            filtros.Controls.Add(new Label { Text = "Fecha:", AutoSize = true, Padding = new Padding(0, 5, 0, 0) });
-            filtros.Controls.Add(dtpFiltroFecha);
-            filtros.Controls.Add(new Label { Text = "Estado:", AutoSize = true, Padding = new Padding(12, 5, 0, 0) });
-            filtros.Controls.Add(cmbFiltroEstado);
-            Controls.Add(filtros);
-
-            grid = new DataGridView { Dock = DockStyle.Fill, ReadOnly = true, AllowUserToAddRows = false, AutoGenerateColumns = false, MultiSelect = false, SelectionMode = DataGridViewSelectionMode.FullRowSelect, RowHeadersVisible = false, BackgroundColor = System.Drawing.Color.White, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill };
-            grid.Columns.Add(Columna("ID", "Id"));
-            grid.Columns.Add(Columna("Fecha y hora", "Fecha"));
-            grid.Columns.Add(Columna("Placa", "Placa"));
-            grid.Columns.Add(Columna("Cliente", "Cliente"));
-            grid.Columns.Add(Columna("Empleado", "Empleado"));
-            grid.Columns.Add(Columna("Cargo", "Cargo"));
-            grid.Columns.Add(Columna("Servicio", "Servicio"));
-            grid.Columns.Add(Columna("Estado", "Estado"));
-            grid.Columns.Add(Columna("Observación", "Comentario"));
             grid.CellClick += (s, e) => Grid_SelectionChanged(s, EventArgs.Empty);
-            Controls.Add(grid);
-            Controls.SetChildIndex(titulo, 0); Controls.SetChildIndex(campos, 1); Controls.SetChildIndex(acciones, 2); Controls.SetChildIndex(filtros, 3); Controls.SetChildIndex(grid, 4);
+            EstiloUI.ConectarTabla(grid);
+
+            cmbVehiculo.DropDownStyle = ComboBoxStyle.DropDown;
+            cmbServicio.DropDownStyle = ComboBoxStyle.DropDown;
+            temporizadorSugerencias = new Timer { Interval = 150 };
+            temporizadorSugerencias.Tick += (s, e) =>
+            {
+                temporizadorSugerencias.Stop();
+                MostrarSugerencias();
+            };
+            ConfigurarSugerenciasCombo(cmbVehiculo,
+                () => vehiculos.Cast<object>(),
+                elemento => ((Vehiculo)elemento).Placa,
+                elemento =>
+                {
+                    Vehiculo v = (Vehiculo)elemento;
+                    return (v.Marca + " " + v.Linea + " • " + v.Color).Trim();
+                },
+                elemento =>
+                {
+                    Vehiculo v = (Vehiculo)elemento;
+                    return v.Placa + " " + v.Marca + " " + v.Linea + " " + v.Color + " " +
+                           (v.Cliente == null ? string.Empty : v.Cliente.Nombre + " " + v.Cliente.Apellido + " " + v.Cliente.Cedula);
+                },
+                elemento => new OpcionVehiculo((Vehiculo)elemento).Texto,
+                elemento => cmbVehiculo.SelectedValue = ((Vehiculo)elemento).Placa);
+            ConfigurarSugerenciasCombo(cmbServicio,
+                () => servicios.Cast<object>(),
+                elemento => ((Servicio)elemento).Nombre,
+                elemento => "Servicio • " + ((Servicio)elemento).PrecioVenta.ToString("C0", CultureInfo.CurrentCulture),
+                elemento => ((Servicio)elemento).Nombre + " " + ((Servicio)elemento).Descripcion + " " + ((Servicio)elemento).PrecioVenta,
+                elemento => ((Servicio)elemento).Nombre,
+                elemento => cmbServicio.SelectedValue = ((Servicio)elemento).ArticuloId);
+            lstSugerencias.DrawItem += lstSugerencias_DrawItem;
+            lstSugerencias.MouseClick += lstSugerencias_MouseClick;
+            Deactivate += (s, e) => pnlSugerencias.Visible = false;
+            Resize += (s, e) => { if (pnlSugerencias.Visible) PosicionarSugerencias(); };
+            FormClosed += (s, e) => { temporizadorSugerencias.Stop(); temporizadorSugerencias.Dispose(); };
+            lstSugerencias.Items.Clear();
+
+        }
+
+        private void ConfigurarSugerenciasCombo(ComboBox combo, Func<IEnumerable<object>> proveedor,
+            Func<object, string> titulo, Func<object, string> subtitulo, Func<object, string> busqueda,
+            Func<object, string> textoSeleccionado, Action<object> seleccionar)
+        {
+            combo.TextChanged += (s, e) =>
+            {
+                if (seleccionandoSugerencia || !combo.Focused) return;
+                campoSugerencias = combo;
+                obtenerElementosSugeridos = proveedor;
+                obtenerTituloSugerido = titulo;
+                obtenerSubtituloSugerido = subtitulo;
+                obtenerBusquedaSugerida = busqueda;
+                obtenerTextoSeleccionado = textoSeleccionado;
+                seleccionarElementoSugerido = seleccionar;
+                textoEscritoSugerido = combo.Text;
+                temporizadorSugerencias.Stop();
+                temporizadorSugerencias.Start();
+            };
+            combo.KeyDown += ComboSugerencias_KeyDown;
+            combo.LostFocus += (s, e) =>
+            {
+                if (!pnlSugerencias.ClientRectangle.Contains(pnlSugerencias.PointToClient(Cursor.Position)))
+                    pnlSugerencias.Visible = false;
+            };
+        }
+
+        private void MostrarSugerencias()
+        {
+            if (campoSugerencias == null || !campoSugerencias.Focused || string.IsNullOrWhiteSpace(campoSugerencias.Text))
+            {
+                pnlSugerencias.Visible = false;
+                return;
+            }
+
+            List<string> terminos = Normalizar(campoSugerencias.Text).Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+            elementosSugeridos = (obtenerElementosSugeridos == null ? Enumerable.Empty<object>() : obtenerElementosSugeridos())
+                .Where(elemento => terminos.All(termino => Normalizar(obtenerTituloSugerido(elemento) + " " +
+                    obtenerSubtituloSugerido(elemento) + " " + obtenerBusquedaSugerida(elemento)).Contains(termino)))
+                .Take(100).ToList();
+
+            lstSugerencias.BeginUpdate();
+            lstSugerencias.Items.Clear();
+            for (int i = 0; i < elementosSugeridos.Count; i++) lstSugerencias.Items.Add(obtenerTituloSugerido(elementosSugeridos[i]));
+            lstSugerencias.EndUpdate();
+            bool sinResultados = elementosSugeridos.Count == 0;
+            lstSugerencias.Visible = !sinResultados;
+            lblSinSugerencias.Visible = sinResultados;
+            PosicionarSugerencias();
+            pnlSugerencias.Visible = true;
+            pnlSugerencias.BringToFront();
+        }
+
+        private void PosicionarSugerencias()
+        {
+            if (campoSugerencias == null) return;
+            Rectangle campo = campoSugerencias.RectangleToScreen(campoSugerencias.ClientRectangle);
+            Rectangle area = Screen.FromRectangle(campo).WorkingArea;
+            int ancho = Math.Min(Math.Max(campo.Width, 260), area.Width);
+            int filasVisibles = Math.Min(7, Math.Max(1, elementosSugeridos.Count));
+            int alto = elementosSugeridos.Count == 0 ? 58 : filasVisibles * 56 + 2;
+            bool arriba = area.Bottom - campo.Bottom < alto && campo.Top - area.Top > area.Bottom - campo.Bottom;
+            int x = Math.Max(area.Left, Math.Min(campo.Left, area.Right - ancho));
+            int y = arriba ? campo.Top - alto : campo.Bottom;
+            if (y + alto > area.Bottom) y = area.Bottom - alto;
+            if (y < area.Top) y = area.Top;
+            pnlSugerencias.Bounds = new Rectangle(PointToClient(new Point(x, y)), new Size(ancho, alto));
+            lstSugerencias.Dock = DockStyle.Fill;
+            lblSinSugerencias.Dock = DockStyle.Fill;
+        }
+
+        private void ComboSugerencias_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (!pnlSugerencias.Visible) return;
+            if (e.KeyCode == Keys.Down || e.KeyCode == Keys.Up)
+            {
+                if (lstSugerencias.Items.Count > 0)
+                {
+                    int indice = lstSugerencias.SelectedIndex + (e.KeyCode == Keys.Down ? 1 : -1);
+                    if (indice < 0) indice = lstSugerencias.Items.Count - 1;
+                    if (indice >= lstSugerencias.Items.Count) indice = 0;
+                    lstSugerencias.SelectedIndex = indice;
+                }
+                e.SuppressKeyPress = true;
+            }
+            else if (e.KeyCode == Keys.Escape)
+            {
+                pnlSugerencias.Visible = false;
+                e.SuppressKeyPress = true;
+            }
+            else if (e.KeyCode == Keys.Enter && lstSugerencias.SelectedIndex >= 0)
+            {
+                SeleccionarSugerencia(lstSugerencias.SelectedIndex);
+                e.SuppressKeyPress = true;
+            }
+            else if (e.KeyCode == Keys.Tab && lstSugerencias.SelectedIndex >= 0)
+            {
+                SeleccionarSugerencia(lstSugerencias.SelectedIndex);
+                e.SuppressKeyPress = true;
+                SelectNextControl((Control)sender, !e.Shift, true, true, true);
+            }
+        }
+
+        private void SeleccionarSugerencia(int indice)
+        {
+            if (indice < 0 || indice >= elementosSugeridos.Count) return;
+            object seleccionado = elementosSugeridos[indice];
+            seleccionandoSugerencia = true;
+            campoSugerencias.Text = obtenerTextoSeleccionado(seleccionado);
+            campoSugerencias.SelectionStart = campoSugerencias.Text.Length;
+            seleccionarElementoSugerido(seleccionado);
+            pnlSugerencias.Visible = false;
+            campoSugerencias.Focus();
+            seleccionandoSugerencia = false;
+        }
+
+        private void lstSugerencias_MouseClick(object sender, MouseEventArgs e)
+        {
+            int indice = lstSugerencias.IndexFromPoint(e.Location);
+            if (indice >= 0) SeleccionarSugerencia(indice);
+        }
+
+        private void lstSugerencias_DrawItem(object sender, DrawItemEventArgs e)
+        {
+            if (e.Index < 0 || e.Index >= elementosSugeridos.Count) return;
+            object elemento = elementosSugeridos[e.Index];
+            string titulo = obtenerTituloSugerido(elemento) ?? string.Empty;
+            string subtitulo = obtenerSubtituloSugerido(elemento) ?? string.Empty;
+            bool seleccionado = (e.State & DrawItemState.Selected) == DrawItemState.Selected;
+            using (Brush fondo = new SolidBrush(seleccionado ? Color.FromArgb(239, 246, 255) : Color.White)) e.Graphics.FillRectangle(fondo, e.Bounds);
+            if (seleccionado) using (Brush acento = new SolidBrush(Color.FromArgb(37, 99, 235))) e.Graphics.FillRectangle(acento, e.Bounds.Left, e.Bounds.Top, 3, e.Bounds.Height);
+            bool coincide = Normalizar(titulo).Contains(Normalizar(textoEscritoSugerido));
+            using (Font fuente = new Font("Segoe UI", 9.5f, coincide ? FontStyle.Bold : FontStyle.Regular))
+            using (Brush tinta = new SolidBrush(coincide ? Color.FromArgb(37, 99, 235) : Color.FromArgb(15, 23, 42)))
+            using (Font fuenteSecundaria = new Font("Segoe UI", 8.5f))
+            using (Brush gris = new SolidBrush(Color.FromArgb(100, 116, 139)))
+            {
+                e.Graphics.DrawString(titulo, fuente, tinta, e.Bounds.Left + 12, e.Bounds.Top + 7);
+                e.Graphics.DrawString(subtitulo, fuenteSecundaria, gris, e.Bounds.Left + 12, e.Bounds.Top + 31);
+            }
+            e.DrawFocusRectangle();
+        }
+
+        private static string Normalizar(string texto)
+        {
+            string descompuesto = (texto ?? string.Empty).Normalize(NormalizationForm.FormD);
+            StringBuilder resultado = new StringBuilder(descompuesto.Length);
+            foreach (char caracter in descompuesto)
+                if (CharUnicodeInfo.GetUnicodeCategory(caracter) != UnicodeCategory.NonSpacingMark)
+                    resultado.Append(char.ToLowerInvariant(caracter));
+            return resultado.ToString().Normalize(NormalizationForm.FormC);
         }
 
         private void CargarTodo()
@@ -210,15 +356,6 @@ namespace PRESENTACION
             grid.ClearSelection();
             foreach (Control control in new Control[] { cmbVehiculo, cmbEmpleado, cmbServicio, cmbEstado }) errores.SetError(control, string.Empty);
         }
-
-        private static ComboBox Combo() { return new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList }; }
-        private static void AgregarCampo(TableLayoutPanel p, int r, string label, Control control, int c)
-        {
-            p.Controls.Add(new Label { Text = label, Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.MiddleLeft }, c, r);
-            p.Controls.Add(control, c + 1, r);
-        }
-        private static Button Boton(string text) { return new Button { Text = text, Width = 132, Height = 32, BackColor = System.Drawing.Color.FromArgb(45, 95, 145), ForeColor = System.Drawing.Color.White, FlatStyle = FlatStyle.Flat, Margin = new Padding(4) }; }
-        private static DataGridViewTextBoxColumn Columna(string header, string property) { return new DataGridViewTextBoxColumn { HeaderText = header, DataPropertyName = property, Name = property, SortMode = DataGridViewColumnSortMode.NotSortable }; }
 
         private sealed class OpcionVehiculo
         {

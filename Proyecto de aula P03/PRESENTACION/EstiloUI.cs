@@ -17,6 +17,17 @@ namespace PRESENTACION
             Aplicar(formulario.Controls);
         }
 
+        public static void ConectarTabla(DataGridView grid)
+        {
+            grid.AutoGenerateColumns = false;
+            grid.CellFormatting += FormatearCelda;
+            grid.DataSourceChanged += (s, e) =>
+            {
+                grid.ClearSelection();
+                grid.CurrentCell = null;
+            };
+        }
+
         // WinForms distribuye Dock desde el último control de la colección.
         // Los formularios declaran primero sus barras superiores y al final la tabla.
         private static void OrdenarDock(Control padre)

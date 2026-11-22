@@ -26,6 +26,55 @@ namespace LOGICA
                 string.Equals(v.Cliente.Cedula, cedula, StringComparison.Ordinal)).ToList();
         }
 
+        public List<string> ObtenerMarcasComunes()
+        {
+            return new List<string>
+            {
+                "Chevrolet", "Renault", "Mazda", "Kia", "Hyundai", "Toyota", "Nissan",
+                "Suzuki", "Volkswagen", "Ford", "Honda", "Mitsubishi", "BMW",
+                "Mercedes-Benz", "Jeep", "Subaru", "BYD", "JAC", "Chery", "MG"
+            };
+        }
+
+        public List<string> ObtenerColoresComunes()
+        {
+            return new List<string>
+            {
+                "Blanco", "Negro", "Gris", "Plata", "Rojo", "Azul", "Verde", "Amarillo",
+                "Marrón", "Beige", "Naranja", "Vino tinto", "Dorado"
+            };
+        }
+
+        public List<string> ObtenerLineasPorMarca(string marca)
+        {
+            if (string.IsNullOrWhiteSpace(marca)) return new List<string>();
+
+            switch (marca.Trim().ToUpperInvariant())
+            {
+                case "CHEVROLET": return new List<string> { "Spark", "Sail", "Onix", "Tracker", "Joy" };
+                case "RENAULT": return new List<string> { "Kwid", "Logan", "Sandero", "Duster", "Stepway" };
+                case "MAZDA": return new List<string> { "Mazda 2", "Mazda 3", "CX-30", "CX-5", "CX-9" };
+                case "KIA": return new List<string> { "Picanto", "Rio", "Sportage", "Seltos", "Cerato" };
+                case "HYUNDAI": return new List<string> { "i10", "Accent", "Tucson", "Creta", "Kona" };
+                case "TOYOTA": return new List<string> { "Yaris", "Corolla", "Hilux", "Prado", "RAV4" };
+                case "NISSAN": return new List<string> { "March", "Versa", "Sentra", "Kicks", "Frontier" };
+                case "SUZUKI": return new List<string> { "Swift", "Alto", "Vitara", "S-Cross", "Jimny" };
+                case "VOLKSWAGEN": return new List<string> { "Polo", "Jetta", "Golf", "T-Cross", "Tiguan" };
+                case "FORD": return new List<string> { "Fiesta", "Focus", "Escape", "Ranger", "Explorer" };
+                case "HONDA": return new List<string> { "Civic", "City", "CR-V", "HR-V", "Fit" };
+                case "MITSUBISHI": return new List<string> { "Lancer", "ASX", "Outlander", "L200", "Montero" };
+                case "BMW": return new List<string> { "Serie 1", "Serie 3", "Serie 5", "X1", "X3" };
+                case "MERCEDES-BENZ": return new List<string> { "Clase A", "Clase C", "Clase E", "GLA", "GLC" };
+                case "JEEP": return new List<string> { "Renegade", "Compass", "Cherokee", "Wrangler" };
+                case "SUBARU": return new List<string> { "Impreza", "XV", "Forester", "Outback" };
+                case "BYD": return new List<string> { "Dolphin", "Yuan", "Song", "Seagull" };
+                case "JAC": return new List<string> { "S2", "S3", "JS4", "T8" };
+                case "CHERY": return new List<string> { "Tiggo 2", "Tiggo 4", "Tiggo 7", "Tiggo 8" };
+                case "MG": return new List<string> { "MG 3", "ZS", "HS", "RX5" };
+                default: return new List<string>();
+            }
+        }
+
         public string Guardar(string placa, int modelo, string marca, string tipoVehiculo, string color, string linea, string cedulaCliente)
         {
             try

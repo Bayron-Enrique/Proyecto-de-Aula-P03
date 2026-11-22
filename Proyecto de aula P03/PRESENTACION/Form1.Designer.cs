@@ -81,7 +81,7 @@ namespace PRESENTACION
             this.pnBarraSuperior.Dock = System.Windows.Forms.DockStyle.Top;
             this.pnBarraSuperior.Location = new System.Drawing.Point(0, 0);
             this.pnBarraSuperior.Name = "pnBarraSuperior";
-            this.pnBarraSuperior.Size = new System.Drawing.Size(1920, 54);
+            this.pnBarraSuperior.Size = new System.Drawing.Size(1386, 54);
             this.pnBarraSuperior.TabIndex = 0;
             this.pnBarraSuperior.MouseDown += new System.Windows.Forms.MouseEventHandler(this.pnBarraSuperior_MouseDown);
             this.pnBarraSuperior.MouseUp += new System.Windows.Forms.MouseEventHandler(this.pnBarraSuperior_MouseUp);
@@ -94,7 +94,7 @@ namespace PRESENTACION
             this.btnSalir.FlatAppearance.MouseOverBackColor = System.Drawing.Color.Red;
             this.btnSalir.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnSalir.Image = ((System.Drawing.Image)(resources.GetObject("btnSalir.Image")));
-            this.btnSalir.Location = new System.Drawing.Point(1862, 19);
+            this.btnSalir.Location = new System.Drawing.Point(1328, 19);
             this.btnSalir.Name = "btnSalir";
             this.btnSalir.Size = new System.Drawing.Size(30, 25);
             this.btnSalir.TabIndex = 2;
@@ -119,7 +119,7 @@ namespace PRESENTACION
             this.btnMaximizar.FlatAppearance.MouseOverBackColor = System.Drawing.Color.Silver;
             this.btnMaximizar.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnMaximizar.Image = ((System.Drawing.Image)(resources.GetObject("btnMaximizar.Image")));
-            this.btnMaximizar.Location = new System.Drawing.Point(1817, 19);
+            this.btnMaximizar.Location = new System.Drawing.Point(1283, 19);
             this.btnMaximizar.Name = "btnMaximizar";
             this.btnMaximizar.Size = new System.Drawing.Size(30, 25);
             this.btnMaximizar.TabIndex = 2;
@@ -133,7 +133,7 @@ namespace PRESENTACION
             this.label2.Location = new System.Drawing.Point(53, 9);
             this.label2.Name = "label2";
             this.label2.Padding = new System.Windows.Forms.Padding(0, 10, 0, 0);
-            this.label2.Size = new System.Drawing.Size(97, 30);
+            this.label2.Size = new System.Drawing.Size(83, 27);
             this.label2.TabIndex = 1;
             this.label2.Text = "GOT-AUTO";
             // 
@@ -145,7 +145,7 @@ namespace PRESENTACION
             this.btnMinimizar.FlatAppearance.MouseOverBackColor = System.Drawing.Color.Silver;
             this.btnMinimizar.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnMinimizar.Image = ((System.Drawing.Image)(resources.GetObject("btnMinimizar.Image")));
-            this.btnMinimizar.Location = new System.Drawing.Point(1772, 19);
+            this.btnMinimizar.Location = new System.Drawing.Point(1238, 19);
             this.btnMinimizar.Name = "btnMinimizar";
             this.btnMinimizar.Size = new System.Drawing.Size(28, 27);
             this.btnMinimizar.TabIndex = 2;
@@ -166,7 +166,7 @@ namespace PRESENTACION
             this.sidebar.ForeColor = System.Drawing.Color.White;
             this.sidebar.Location = new System.Drawing.Point(0, 54);
             this.sidebar.Name = "sidebar";
-            this.sidebar.Size = new System.Drawing.Size(251, 1026);
+            this.sidebar.Size = new System.Drawing.Size(251, 734);
             this.sidebar.TabIndex = 1;
             // 
             // PnPanel
@@ -438,7 +438,7 @@ namespace PRESENTACION
             // Form1
             // 
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
-            this.ClientSize = new System.Drawing.Size(1920, 1080);
+            this.ClientSize = new System.Drawing.Size(1386, 788);
             this.Controls.Add(this.sidebar);
             this.Controls.Add(this.pnBarraSuperior);
             this.ForeColor = System.Drawing.Color.Black;

@@ -2,6 +2,7 @@ using DATOS;
 using ENTIDADES;
 using LOGICA;
 using System;
+using System.ComponentModel;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
@@ -24,8 +25,17 @@ namespace PRESENTACION
         private List<Vehiculo> vehiculos = new List<Vehiculo>();
         private List<Soat> soats = new List<Soat>();
 
-        private TextBox txtPlaca, txtMarca, txtModelo, txtColor, txtLinea, txtBuscarVehiculo;
-        private ComboBox cmbTipoVehiculo, cmbPropietario;
+        private TextBox txtPlaca, txtModelo, txtBuscarVehiculo;
+        private ComboBox cmbTipoVehiculo, cmbPropietario, cmbMarca, cmbColor, cmbLinea;
+        private Panel pnlSugerencias;
+        private ListBox lstSugerencias;
+        private Label lblSinSugerencias;
+        private Timer temporizadorSugerencias;
+        private ComboBox campoSugerencias;
+        private Func<IEnumerable<string>> obtenerOpcionesSugeridas;
+        private string subtituloSugerencias;
+        private string textoSugerido;
+        private bool seleccionandoSugerencia;
         private DataGridView gridVehiculos;
         private Button btnGuardarVehiculo;
         private bool editandoVehiculo;
@@ -41,12 +51,17 @@ namespace PRESENTACION
         public FrmVehiculos()
         {
             InitializeComponent();
+            ConstruirInterfaz();
+            pnlSugerencias.BringToFront();
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime) return;
+
+            pnlSugerencias.Visible = false;
             var clienteRepository = new ClienteRepository();
             clienteService = new ClienteService(clienteRepository);
             vehiculoService = new VehiculoService(new VehiculoRepository(), clienteRepository);
             soatService = new SoatService(new SoatRepository(), new VehiculoRepository());
             errores = new ErrorProvider(components) { ContainerControl = this };
-            ConstruirInterfaz();
+            ConfigurarSugerenciasVehiculo();
             EstiloUI.Aplicar(this);
             Load += (s, e) => CargarTodo();
         }
@@ -85,25 +100,36 @@ namespace PRESENTACION
             txtPlaca = CrearTexto(6);
             txtPlaca.CharacterCasing = CharacterCasing.Upper;
             txtPlaca.TextChanged += (s, e) => { int pos = txtPlaca.SelectionStart; txtPlaca.Text = txtPlaca.Text.ToUpperInvariant(); txtPlaca.SelectionStart = Math.Min(pos, txtPlaca.Text.Length); };
-            txtMarca = CrearTexto(50);
+            cmbMarca = CrearComboEditable(new[]
+            {
+                "Chevrolet", "Renault", "Mazda", "Kia", "Hyundai", "Toyota", "Nissan",
+                "Suzuki", "Volkswagen", "Ford", "Honda", "Mitsubishi", "BMW",
+                "Mercedes-Benz", "Jeep", "Subaru", "BYD", "JAC", "Chery", "MG"
+            });
             txtModelo = CrearTexto(4);
             txtModelo.KeyPress += SoloDigitos_KeyPress;
             cmbTipoVehiculo = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
             cmbTipoVehiculo.Items.AddRange(new object[] { "Automovil", "Motocicleta" });
-            txtColor = CrearTexto(50);
-            txtLinea = CrearTexto(50);
+            cmbColor = CrearComboEditable(new[]
+            {
+                "Blanco", "Negro", "Gris", "Plata", "Rojo", "Azul", "Verde", "Amarillo",
+                "Marrón", "Beige", "Naranja", "Vino tinto", "Dorado"
+            });
+            cmbLinea = CrearComboEditable(new string[0]);
+            cmbMarca.SelectedIndexChanged += CmbMarca_SelectedIndexChanged;
             cmbPropietario = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
 
             AgregarCampo(campos, 0, "Placa", txtPlaca, 0);
-            AgregarCampo(campos, 0, "Marca", txtMarca, 2);
+            AgregarCampo(campos, 0, "Marca", cmbMarca, 2);
             AgregarCampo(campos, 1, "Modelo / año", txtModelo, 0);
             AgregarCampo(campos, 1, "Tipo", cmbTipoVehiculo, 2);
-            AgregarCampo(campos, 2, "Color", txtColor, 0);
-            AgregarCampo(campos, 2, "Línea", txtLinea, 2);
+            AgregarCampo(campos, 2, "Color", cmbColor, 0);
+            AgregarCampo(campos, 2, "Línea", cmbLinea, 2);
             campos.Controls.Add(new Label { Text = "Propietario", TextAlign = ContentAlignment.MiddleLeft, Dock = DockStyle.Fill }, 0, 3);
             campos.Controls.Add(cmbPropietario, 1, 3);
             campos.SetColumnSpan(cmbPropietario, 3);
             tabVehiculos.Controls.Add(campos);
+
 
             var acciones = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 42, Padding = new Padding(12, 3, 0, 3), BackColor = Color.White };
             btnGuardarVehiculo = CrearBoton("Guardar", Color.FromArgb(29, 111, 180));
@@ -239,6 +265,202 @@ namespace PRESENTACION
             else cmbPlacaSoat.SelectedIndex = vehiculos.Count > 0 ? 0 : -1;
         }
 
+        private void CmbMarca_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (vehiculoService == null) return;
+            string lineaSeleccionada = cmbLinea.Text;
+            List<string> lineas = vehiculoService.ObtenerLineasPorMarca(cmbMarca.Text);
+
+            cmbLinea.BeginUpdate();
+            cmbLinea.Items.Clear();
+            cmbLinea.Items.AddRange(lineas.ToArray());
+            cmbLinea.Text = lineas.Contains(lineaSeleccionada, StringComparer.OrdinalIgnoreCase)
+                ? lineaSeleccionada
+                : string.Empty;
+            cmbLinea.EndUpdate();
+        }
+
+        private void ConfigurarSugerenciasVehiculo()
+        {
+            temporizadorSugerencias = new Timer { Interval = 150 };
+            temporizadorSugerencias.Tick += (s, e) =>
+            {
+                temporizadorSugerencias.Stop();
+                MostrarSugerencias();
+            };
+
+            cmbMarca.TextChanged += (s, e) => ProgramarSugerencias(cmbMarca,
+                () => cmbMarca.Items.Cast<string>(), "Marca común");
+            cmbColor.TextChanged += (s, e) => ProgramarSugerencias(cmbColor,
+                () => cmbColor.Items.Cast<string>(), "Color común");
+            cmbLinea.TextChanged += (s, e) => ProgramarSugerencias(cmbLinea,
+                () => vehiculoService.ObtenerLineasPorMarca(cmbMarca.Text), "Línea de " + cmbMarca.Text);
+
+            foreach (ComboBox combo in new[] { cmbMarca, cmbColor, cmbLinea })
+            {
+                combo.KeyDown += ComboSugerencias_KeyDown;
+                combo.LostFocus += ComboSugerencias_LostFocus;
+            }
+            lstSugerencias.DrawItem += lstSugerencias_DrawItem;
+            lstSugerencias.MouseClick += lstSugerencias_MouseClick;
+            Deactivate += (s, e) => pnlSugerencias.Visible = false;
+            Resize += (s, e) => { if (pnlSugerencias.Visible) PosicionarSugerencias(); };
+            FormClosed += (s, e) =>
+            {
+                temporizadorSugerencias.Stop();
+                temporizadorSugerencias.Dispose();
+            };
+            lstSugerencias.Items.Clear();
+        }
+
+        private void ProgramarSugerencias(ComboBox combo, Func<IEnumerable<string>> opciones, string subtitulo)
+        {
+            if (seleccionandoSugerencia || !combo.Focused) return;
+            campoSugerencias = combo;
+            obtenerOpcionesSugeridas = opciones;
+            subtituloSugerencias = subtitulo;
+            temporizadorSugerencias.Stop();
+            temporizadorSugerencias.Start();
+        }
+
+        private void MostrarSugerencias()
+        {
+            if (campoSugerencias == null || !campoSugerencias.Focused || string.IsNullOrWhiteSpace(campoSugerencias.Text))
+            {
+                pnlSugerencias.Visible = false;
+                return;
+            }
+
+            List<string> terminos = Normalizar(campoSugerencias.Text)
+                .Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+            List<string> coincidencias = (obtenerOpcionesSugeridas == null
+                    ? Enumerable.Empty<string>()
+                    : obtenerOpcionesSugeridas())
+                .Where(opcion => terminos.All(t => Normalizar(opcion).Contains(t)))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            lstSugerencias.BeginUpdate();
+            lstSugerencias.Items.Clear();
+            foreach (string opcion in coincidencias) lstSugerencias.Items.Add(opcion);
+            lstSugerencias.EndUpdate();
+            textoSugerido = campoSugerencias.Text;
+            bool sinResultados = coincidencias.Count == 0;
+            lstSugerencias.Visible = !sinResultados;
+            lblSinSugerencias.Visible = sinResultados;
+            PosicionarSugerencias();
+            pnlSugerencias.Visible = true;
+            pnlSugerencias.BringToFront();
+        }
+
+        private void PosicionarSugerencias()
+        {
+            if (campoSugerencias == null) return;
+            Rectangle campo = campoSugerencias.RectangleToScreen(campoSugerencias.ClientRectangle);
+            Rectangle area = Screen.FromRectangle(campo).WorkingArea;
+            int ancho = Math.Max(campo.Width, 260);
+            int alto = Math.Min(7, Math.Max(1, lstSugerencias.Items.Count)) * 56 + 2;
+            if (lstSugerencias.Items.Count == 0) alto = 58;
+            bool arriba = area.Bottom - campo.Bottom < alto && campo.Top - area.Top > area.Bottom - campo.Bottom;
+            int x = Math.Min(campo.Left, area.Right - ancho);
+            int y = arriba ? campo.Top - alto : campo.Bottom;
+            pnlSugerencias.Bounds = new Rectangle(PointToClient(new Point(x, y)), new Size(ancho, alto));
+            lstSugerencias.Dock = DockStyle.Fill;
+            lblSinSugerencias.Dock = DockStyle.Fill;
+        }
+
+        private void ComboSugerencias_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (!pnlSugerencias.Visible) return;
+            if (e.KeyCode == Keys.Down || e.KeyCode == Keys.Up)
+            {
+                if (lstSugerencias.Items.Count > 0)
+                {
+                    int siguiente = lstSugerencias.SelectedIndex + (e.KeyCode == Keys.Down ? 1 : -1);
+                    if (siguiente < 0) siguiente = lstSugerencias.Items.Count - 1;
+                    if (siguiente >= lstSugerencias.Items.Count) siguiente = 0;
+                    lstSugerencias.SelectedIndex = siguiente;
+                }
+                e.SuppressKeyPress = true;
+            }
+            else if (e.KeyCode == Keys.Escape)
+            {
+                pnlSugerencias.Visible = false;
+                e.SuppressKeyPress = true;
+            }
+            else if (e.KeyCode == Keys.Enter && lstSugerencias.SelectedItem != null)
+            {
+                SeleccionarSugerencia(lstSugerencias.SelectedItem.ToString());
+                e.SuppressKeyPress = true;
+            }
+            else if (e.KeyCode == Keys.Tab && lstSugerencias.SelectedItem != null)
+            {
+                SeleccionarSugerencia(lstSugerencias.SelectedItem.ToString());
+                e.SuppressKeyPress = true;
+                SelectNextControl((Control)sender, !e.Shift, true, true, true);
+            }
+        }
+
+        private void SeleccionarSugerencia(string valor)
+        {
+            if (campoSugerencias == null) return;
+            seleccionandoSugerencia = true;
+            campoSugerencias.Text = valor;
+            if (campoSugerencias == cmbMarca)
+            {
+                cmbMarca.SelectedItem = valor;
+                CmbMarca_SelectedIndexChanged(cmbMarca, EventArgs.Empty);
+            }
+            campoSugerencias.SelectionStart = campoSugerencias.Text.Length;
+            pnlSugerencias.Visible = false;
+            campoSugerencias.Focus();
+            seleccionandoSugerencia = false;
+        }
+
+        private void ComboSugerencias_LostFocus(object sender, EventArgs e)
+        {
+            if (!pnlSugerencias.ClientRectangle.Contains(pnlSugerencias.PointToClient(Cursor.Position)))
+                pnlSugerencias.Visible = false;
+        }
+
+        private void lstSugerencias_MouseClick(object sender, MouseEventArgs e)
+        {
+            int indice = lstSugerencias.IndexFromPoint(e.Location);
+            if (indice >= 0) SeleccionarSugerencia(lstSugerencias.Items[indice].ToString());
+        }
+
+        private void lstSugerencias_DrawItem(object sender, DrawItemEventArgs e)
+        {
+            if (e.Index < 0) return;
+            string titulo = lstSugerencias.Items[e.Index].ToString();
+            bool seleccionado = (e.State & DrawItemState.Selected) == DrawItemState.Selected;
+            using (Brush fondo = new SolidBrush(seleccionado ? Color.FromArgb(239, 246, 255) : Color.White))
+                e.Graphics.FillRectangle(fondo, e.Bounds);
+            if (seleccionado)
+                using (Brush acento = new SolidBrush(Color.FromArgb(37, 99, 235)))
+                    e.Graphics.FillRectangle(acento, e.Bounds.Left, e.Bounds.Top, 3, e.Bounds.Height);
+            bool coincide = Normalizar(titulo).Contains(Normalizar(textoSugerido));
+            using (Font fuenteTitulo = new Font("Segoe UI", 9.5f, coincide ? FontStyle.Bold : FontStyle.Regular))
+            using (Brush textoTitulo = new SolidBrush(coincide ? Color.FromArgb(37, 99, 235) : Color.FromArgb(15, 23, 42)))
+            using (Font fuenteSubtitulo = new Font("Segoe UI", 8.5f))
+            using (Brush textoSubtitulo = new SolidBrush(Color.FromArgb(100, 116, 139)))
+            {
+                e.Graphics.DrawString(titulo, fuenteTitulo, textoTitulo, e.Bounds.Left + 12, e.Bounds.Top + 7);
+                e.Graphics.DrawString(subtituloSugerencias ?? string.Empty, fuenteSubtitulo, textoSubtitulo, e.Bounds.Left + 12, e.Bounds.Top + 31);
+            }
+            e.DrawFocusRectangle();
+        }
+
+        private static string Normalizar(string texto)
+        {
+            string descompuesto = (texto ?? string.Empty).Normalize(System.Text.NormalizationForm.FormD);
+            System.Text.StringBuilder resultado = new System.Text.StringBuilder();
+            foreach (char caracter in descompuesto)
+                if (CharUnicodeInfo.GetUnicodeCategory(caracter) != UnicodeCategory.NonSpacingMark)
+                    resultado.Append(char.ToLowerInvariant(caracter));
+            return resultado.ToString().Normalize(System.Text.NormalizationForm.FormC);
+        }
+
         private void MostrarVehiculos()
         {
             if (gridVehiculos == null) return;
@@ -284,10 +506,10 @@ namespace PRESENTACION
             }
             string cedula = cmbPropietario.SelectedValue == null ? null : cmbPropietario.SelectedValue.ToString();
             string resultado = editandoVehiculo
-                ? vehiculoService.Modificar(txtPlaca.Text.Trim(), modelo, TextoOpcional(txtMarca), cmbTipoVehiculo.Text,
-                    TextoOpcional(txtColor), TextoOpcional(txtLinea), cedula)
-                : vehiculoService.Guardar(txtPlaca.Text.Trim(), modelo, TextoOpcional(txtMarca), cmbTipoVehiculo.Text,
-                    TextoOpcional(txtColor), TextoOpcional(txtLinea), cedula);
+                ? vehiculoService.Modificar(txtPlaca.Text.Trim(), modelo, TextoOpcional(cmbMarca), cmbTipoVehiculo.Text,
+                    TextoOpcional(cmbColor), TextoOpcional(cmbLinea), cedula)
+                : vehiculoService.Guardar(txtPlaca.Text.Trim(), modelo, TextoOpcional(cmbMarca), cmbTipoVehiculo.Text,
+                    TextoOpcional(cmbColor), TextoOpcional(cmbLinea), cedula);
             bool correcto = resultado.StartsWith("se registro el vehiculo", StringComparison.OrdinalIgnoreCase) ||
                             resultado.StartsWith("El vehiculo se modifico", StringComparison.OrdinalIgnoreCase);
             MessageBox.Show(this, resultado, correcto ? "Vehículos" : "No se pudo guardar", MessageBoxButtons.OK,
@@ -326,11 +548,11 @@ namespace PRESENTACION
             editandoVehiculo = true;
             txtPlaca.Text = vehiculo.Placa;
             txtPlaca.Enabled = false;
-            txtMarca.Text = vehiculo.Marca;
+            cmbMarca.Text = vehiculo.Marca;
             txtModelo.Text = vehiculo.Modelo.ToString(CultureInfo.InvariantCulture);
             cmbTipoVehiculo.SelectedItem = vehiculo.TipoVehiculo;
-            txtColor.Text = vehiculo.Color;
-            txtLinea.Text = vehiculo.Linea;
+            cmbColor.Text = vehiculo.Color;
+            cmbLinea.Text = vehiculo.Linea;
             if (vehiculo.Cliente != null) cmbPropietario.SelectedValue = vehiculo.Cliente.Cedula;
             if (vehiculos.Any(v => v.Placa == vehiculo.Placa)) cmbPlacaSoat.SelectedValue = vehiculo.Placa;
             btnGuardarVehiculo.Text = "Actualizar";
@@ -340,7 +562,7 @@ namespace PRESENTACION
         {
             editandoVehiculo = false;
             txtPlaca.Enabled = true;
-            txtPlaca.Clear(); txtMarca.Clear(); txtModelo.Clear(); txtColor.Clear(); txtLinea.Clear();
+            txtPlaca.Clear(); cmbMarca.Text = string.Empty; txtModelo.Clear(); cmbColor.Text = string.Empty; cmbLinea.Text = string.Empty;
             cmbTipoVehiculo.SelectedIndex = -1;
             cmbPropietario.SelectedIndex = clientes.Count > 0 ? 0 : -1;
             btnGuardarVehiculo.Text = "Guardar";
@@ -424,6 +646,21 @@ namespace PRESENTACION
             return new TextBox { Dock = DockStyle.Fill, MaxLength = maximo, Margin = new Padding(4, 6, 10, 4) };
         }
 
+        private static ComboBox CrearComboEditable(string[] opciones)
+        {
+            var combo = new ComboBox
+            {
+                Dock = DockStyle.Fill,
+                DropDownStyle = ComboBoxStyle.DropDown,
+                AutoCompleteMode = AutoCompleteMode.None,
+                AutoCompleteSource = AutoCompleteSource.None,
+                MaxLength = 50,
+                Margin = new Padding(4, 6, 10, 4)
+            };
+            combo.Items.AddRange(opciones);
+            return combo;
+        }
+
         private static DateTimePicker CrearFecha()
         {
             return new DateTimePicker { Dock = DockStyle.Fill, Format = DateTimePickerFormat.Short, MinDate = new DateTime(2000, 1, 1), MaxDate = DateTime.Today.AddYears(10), Value = DateTime.Today };
@@ -461,7 +698,7 @@ namespace PRESENTACION
             if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar)) e.Handled = true;
         }
 
-        private static string TextoOpcional(TextBox control)
+        private static string TextoOpcional(ComboBox control)
         {
             return string.IsNullOrWhiteSpace(control.Text) ? null : control.Text.Trim();
         }
