@@ -69,7 +69,7 @@ namespace DATOS
                                 cita.Transaction = tx;
                                 cita.BindByName = true;
                                 cita.Parameters.Add("p_agenda_id", OracleDbType.Int32).Value = factura.AgendaID.Value;
-                                cita.Parameters.Add("p_placa", OracleDbType.Char, 7).Value = factura.Vehiculo.Placa;
+                                cita.Parameters.Add("p_placa", OracleDbType.Varchar2,6).Value = factura.Vehiculo.Placa;
                                 cita.Parameters.Add("p_cliente", OracleDbType.Char, 10).Value = factura.Cliente.Cedula;
                                 cita.ExecuteNonQuery();
                             }
@@ -386,7 +386,7 @@ namespace DATOS
         {
             cmd.BindByName = true;
             cmd.Parameters.Add("p_factura_id", OracleDbType.Int32).Value = detalle.FacturaID;
-            cmd.Parameters.Add("p_placa", OracleDbType.Char, 7).Value = detalle.Vehiculo.Placa;
+            cmd.Parameters.Add("p_placa", OracleDbType.Varchar2,6).Value = detalle.Vehiculo.Placa;
         }
 
         public void ModificarDetalleVehiculo(DetalleVehiculo detalle)

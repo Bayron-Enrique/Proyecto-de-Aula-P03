@@ -131,7 +131,7 @@ namespace DATOS
             comando.BindByName = true;
             comando.Parameters.Add("p_fecha", OracleDbType.Date).Value = agenda.Fecha == DateTime.MinValue ? (object)DBNull.Value : new DateTime(agenda.Fecha.Year, agenda.Fecha.Month, agenda.Fecha.Day, agenda.Fecha.Hour, agenda.Fecha.Minute, 0);
             comando.Parameters.Add("p_comentario", OracleDbType.Varchar2).Value = (object)agenda.Comentario ?? DBNull.Value;
-            comando.Parameters.Add("p_placa", OracleDbType.Char, 7).Value = agenda.Vehiculo.Placa;
+            comando.Parameters.Add("p_placa", OracleDbType.Varchar2, 6).Value = agenda.Vehiculo.Placa;
             comando.Parameters.Add("p_empleado", OracleDbType.Char, 10).Value = agenda.Empleado.Cedula;
             comando.Parameters.Add("p_estado", OracleDbType.Varchar2).Value = agenda.Estado;
             comando.Parameters.Add("p_articulo", OracleDbType.Int32).Value = agenda.ArticuloServicio == null ? (object)DBNull.Value : agenda.ArticuloServicio.ArticuloId;

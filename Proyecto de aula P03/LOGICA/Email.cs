@@ -1,6 +1,7 @@
 using ENTIDADES;
 using System;
 using System.Configuration;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Mail;
@@ -45,6 +46,106 @@ namespace LOGICA
             string texto = "Hola " + cliente.NombreCompleto + ", tu registro en el sistema del taller se realizo correctamente.";
 
             return Enviar(cliente.CorreoElectronico, "Confirmacion de registro", html, texto, out mensaje);
+        }
+
+        public bool EnviarCodigoVinculacion(Cliente cliente, string codigo, out string mensaje, int minutosVigencia = 10)
+        {
+            mensaje = null;
+
+            if (cliente == null)
+            {
+                mensaje = "No pudimos iniciar la verificación. Inténtalo de nuevo.";
+                Trace.TraceError("EnviarCodigoVinculacion recibió un cliente nulo.");
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(cliente.CorreoElectronico))
+            {
+                mensaje = "No encontramos un correo registrado para este cliente. Contacta al taller para actualizar tus datos.";
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(codigo))
+            {
+                mensaje = "No pudimos iniciar la verificación. Inténtalo de nuevo.";
+                Trace.TraceError("EnviarCodigoVinculacion recibió un código vacío.");
+                return false;
+            }
+
+            string nombre = string.IsNullOrWhiteSpace(cliente.NombreCompleto)
+                ? "cliente"
+                : Codificar(cliente.NombreCompleto);
+
+            string vigencia = minutosVigencia == 1 ? "1 minuto" : minutosVigencia + " minutos";
+
+            string cajaCodigo =
+                "<table role='presentation' width='100%' cellpadding='0' cellspacing='0' style='margin:24px 0 8px 0;'>" +
+                "<tr><td align='center' style='padding:18px 12px;background-color:#f4f6f8;border:2px dashed " + ColorAcento + ";" +
+                "border-radius:8px;font-family:Consolas,\"Courier New\",monospace;font-size:34px;font-weight:bold;" +
+                "letter-spacing:8px;color:" + ColorEncabezado + ";'>" + Codificar(codigo) + "</td></tr>" +
+                "</table>" +
+                "<p style='margin:0 0 24px 0;text-align:center;font-size:13px;color:#777777;'>" +
+                "Este código vence en <strong>" + vigencia + "</strong>.</p>";
+
+            string pasos =
+                "<p style='margin:0 0 8px 0;font-size:15px;color:#333333;'><strong>¿Cómo usarlo?</strong></p>" +
+                "<ol style='margin:0 0 24px 0;padding-left:20px;font-size:14px;color:#333333;line-height:24px;'>" +
+                "<li>Vuelve al chat de GOT-AUTO en Telegram.</li>" +
+                "<li>Escribe el código tal como aparece arriba.</li>" +
+                "<li>Listo: tu cuenta quedará vinculada.</li>" +
+                "</ol>";
+
+            string aviso =
+                "<table role='presentation' width='100%' cellpadding='0' cellspacing='0'>" +
+                "<tr><td style='padding:14px 16px;background-color:#fff8e1;border-left:4px solid #f9a825;" +
+                "font-size:13px;color:#5d4a00;line-height:20px;'>" +
+                "<strong>No compartas este código con nadie.</strong> El taller nunca te lo pedirá por llamada ni por mensaje. " +
+                "Si no solicitaste esta vinculación, ignora este correo: tu cuenta no será modificada." +
+                "</td></tr></table>";
+
+            string contenido =
+                "<p style='margin:0 0 16px 0;font-size:15px;color:#333333;'>Hola <strong>" + nombre + "</strong>,</p>" +
+                "<p style='margin:0;font-size:15px;color:#333333;line-height:22px;'>" +
+                "Recibimos una solicitud para vincular tu cuenta de Telegram con <strong>" + NombreTaller + "</strong>. " +
+                "Para confirmar que eres tú, usa este código de verificación:</p>" +
+                cajaCodigo +
+                pasos +
+                aviso;
+
+            string html = ArmarPlantilla("Verifica tu cuenta de Telegram", contenido);
+
+            string texto = "Hola " + cliente.NombreCompleto + ". Tu código para vincular Telegram con " + NombreTaller +
+                " es: " + codigo + ". Vence en " + vigencia + ". No lo compartas con nadie. " +
+                "Si no solicitaste la vinculación, ignora este mensaje.";
+
+            string detalleTecnico;
+            bool enviado = Enviar(cliente.CorreoElectronico.Trim(), "Tu código para vincular Telegram con " + NombreTaller,
+                html, texto, out detalleTecnico);
+
+            if (!enviado)
+            {
+                Trace.TraceError("No se pudo enviar el código de vinculación: " + detalleTecnico);
+                mensaje = "No pudimos enviar el código en este momento. Inténtalo más tarde o contacta al taller.";
+                return false;
+            }
+
+            mensaje = "Enviamos un código a " + EnmascararCorreo(cliente.CorreoElectronico.Trim()) + ". " +
+                "Escríbelo aquí en los próximos " + vigencia + " para continuar. " +
+                "Si no lo ves, revisa la carpeta de correo no deseado.";
+            return true;
+        }
+
+        // juan.perez@gmail.com  ->  j*****@gmail.com
+        private static string EnmascararCorreo(string correo)
+        {
+            int arroba = correo.IndexOf('@');
+            if (arroba < 1)
+            {
+                return "tu correo registrado";
+            }
+
+            int asteriscos = Math.Min(arroba - 1, 5);
+            return correo.Substring(0, 1) + new string('*', asteriscos) + correo.Substring(arroba);
         }
 
         public bool EnviarRecordatorioMantenimiento(NotificacionMantenimiento notificacion, out string mensaje)
@@ -194,12 +295,16 @@ namespace LOGICA
                 string.IsNullOrWhiteSpace(contrasena) || string.IsNullOrWhiteSpace(remitente) ||
                 !int.TryParse(puertoTexto, out puerto) || !bool.TryParse(sslTexto, out habilitarSsl))
             {
-                mensaje = "La configuracion SMTP esta incompleta. No se envio el correo.";
+                Trace.TraceError("No se envió el correo porque falta o es inválida una configuración SMTP.");
+                mensaje = "No pudimos enviar el correo en este momento. Inténtalo más tarde o contacta al taller.";
                 return false;
             }
 
             try
             {
+                // Fuerza TLS 1.2 para la conexión segura STARTTLS de Gmail (puerto 587).
+                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+
                 using (MailMessage correo = new MailMessage())
                 using (SmtpClient smtp = new SmtpClient(host, puerto))
                 {
@@ -236,7 +341,8 @@ namespace LOGICA
             }
             catch (Exception ex)
             {
-                mensaje = ex.Message;
+                Trace.TraceError("Error al enviar correo. Detalle técnico: " + ex);
+                mensaje = "No pudimos enviar el correo en este momento. Inténtalo más tarde o contacta al taller.";
                 return false;
             }
         }

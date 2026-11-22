@@ -83,7 +83,7 @@ namespace DATOS
             comando.Parameters.Add("p_fecha", OracleDbType.Date).Value = notificacion.Fecha;
             comando.Parameters.Add("p_comentario", OracleDbType.Varchar2).Value = (object)notificacion.Comentario ?? DBNull.Value;
             comando.Parameters.Add("p_estado", OracleDbType.Varchar2).Value = notificacion.Estado;
-            comando.Parameters.Add("p_placa", OracleDbType.Char, 7).Value = notificacion.Vehiculo.Placa;
+            comando.Parameters.Add("p_placa", OracleDbType.Varchar2, 6).Value = notificacion.Vehiculo.Placa;
             comando.Parameters.Add("p_articulo_id", OracleDbType.Int32).Value = notificacion.Articulo.ArticuloId;
         }
         private static NotificacionMantenimiento Mapear(OracleDataReader reader)

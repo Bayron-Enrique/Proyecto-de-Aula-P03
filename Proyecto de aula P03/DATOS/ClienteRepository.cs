@@ -85,6 +85,47 @@ namespace DATOS
             }
         }
 
+        public void VincularTelegram(string cedula, long chatId)
+        {
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_CLIENTE.PRC_VINCULAR_TELEGRAM", conexion))
+            {
+                comando.CommandType = CommandType.StoredProcedure;
+                comando.BindByName = true;
+                comando.Parameters.Add("p_cedula", OracleDbType.Char, 10).Value = cedula;
+                comando.Parameters.Add("p_chat_id", OracleDbType.Int64).Value = chatId;
+                conexion.Open();
+                using (OracleTransaction transaccion = conexion.BeginTransaction())
+                {
+                    comando.Transaction = transaccion;
+                    try { comando.ExecuteNonQuery(); transaccion.Commit(); }
+                    catch { transaccion.Rollback(); throw; }
+                }
+            }
+        }
+
+        public Cliente BuscarPorTelegramChatId(long chatId)
+        {
+            using (OracleConnection conexion = ObtenerConexion())
+            using (OracleCommand comando = new OracleCommand("TALLER.PKG_CLIENTE.PRC_BUSCAR_POR_TELEGRAM_CHAT_ID", conexion))
+            {
+                comando.CommandType = CommandType.StoredProcedure;
+                comando.BindByName = true;
+                comando.Parameters.Add("p_chat_id", OracleDbType.Int64).Value = chatId;
+                comando.Parameters.Add("p_resultado", OracleDbType.RefCursor).Direction = ParameterDirection.Output;
+                conexion.Open();
+                using (OracleDataReader reader = comando.ExecuteReader())
+                {
+                    if (!reader.Read()) return null;
+
+                    Cliente cliente = Mapear(reader);
+                    cliente.TelegramChatId = reader["TELEGRAM_CHAT_ID"] == DBNull.Value
+                        ? (long?)null : Convert.ToInt64(reader["TELEGRAM_CHAT_ID"]);
+                    return cliente;
+                }
+            }
+        }
+
         public void Eliminar(Cliente cliente)
         {
             using (OracleConnection conexion = ObtenerConexion())
@@ -128,8 +169,17 @@ namespace DATOS
                 Sexo = reader["SEXO"].ToString().Trim(),
                 Telefono = reader["TELEFONO"] == DBNull.Value ? null : reader["TELEFONO"].ToString(),
                 Direccion = reader["DIRECCION"] == DBNull.Value ? null : reader["DIRECCION"].ToString(),
-                CorreoElectronico = reader["CORREOELECTRONICO"] == DBNull.Value ? null : reader["CORREOELECTRONICO"].ToString()
+                CorreoElectronico = reader["CORREOELECTRONICO"] == DBNull.Value ? null : reader["CORREOELECTRONICO"].ToString(),
+                TelegramChatId = TieneColumna(reader, "TELEGRAM_CHAT_ID") && reader["TELEGRAM_CHAT_ID"] != DBNull.Value
+                    ? (long?)Convert.ToInt64(reader["TELEGRAM_CHAT_ID"]) : null
             };
+        }
+
+        private static bool TieneColumna(OracleDataReader reader, string nombre)
+        {
+            for (int i = 0; i < reader.FieldCount; i++)
+                if (string.Equals(reader.GetName(i), nombre, StringComparison.OrdinalIgnoreCase)) return true;
+            return false;
         }
     }
 }

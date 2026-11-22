@@ -8,6 +8,8 @@ namespace ENTIDADES
 {
     public class Cliente : Persona
     {
+        public long? TelegramChatId { get; set; }
+
         public Cliente(string cedula, string nombres, string apellidos, string sexo, string telefono, string direccion, string correoElectronico)
             : base(cedula, nombres, apellidos, sexo, telefono, direccion, correoElectronico)
         {

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <appSettings>
+    <add key="Email.Smtp.Host" value="smtp.gmail.com" />
+    <add key="Email.Smtp.Port" value="587" />
+    <add key="Email.Smtp.User" value="TU_CORREO_GMAIL" />
+    <add key="Email.Smtp.Password" value="TU_CONTRASENA_DE_APLICACION" />
+    <add key="Email.Smtp.From" value="TU_CORREO_GMAIL" />
+    <add key="Email.Smtp.EnableSsl" value="true" />
+  </appSettings>
+  <connectionStrings>
+    <add name="NombreAPPConfig" connectionString="Data Source=dbtaller_tp;User Id=TU_USUARIO;Password=TU_CLAVE;Tns_Admin=C:\Oracle\Wallet_Taller;Wallet_Location=C:\Oracle\Wallet_Taller" providerName="Oracle.ManagedDataAccess.Client" />
+  </connectionStrings>
+</configuration>

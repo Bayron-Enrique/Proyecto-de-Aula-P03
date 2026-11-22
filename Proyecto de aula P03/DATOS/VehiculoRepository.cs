@@ -84,7 +84,7 @@ namespace DATOS
             using (OracleCommand comando = new OracleCommand("TALLER.PKG_VEHICULO.PRC_BUSCAR_PLACA", conexion))
             {
                 comando.CommandType = CommandType.StoredProcedure;
-                comando.Parameters.Add("p_placa", OracleDbType.Char, 7).Value = placa;
+                comando.Parameters.Add("p_placa", OracleDbType.Varchar2, 6).Value = placa;
                 comando.Parameters.Add("p_resultado", OracleDbType.RefCursor).Direction = ParameterDirection.Output;
                 conexion.Open();
                 using (OracleDataReader reader = comando.ExecuteReader())
@@ -98,7 +98,7 @@ namespace DATOS
             using (OracleCommand comando = new OracleCommand("TALLER.PKG_VEHICULO.PRC_ELIMINAR", conexion))
             {
                 comando.CommandType = CommandType.StoredProcedure;
-                comando.Parameters.Add("p_placa", OracleDbType.Char, 7).Value = vehiculo.Placa;
+                comando.Parameters.Add("p_placa", OracleDbType.Varchar2 ,6).Value = vehiculo.Placa;
                 conexion.Open();
                 using (OracleTransaction transaccion = conexion.BeginTransaction())
                 {
@@ -112,7 +112,7 @@ namespace DATOS
         private static void AgregarParams(OracleCommand comando, Vehiculo vehiculo)
         {
             comando.BindByName = true;
-            comando.Parameters.Add("p_placa", OracleDbType.Char, 7).Value = vehiculo.Placa;
+            comando.Parameters.Add("p_placa", OracleDbType.Varchar2, 6).Value = vehiculo.Placa;
             comando.Parameters.Add("p_modelo", OracleDbType.Decimal).Value = vehiculo.Modelo;
             comando.Parameters.Add("p_marca", OracleDbType.Varchar2).Value = (object)vehiculo.Marca ?? DBNull.Value;
             comando.Parameters.Add("p_cliente", OracleDbType.Char, 10).Value = vehiculo.Cliente.Cedula;

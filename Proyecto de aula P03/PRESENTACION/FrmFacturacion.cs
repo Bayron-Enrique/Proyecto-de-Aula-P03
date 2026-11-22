@@ -31,6 +31,7 @@ namespace PRESENTACION
         private List<Articulo> articulos = new List<Articulo>();
         private List<Factura> facturas = new List<Factura>();
         private readonly List<DetalleFactura> carrito = new List<DetalleFactura>();
+        private DetalleFactura lineaServicioCita;
         private ComboBox cmbTipo, cmbCliente, cmbEmpleado, cmbVehiculo, cmbAgenda, cmbArticulo;
         private ComboBox cmbEstadoPago;
         private DateTimePicker dtpFecha;
@@ -230,7 +231,7 @@ namespace PRESENTACION
 
         private void NuevoDocumento()
         {
-            carrito.Clear(); ActualizarCarrito(); errores.Clear();
+            carrito.Clear(); lineaServicioCita = null; ActualizarCarrito(); errores.Clear();
             txtObservaciones.Clear(); txtDireccion.Clear(); chkDomicilio.Checked = false;
             cmbTipo.SelectedIndex = 0; cmbEstadoPago.SelectedItem = "Pendiente"; dtpFecha.Value = DateTime.Now;
             nudCantidad.Value = 1; nudDescuento.Value = 0;
@@ -271,13 +272,43 @@ namespace PRESENTACION
 
         private void SeleccionarVehiculoDeCita(object sender, EventArgs e)
         {
-            if (!string.IsNullOrEmpty(cmbVehiculo.SelectedValue as string) ||
-                !(cmbAgenda.SelectedValue is int id) || id == 0) return;
+            if (!(cmbAgenda.SelectedValue is int id)) return;
+
+            QuitarServicioAgregadoPorCita();
+            if (id == 0) return;
+
             Agenda cita = agendas.FirstOrDefault(a => a.AgendaID == id);
             if (cita?.Vehiculo == null) return;
-            cmbVehiculo.SelectedValue = cita.Vehiculo.Placa;
-            // Cambiar la placa vuelve a enlazar la lista de citas.
+
+            if (!string.Equals(cmbVehiculo.SelectedValue as string, cita.Vehiculo.Placa, StringComparison.Ordinal))
+                cmbVehiculo.SelectedValue = cita.Vehiculo.Placa;
+            // Cambiar el vehículo vuelve a enlazar la lista de citas y la deja en "Sin cita".
             cmbAgenda.SelectedValue = id;
+
+            Servicio servicio = articulos.OfType<Servicio>()
+                .FirstOrDefault(a => a.ArticuloId == cita.ArticuloServicio?.ArticuloId);
+            if (servicio == null)
+            {
+                MessageBox.Show(this, "La cita no tiene un servicio válido en el catálogo de artículos.",
+                    "Servicio de la cita", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            // Si el usuario ya agregó manualmente ese servicio, no duplicarlo.
+            if (!carrito.Any(d => d.Articulo != null && d.Articulo.ArticuloId == servicio.ArticuloId))
+            {
+                lineaServicioCita = new DetalleFactura(1, servicio);
+                carrito.Add(lineaServicioCita);
+                ActualizarCarrito();
+            }
+        }
+
+        private void QuitarServicioAgregadoPorCita()
+        {
+            if (lineaServicioCita == null) return;
+            carrito.Remove(lineaServicioCita);
+            lineaServicioCita = null;
+            ActualizarCarrito();
         }
 
         private static void EnlazarCombo<T>(ComboBox combo, List<T> opciones, string miembroTexto, string miembroValor)
@@ -301,7 +332,10 @@ namespace PRESENTACION
             }
             OpcionArticulo opcion = cmbArticulo.SelectedItem as OpcionArticulo;
             if (opcion == null) return;
-            DetalleFactura linea = carrito.FirstOrDefault(d => d.Articulo.ArticuloId == opcion.Id);
+            // El servicio agregado automáticamente por la cita se mantiene como una línea propia.
+            // Si el usuario agrega el mismo artículo manualmente, se crea otra línea independiente.
+            DetalleFactura linea = carrito.FirstOrDefault(d => !ReferenceEquals(d, lineaServicioCita) &&
+                d.Articulo != null && d.Articulo.ArticuloId == opcion.Id);
             int cantidad = (int)nudCantidad.Value;
             long acumulada = (long)(linea?.Cantidad ?? 0) + cantidad;
             if (acumulada > int.MaxValue)
@@ -333,7 +367,11 @@ namespace PRESENTACION
         {
             if (gridCarrito.SelectedRows.Count == 0) return;
             int index = gridCarrito.SelectedRows[0].Index;
-            if (index >= 0 && index < carrito.Count) carrito.RemoveAt(index);
+            if (index >= 0 && index < carrito.Count)
+            {
+                if (ReferenceEquals(carrito[index], lineaServicioCita)) lineaServicioCita = null;
+                carrito.RemoveAt(index);
+            }
             ActualizarCarrito();
         }
 

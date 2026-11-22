@@ -142,6 +142,7 @@
     <Compile Include="ProveedorService.cs" />
     <Compile Include="SoatService.cs" />
     <Compile Include="VehiculoService.cs" />
+    <Compile Include="VinculacionTelegramService.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\DATOS\DATOS.csproj">

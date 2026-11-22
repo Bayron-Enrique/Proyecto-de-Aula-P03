@@ -20,6 +20,12 @@ namespace LOGICA
             this.clienteRepositorio = clienteRepositorio;
         }
 
+        public List<Vehiculo> ConsultarPorClienteCedula(string cedula)
+        {
+            return repositorio.Consultar().Where(v => v.Cliente != null &&
+                string.Equals(v.Cliente.Cedula, cedula, StringComparison.Ordinal)).ToList();
+        }
+
         public string Guardar(string placa, int modelo, string marca, string tipoVehiculo, string color, string linea, string cedulaCliente)
         {
             try

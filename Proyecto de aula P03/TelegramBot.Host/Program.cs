@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Threading;
 using TelegramBot;
 
@@ -8,6 +9,10 @@ namespace TelegramBot.Host
     {
         private static void Main()
         {
+            // Muestra en la consola los errores técnicos que LOGICA registra con Trace.
+            Trace.Listeners.Add(new TextWriterTraceListener(Console.Error));
+            Trace.AutoFlush = true;
+
             string token = Environment.GetEnvironmentVariable("TALLER_TELEGRAM_BOT_TOKEN");
             if (string.IsNullOrWhiteSpace(token))
             {

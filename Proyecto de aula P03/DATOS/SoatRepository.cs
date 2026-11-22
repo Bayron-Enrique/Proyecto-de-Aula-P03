@@ -85,7 +85,7 @@ namespace DATOS
             comando.Parameters.Add("p_numero", OracleDbType.Varchar2).Value = soat.NumeroSoat;
             comando.Parameters.Add("p_inicio", OracleDbType.Date).Value = soat.FechaInicio;
             comando.Parameters.Add("p_fin", OracleDbType.Date).Value = soat.FechaFin;
-            comando.Parameters.Add("p_placa", OracleDbType.Char, 7).Value = soat.Vehiculo.Placa;
+            comando.Parameters.Add("p_placa", OracleDbType.Varchar2, 6).Value = soat.Vehiculo.Placa;
         }
         private static Soat Mapear(OracleDataReader reader)
         {

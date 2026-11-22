@@ -82,7 +82,7 @@ namespace PRESENTACION
             campos.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
             for (int i = 0; i < 4; i++) campos.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
 
-            txtPlaca = CrearTexto(7);
+            txtPlaca = CrearTexto(6);
             txtPlaca.CharacterCasing = CharacterCasing.Upper;
             txtPlaca.TextChanged += (s, e) => { int pos = txtPlaca.SelectionStart; txtPlaca.Text = txtPlaca.Text.ToUpperInvariant(); txtPlaca.SelectionStart = Math.Min(pos, txtPlaca.Text.Length); };
             txtMarca = CrearTexto(50);

@@ -316,6 +316,13 @@ namespace LOGICA
             return repositorio.Consultar();
         }
 
+        public List<string> ObtenerCedulasRegistradas()
+        {
+            return repositorio.Consultar()
+                .Select(empleado => empleado.Cedula.Trim())
+                .ToList();
+        }
+
         public int TotalEmpleados()
         {
             return repositorio.Contar();

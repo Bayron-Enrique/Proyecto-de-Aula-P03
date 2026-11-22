@@ -93,6 +93,10 @@ namespace LOGICA
                     if (agenda == null) return "La cita seleccionada ya no existe.";
                     if (agenda.Vehiculo == null || agenda.Vehiculo.Cliente == null || agenda.Vehiculo.Cliente.Cedula != cliente.Cedula || agenda.Vehiculo.Placa != factura.Vehiculo.Placa) return "La cita no corresponde al cliente y vehículo seleccionados.";
                     if (string.Equals(agenda.Estado, "CANCELADA", StringComparison.OrdinalIgnoreCase)) return "No se puede facturar una cita cancelada.";
+                    if (agenda.ArticuloServicio == null) return "La cita no tiene un servicio asociado para incluir en la factura.";
+                    if (!factura.Detalles.Any(d => d != null && d.Articulo is Servicio &&
+                        d.Articulo.ArticuloId == agenda.ArticuloServicio.ArticuloId))
+                        return "Incluye en la factura el servicio agendado: " + agenda.ArticuloServicio.Nombre + ".";
                 }
 
                 foreach (DetalleFactura detalle in factura.Detalles)

@@ -43,14 +43,17 @@
             this.lblSubtitulo = new System.Windows.Forms.Label();
             this.lblCedula = new System.Windows.Forms.Label();
             this.pnUsuario = new System.Windows.Forms.Panel();
+            this.pictureBox3 = new System.Windows.Forms.PictureBox();
             this.txtUsuario = new System.Windows.Forms.TextBox();
             this.lblClave = new System.Windows.Forms.Label();
             this.pnContraseña = new System.Windows.Forms.Panel();
+            this.pictureBox4 = new System.Windows.Forms.PictureBox();
             this.txtPassword = new System.Windows.Forms.TextBox();
             this.chckPassword = new System.Windows.Forms.CheckBox();
             this.button1 = new System.Windows.Forms.Button();
-            this.pictureBox3 = new System.Windows.Forms.PictureBox();
-            this.pictureBox4 = new System.Windows.Forms.PictureBox();
+            this.lblGOT = new System.Windows.Forms.Label();
+            this.lblAUTO = new System.Windows.Forms.Label();
+            this.flpMarca = new System.Windows.Forms.FlowLayoutPanel();
             this.tablaPrincipal.SuspendLayout();
             this.panelMarca.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).BeginInit();
@@ -60,9 +63,10 @@
             this.panelCamposLogin.SuspendLayout();
             this.tablaCampos.SuspendLayout();
             this.pnUsuario.SuspendLayout();
-            this.pnContraseña.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox3)).BeginInit();
+            this.pnContraseña.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox4)).BeginInit();
+            this.flpMarca.SuspendLayout();
             this.SuspendLayout();
             // 
             // tablaPrincipal
@@ -86,6 +90,7 @@
             this.panelMarca.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left)));
             this.panelMarca.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(17)))), ((int)(((byte)(24)))), ((int)(((byte)(39)))));
+            this.panelMarca.Controls.Add(this.flpMarca);
             this.panelMarca.Controls.Add(this.pictureBox2);
             this.panelMarca.Controls.Add(this.lblDescripcionMarca);
             this.panelMarca.Controls.Add(this.pictureBox1);
@@ -98,9 +103,9 @@
             // 
             this.pictureBox2.BackColor = System.Drawing.Color.Transparent;
             this.pictureBox2.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox2.Image")));
-            this.pictureBox2.Location = new System.Drawing.Point(50, 231);
+            this.pictureBox2.Location = new System.Drawing.Point(-3, 130);
             this.pictureBox2.Name = "pictureBox2";
-            this.pictureBox2.Size = new System.Drawing.Size(342, 214);
+            this.pictureBox2.Size = new System.Drawing.Size(471, 375);
             this.pictureBox2.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.pictureBox2.TabIndex = 4;
             this.pictureBox2.TabStop = false;
@@ -110,7 +115,7 @@
             this.lblDescripcionMarca.Anchor = System.Windows.Forms.AnchorStyles.None;
             this.lblDescripcionMarca.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblDescripcionMarca.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(209)))), ((int)(((byte)(213)))), ((int)(((byte)(219)))));
-            this.lblDescripcionMarca.Location = new System.Drawing.Point(3, 463);
+            this.lblDescripcionMarca.Location = new System.Drawing.Point(9, 536);
             this.lblDescripcionMarca.Name = "lblDescripcionMarca";
             this.lblDescripcionMarca.Size = new System.Drawing.Size(430, 63);
             this.lblDescripcionMarca.TabIndex = 2;
@@ -120,7 +125,7 @@
             // pictureBox1
             // 
             this.pictureBox1.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
-            this.pictureBox1.Location = new System.Drawing.Point(0, 0);
+            this.pictureBox1.Location = new System.Drawing.Point(3, 9);
             this.pictureBox1.Name = "pictureBox1";
             this.pictureBox1.Size = new System.Drawing.Size(474, 800);
             this.pictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
@@ -235,6 +240,16 @@
             this.pnUsuario.Size = new System.Drawing.Size(400, 46);
             this.pnUsuario.TabIndex = 3;
             // 
+            // pictureBox3
+            // 
+            this.pictureBox3.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox3.Image")));
+            this.pictureBox3.Location = new System.Drawing.Point(10, 10);
+            this.pictureBox3.Name = "pictureBox3";
+            this.pictureBox3.Size = new System.Drawing.Size(23, 28);
+            this.pictureBox3.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
+            this.pictureBox3.TabIndex = 1;
+            this.pictureBox3.TabStop = false;
+            // 
             // txtUsuario
             // 
             this.txtUsuario.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
@@ -269,6 +284,16 @@
             this.pnContraseña.Name = "pnContraseña";
             this.pnContraseña.Size = new System.Drawing.Size(400, 46);
             this.pnContraseña.TabIndex = 5;
+            // 
+            // pictureBox4
+            // 
+            this.pictureBox4.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox4.Image")));
+            this.pictureBox4.Location = new System.Drawing.Point(10, 10);
+            this.pictureBox4.Name = "pictureBox4";
+            this.pictureBox4.Size = new System.Drawing.Size(23, 28);
+            this.pictureBox4.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
+            this.pictureBox4.TabIndex = 1;
+            this.pictureBox4.TabStop = false;
             // 
             // txtPassword
             // 
@@ -308,25 +333,48 @@
             this.button1.Text = "Iniciar Sesion";
             this.button1.UseVisualStyleBackColor = false;
             // 
-            // pictureBox3
+            // lblGOT
             // 
-            this.pictureBox3.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox3.Image")));
-            this.pictureBox3.Location = new System.Drawing.Point(10, 10);
-            this.pictureBox3.Name = "pictureBox3";
-            this.pictureBox3.Size = new System.Drawing.Size(23, 28);
-            this.pictureBox3.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.pictureBox3.TabIndex = 1;
-            this.pictureBox3.TabStop = false;
+            this.lblGOT.AutoSize = true;
+            this.lblGOT.BackColor = System.Drawing.Color.Transparent;
+            this.lblGOT.Font = new System.Drawing.Font("Segoe UI", 30F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblGOT.ForeColor = System.Drawing.Color.White;
+            this.lblGOT.Location = new System.Drawing.Point(0, 0);
+            this.lblGOT.Margin = new System.Windows.Forms.Padding(0);
+            this.lblGOT.Name = "lblGOT";
+            this.lblGOT.Size = new System.Drawing.Size(150, 67);
+            this.lblGOT.TabIndex = 5;
+            this.lblGOT.Text = "GOT-";
+            this.lblGOT.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
-            // pictureBox4
+            // lblAUTO
             // 
-            this.pictureBox4.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox4.Image")));
-            this.pictureBox4.Location = new System.Drawing.Point(10, 10);
-            this.pictureBox4.Name = "pictureBox4";
-            this.pictureBox4.Size = new System.Drawing.Size(23, 28);
-            this.pictureBox4.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.pictureBox4.TabIndex = 1;
-            this.pictureBox4.TabStop = false;
+            this.lblAUTO.AutoSize = true;
+            this.lblAUTO.BackColor = System.Drawing.Color.Transparent;
+            this.lblAUTO.Font = new System.Drawing.Font("Segoe UI", 30F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblAUTO.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(37)))), ((int)(((byte)(99)))), ((int)(((byte)(235)))));
+            this.lblAUTO.Location = new System.Drawing.Point(150, 0);
+            this.lblAUTO.Margin = new System.Windows.Forms.Padding(0);
+            this.lblAUTO.Name = "lblAUTO";
+            this.lblAUTO.Size = new System.Drawing.Size(164, 67);
+            this.lblAUTO.TabIndex = 5;
+            this.lblAUTO.Text = "AUTO";
+            this.lblAUTO.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // flpMarca
+            // 
+            this.flpMarca.Anchor = System.Windows.Forms.AnchorStyles.None;
+            this.flpMarca.AutoSize = true;
+            this.flpMarca.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.flpMarca.BackColor = System.Drawing.Color.Transparent;
+            this.flpMarca.Controls.Add(this.lblGOT);
+            this.flpMarca.Controls.Add(this.lblAUTO);
+            this.flpMarca.Location = new System.Drawing.Point(67, 438);
+            this.flpMarca.Margin = new System.Windows.Forms.Padding(0);
+            this.flpMarca.Name = "flpMarca";
+            this.flpMarca.Size = new System.Drawing.Size(314, 67);
+            this.flpMarca.TabIndex = 6;
+            this.flpMarca.WrapContents = false;
             // 
             // FrmLogin
             // 
@@ -336,12 +384,14 @@
             this.ClientSize = new System.Drawing.Size(1200, 760);
             this.Controls.Add(this.tablaPrincipal);
             this.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "FrmLogin";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "GOT-AUTO | Iniciar sesión";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.tablaPrincipal.ResumeLayout(false);
             this.panelMarca.ResumeLayout(false);
+            this.panelMarca.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.panelDerecho.ResumeLayout(false);
@@ -351,10 +401,12 @@
             this.tablaCampos.PerformLayout();
             this.pnUsuario.ResumeLayout(false);
             this.pnUsuario.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox3)).EndInit();
             this.pnContraseña.ResumeLayout(false);
             this.pnContraseña.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox3)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox4)).EndInit();
+            this.flpMarca.ResumeLayout(false);
+            this.flpMarca.PerformLayout();
             this.ResumeLayout(false);
 
         }
@@ -363,6 +415,9 @@
         private System.Windows.Forms.PictureBox pictureBox2;
         private System.Windows.Forms.PictureBox pictureBox3;
         private System.Windows.Forms.PictureBox pictureBox4;
+        private System.Windows.Forms.Label lblAUTO;
+        private System.Windows.Forms.Label lblGOT;
+        private System.Windows.Forms.FlowLayoutPanel flpMarca;
     }
 }
 
