@@ -168,10 +168,15 @@ namespace LOGICA
             return factura;
         }
 
+        public List<Factura> ConsultarCabeceras()
+        {
+            return repositorio.Consultar();
+        }
+
         // CONSULTAR TODAS LAS FACTURAS
         public List<Factura> Consultar()
         {
-            List<Factura> facturas = repositorio.Consultar();
+            List<Factura> facturas = ConsultarCabeceras();
 
             foreach (Factura factura in facturas)
             {

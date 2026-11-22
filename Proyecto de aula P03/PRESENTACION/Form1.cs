@@ -1,6 +1,5 @@
 
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
@@ -9,7 +8,6 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using DATOS;
 using ENTIDADES;
 using LOGICA;
 
@@ -470,51 +468,48 @@ namespace PRESENTACION
                 ActualizarDashboard();
                 return;
             }
-            AbrirFormularioHijo(new FrmPanel());
+            PintarBotonActivo(button2);
+            var panel = new FrmPanel();
+            panel.SolicitarActualizacion += ActualizarDashboard;
+            panel.AbrirSeccion += NavegarDesdeDashboard;
+            panel.AbrirCita += id =>
+            {
+                PintarBotonActivo(btnAgenda);
+                AbrirFormularioHijo(new FrmAgenda(id));
+            };
+            AbrirFormularioHijo(panel);
         }
 
-        public void ActualizarDashboard()
+        private void NavegarDesdeDashboard(FrmPanel.Seccion destino)
         {
+            switch (destino)
+            {
+                case FrmPanel.Seccion.Clientes: btnClientes_Click(this, EventArgs.Empty); break;
+                case FrmPanel.Seccion.Vehiculos: btnVehiculos_Click(this, EventArgs.Empty); break;
+                case FrmPanel.Seccion.Articulos: btnArticulosMenu_Click(this, EventArgs.Empty); break;
+                case FrmPanel.Seccion.Agenda: Menu_Click(this, EventArgs.Empty); break;
+                case FrmPanel.Seccion.Ventas: btnServicio_Click(this, EventArgs.Empty); break;
+            }
+        }
+
+        public async void ActualizarDashboard()
+        {
+            FrmPanel panel = frmPanel;
+            if (panel == null || panel.IsDisposed || panel.Actualizando) return;
+
+            panel.EstablecerCarga(true);
             try
             {
-                var clienteRepository = new ClienteRepository();
-                var empleadoRepository = new EmpleadoRepository();
-                var vehiculoRepository = new VehiculoRepository();
-                var articuloRepository = new ArticuloRepository();
-                var proveedorRepository = new ProveedorRepository();
-                var agendaService = new AgendaService(new AgendaRepository(), clienteRepository, vehiculoRepository, empleadoRepository, articuloRepository);
-                int clientes = new ClienteService(clienteRepository).TotalClientes();
-                int vehiculos = new VehiculoService(vehiculoRepository, clienteRepository).TotalVehiculos();
-                int articulos = new ArticuloService(articuloRepository, proveedorRepository).TotalArticulos();
-                int citasPendientes = agendaService.TotalCitasPendientes();
-                decimal ventas = new FacturaService(new FacturaRepository(), clienteRepository, empleadoRepository, articuloRepository).TotalVentas();
-                if (frmPanel != null && !frmPanel.IsDisposed)
-                {
-                    frmPanel.EstablecerMetricas(clientes, vehiculos, articulos, citasPendientes, ventas);
-                    var proximas = agendaService.Consultar()
-                        .Where(a => string.Equals(a.Estado, "PENDIENTE", StringComparison.OrdinalIgnoreCase) && a.Fecha >= DateTime.Now)
-                        .OrderBy(a => a.Fecha).Take(5).ToList();
-                    var alertas = new List<FrmPanel.AlertaTaller>();
-                    foreach (Repuesto repuesto in new ArticuloService(articuloRepository, proveedorRepository).Consultar().OfType<Repuesto>().Where(r => r.Cantidad <= 5))
-                        alertas.Add(new FrmPanel.AlertaTaller { Tipo = "Stock bajo", Detalle = repuesto.Nombre + " · " + repuesto.Cantidad + " unidades", Estado = "PENDIENTE" });
-                    foreach (Soat soat in new SoatService(new SoatRepository(), vehiculoRepository).Consultar()
-                        .Where(s => s.FechaFin.Date <= DateTime.Today.AddDays(30)))
-                    {
-                        string estadoSoat = soat.FechaFin.Date < DateTime.Today ? "VENCIDO" : "POR VENCER";
-                        alertas.Add(new FrmPanel.AlertaTaller
-                        {
-                            Tipo = "SOAT " + estadoSoat,
-                            Detalle = (soat.Vehiculo == null ? "" : soat.Vehiculo.Placa) + " · vence " + soat.FechaFin.ToString("dd/MM/yyyy"),
-                            Estado = estadoSoat
-                        });
-                    }
-                    frmPanel.EstablecerResumen(proximas, alertas);
-                }
+                var datos = await Task.Run(() => new DashboardService().Cargar());
+                if (!panel.IsDisposed) panel.MostrarResumen(datos);
             }
             catch (Exception ex)
             {
-                if (frmPanel != null && !frmPanel.IsDisposed) frmPanel.MostrarError(ex.Message);
-                else MessageBox.Show(this, "No se pudieron cargar las métricas del dashboard. " + ex.Message, "Dashboard", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                if (!panel.IsDisposed) panel.MostrarError(ex.Message);
+            }
+            finally
+            {
+                if (!panel.IsDisposed) panel.EstablecerCarga(false);
             }
         }
 

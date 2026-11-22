@@ -36,7 +36,11 @@ namespace PRESENTACION
         private string textoEscritoSugerido;
         private bool seleccionandoSugerencia;
 
-        public FrmAgenda()
+        public FrmAgenda() : this(null)
+        {
+        }
+
+        internal FrmAgenda(int? citaInicial)
         {
             InitializeComponent();
 
@@ -54,7 +58,11 @@ namespace PRESENTACION
             articuloService = new ArticuloService(articuloRepo, proveedorRepo);
             agendaService = new AgendaService(agendaRepo, clienteRepo, vehiculoRepo, empleadoRepo, articuloRepo);
             ConfigurarInteraccion();
-            Load += (s, e) => CargarTodo();
+            Load += (s, e) =>
+            {
+                CargarTodo();
+                if (citaInicial.HasValue) SeleccionarCita(citaInicial.Value);
+            };
         }
 
         private void ConfigurarInteraccion()
@@ -334,6 +342,24 @@ namespace PRESENTACION
             if (grid.SelectedRows.Count == 0) return;
             Agenda agenda = (grid.SelectedRows[0].DataBoundItem as AgendaFila)?.Original;
             if (agenda == null) return;
+            MostrarCita(agenda);
+        }
+
+        private void SeleccionarCita(int agendaId)
+        {
+            foreach (DataGridViewRow fila in grid.Rows)
+            {
+                if (!(fila.DataBoundItem is AgendaFila cita) || cita.Id != agendaId) continue;
+                grid.CurrentCell = fila.Cells.Cast<DataGridViewCell>().First(celda => celda.Visible);
+                fila.Selected = true;
+                MostrarCita(cita.Original);
+                return;
+            }
+            MessageBox.Show(this, "La cita ya no está disponible.", "Agenda", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private void MostrarCita(Agenda agenda)
+        {
             editando = true; agendaSeleccionada = agenda.AgendaID;
             dtpFecha.Value = agenda.Fecha < dtpFecha.MinDate ? dtpFecha.MinDate : agenda.Fecha > dtpFecha.MaxDate ? dtpFecha.MaxDate : agenda.Fecha;
             txtComentario.Text = agenda.Comentario;

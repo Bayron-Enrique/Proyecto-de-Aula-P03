@@ -132,6 +132,7 @@
     <Compile Include="ArticuloService.cs" />
     <Compile Include="CargoService.cs" />
     <Compile Include="ClienteService.cs" />
+    <Compile Include="DashboardService.cs" />
     <Compile Include="EmpleadoService.cs" />
     <Compile Include="SesionActual.cs" />
     <Compile Include="Email.cs" />

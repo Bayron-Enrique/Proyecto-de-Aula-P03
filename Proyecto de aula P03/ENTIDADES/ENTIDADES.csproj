@@ -128,6 +128,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Agenda.cs" />
+    <Compile Include="AlertaOperativa.cs" />
+    <Compile Include="PuntoGrafico.cs" />
+    <Compile Include="ResumenDashboard.cs" />
     <Compile Include="Articulo\Articulo.cs" />
     <Compile Include="Persona\Cargo.cs" />
     <Compile Include="Persona\Cliente.cs" />
